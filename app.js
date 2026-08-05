@@ -618,3 +618,109 @@ window.copiarDatos = (btn) => {
     let txt = btn.closest("td").querySelector(".texto-secreto").value; 
     navigator.clipboard ? navigator.clipboard.writeText(txt).then(()=>mostrarToast("Copiado")) : mostrarToast("Error al copiar"); 
 };
+
+// Paleta de colores para diferenciar técnicos
+const coloresTecnicos = [
+    '#2979ff', '#f50057', '#00e676', '#ffea00', 
+    '#d500f9', '#ff6d00', '#00e5ff', '#10b981'
+];
+
+window.abrirModalCalendario = () => {
+    document.getElementById('modalCalendario').style.display = 'flex';
+    
+    // Poblar el filtro de técnicos del calendario
+    let listaTecnicos = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
+    let htmlFiltro = `<option value="todos">Todos los Técnicos</option>`;
+    listaTecnicos.forEach(t => { htmlFiltro += `<option value="${t}">${t}</option>`; });
+    document.getElementById("filtroTecnicoCalendario").innerHTML = htmlFiltro;
+
+    actualizarCalendarioGeneral();
+};
+
+window.cerrarModalCalendario = () => {
+    document.getElementById('modalCalendario').style.display = 'none';
+};
+
+// Modificamos el evento global de cierre para incluir este nuevo modal
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => { 
+        if (e.target === overlay) { 
+            window.cerrarModal(); 
+            window.cerrarModalEliminar(); 
+            window.cerrarModalCalendario(); 
+        } 
+    });
+});
+
+window.actualizarCalendarioGeneral = () => {
+    const calendarEl = document.getElementById('calendarioGeneral');
+    if(!calendarEl) return;
+
+    const filtro = document.getElementById('filtroTecnicoCalendario').value;
+    let eventosFormateados = [];
+
+    // Mapear trabajos a eventos
+    dbTrabajos.forEach(t => {
+        if ((t.zona || "Norte") !== zonaActual) return;
+
+        let asig = t.tecnicos || ["Sin Asignar"];
+        if (typeof asig === 'string') asig = [asig];
+
+        // Filtro por técnico
+        if (filtro !== "todos" && !asig.includes(filtro)) return;
+
+        // Asignar color basado en el primer técnico asignado
+        let tecnicoPrincipal = asig[0];
+        let listaActual = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
+        let indexColor = listaActual.indexOf(tecnicoPrincipal);
+        let colorFondo = indexColor >= 0 ? coloresTecnicos[indexColor % coloresTecnicos.length] : '#8b9bb4';
+
+        let startDateTime = t.fecha;
+        let endDateTime = t.fecha;
+        if(t.horaInicio) startDateTime += 'T' + t.horaInicio + ':00';
+        if(t.horaFin) endDateTime += 'T' + t.horaFin + ':00';
+
+        eventosFormateados.push({
+            id: t.id,
+            title: `${tecnicoPrincipal} - ${t.cliente}`, // Muestra el usuario y cliente
+            start: startDateTime,
+            end: (t.horaInicio && t.horaFin) ? endDateTime : undefined,
+            backgroundColor: colorFondo,
+            textColor: '#000', // Contraste con los colores brillantes
+            extendedProps: {
+                detalle: t.detalle,
+                direccion: t.dir,
+                estado: t.estado
+            }
+        });
+    });
+
+    // Destruir instancia anterior si existe para evitar duplicados
+    if (window.calendarioInstancia) {
+        window.calendarioInstancia.destroy();
+    }
+
+    // Inicializar FullCalendar
+    window.calendarioInstancia = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek', // Vista semanal por defecto para ver cruces
+        locale: 'es',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'timeGridDay,timeGridWeek,dayGridMonth'
+        },
+        slotMinTime: '06:00:00', // Jornada laboral
+        slotMaxTime: '22:00:00',
+        allDaySlot: true,
+        events: eventosFormateados,
+        eventClick: function(info) {
+            // Reutilizamos tu sistema de Toast para mostrar detalles rápidos al hacer clic
+            mostrarToast(`${info.event.title} | ${info.event.extendedProps.detalle} | Estado: ${info.event.extendedProps.estado.toUpperCase()}`);
+        }
+    });
+
+    // Renderizar (debe ejecutarse después de que el modal esté visible `display: flex`)
+    setTimeout(() => {
+        window.calendarioInstancia.render();
+    }, 100);
+};

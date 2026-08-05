@@ -12,6 +12,7 @@
     <!-- Librerías Externas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     
     <!-- CSS -->
     <link rel="stylesheet" href="estilo.css">
@@ -71,6 +72,7 @@
         <div class="botones-principales admin-only" id="contenedorBotonesAccion">
             <button type="button" class="btn-agregar-flotante" onclick="abrirModal()">+ Nuevo Trabajo</button>
             <button type="button" class="btn-exportar" onclick="exportarAExcel()">📊 Exportar Excel</button>
+            <button type="button" class="btn-cyan" onclick="abrirModalCalendario()" style="background: var(--neon-purple); color: white;">📅 Calendario General</button>
             <label class="btn-cyan" style="display:flex; align-items:center; gap:8px;">
                 📁 Subir BD Clientes
                 <input type="file" accept=".xlsx, .xls" style="display: none;" onchange="procesarExcelClientes(event)">
@@ -317,6 +319,27 @@
 </div>
 
 <div id="toast">Mensaje</div>
+
+<!-- MODAL CALENDARIO EXPANDIDO -->
+<div class="modal-overlay" id="modalCalendario">
+    <div class="modal-content modal-fullscreen" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="cerrarModalCalendario()">×</button>
+        <div class="header-titles" style="margin-bottom: 20px;">
+            <h3 style="margin: 0; color: var(--text-main); font-size: 20px; font-weight: 900; text-transform: uppercase;">Monitor de Técnicos</h3>
+        </div>
+        
+        <!-- Filtro rápido dentro del calendario -->
+        <div class="form-group" style="max-width: 300px; margin-bottom: 15px;">
+            <label>Filtrar por Técnico:</label>
+            <select id="filtroTecnicoCalendario" class="form-control" onchange="actualizarCalendarioGeneral()">
+                <option value="todos">Todos los Técnicos</option>
+            </select>
+        </div>
+
+        <!-- Contenedor del Calendario -->
+        <div id="calendarioGeneral" style="flex: 1; min-height: 600px; width: 100%; background: var(--bg-body); padding: 15px; border-radius: 8px; border: 1px solid var(--panel-border);"></div>
+    </div>
+</div>
 
 <!-- JavaScript -->
 <script type="module" src="app.js"></script>

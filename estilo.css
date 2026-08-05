@@ -381,3 +381,35 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
     border-left-color: var(--neon-red);
     color: var(--text-main);
 }
+
+/* MODAL A PANTALLA COMPLETA ESTILO GOOGLE CALENDAR */
+.modal-fullscreen {
+    max-width: 95vw !important;
+    height: 95vh !important;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 30px !important;
+}
+
+/* Ajustes de FullCalendar para modo oscuro/claro */
+.fc-theme-standard td, .fc-theme-standard th, .fc-theme-standard .fc-scrollgrid { 
+    border-color: var(--panel-border) !important; 
+}
+.fc .fc-col-header-cell-cushion, .fc .fc-daygrid-day-number { 
+    color: var(--text-main); font-weight: 800; text-transform: uppercase;
+}
+.fc .fc-toolbar-title { 
+    color: var(--text-main); font-size: 18px; font-weight: 900; text-transform: uppercase; 
+}
+.fc .fc-button-primary { 
+    background-color: var(--panel-bg) !important; 
+    border: 1px solid var(--panel-border) !important; 
+    color: var(--text-muted) !important; font-weight: bold; text-transform: uppercase; transition: 0.2s;
+}
+.fc .fc-button-primary:not(:disabled):hover, .fc .fc-button-primary:not(:disabled).fc-button-active { 
+    background-color: var(--brand-orange) !important; color: white !important; border-color: var(--brand-orange) !important;
+}
+.fc-event { 
+    cursor: pointer; border-radius: 6px; padding: 4px; border: none; font-size: 11px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+.fc-timegrid-slot-label-cushion { color: var(--text-muted); font-weight: bold; }
