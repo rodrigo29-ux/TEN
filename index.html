@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEN - Centro de Operaciones NOC</title>
+    
+    <meta name="theme-color" content="#131722">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="TEN Gestor">
+    
+    <!-- Librerías Externas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        :root {
+            /* TEMA OSCURO NEÓN (Por Defecto) */
+            --bg-body: #0b0e14; 
+            --panel-bg: #151924; 
+            --panel-border: #232838;
+            --text-main: #f8fafc; 
+            --text-muted: #8b9bb4; 
+            
+            --input-bg: rgba(0,0,0,0.2);
+            --input-border: #232838;
+
+            --brand-orange: #ff6d00; 
+            --neon-cyan: #00e5ff;
+            --neon-pink: #f50057;
+            --neon-yellow: #ffea00;
+            --neon-purple: #d500f9;
+            --neon-green: #10B981;
+            --neon-red: #EF4444;
+            --neon-blue: #2979ff;
+
+            --btn-pendiente: #ffea00; 
+            --btn-realizado: #00e5ff; 
+            --btn-sin-atender: #ff1744; 
+            --btn-en-camino: #2979ff;
+            --wsp-green: #00e676; 
+            --btn-nap: #9c27b0;
+        }
+
+        [data-theme="light"] {
+            --bg-body: #f1f5f9; 
+            --panel-bg: #ffffff; 
+            --panel-border: #cbd5e1;
+            --text-main: #1e293b; 
+            --text-muted: #64748b; 
+            
+            /* En modo claro, los inputs son blancos para indicar que son editables */
+            --input-bg: #ffffff;
+            --input-border: #94a3b8;
+
+            --btn-realizado: #10b981;
+            --btn-pendiente: #f59e0b;
+        }
+
+        body { 
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+            background-color: var(--bg-body); 
+            color: var(--text-main); 
+            margin: 0; padding: 0; line-height: 1.5; 
+            transition: background-color 0.3s;
+        }
+
+        #login-view { 
+            display: flex; height: 100vh; width: 100vw; 
+            align-items: center; justify-content: center; 
+            background: url('fondo.png') center/cover no-repeat;
+            position: relative;
+        }
+        #login-view::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 14, 20, 0.85); backdrop-filter: blur(5px); z-index: 0;
+        }
+        
+        .login-wrapper {
+            display: flex; align-items: stretch; background: var(--panel-bg);
+            border: 1px solid var(--panel-border); border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); position: relative; z-index: 1;
+            overflow: hidden; max-width: 800px; width: 90%; min-height: 450px;
+        }
+        .login-illustration {
+            flex: 1; background: rgba(0,0,0,0.3); padding: 40px; display: flex; 
+            flex-direction: column; justify-content: center; align-items: center; 
+            border-right: 1px solid var(--panel-border);
+        }
+        .login-illustration img { 
+            max-width: 200px; height: auto; opacity: 0.9; 
+            filter: drop-shadow(0 0 20px rgba(255, 109, 0, 0.2)); 
+            margin-bottom: 20px;
+        }
+        .login-illustration h2 { color: var(--text-main); margin: 0; font-weight: 900; font-size: 20px; text-transform: uppercase;}
+        .login-illustration p { color: var(--text-muted); font-size: 13px; font-weight: 600; text-align: center; margin-top: 5px;}
+        
+        .login-box { 
+            flex: 1; width: 100%; text-align: center; padding: 50px 40px; 
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .login-box img.logo-oficial { max-width: 150px; margin: 0 auto 10px auto; display: block; }
+        .login-subtitle { font-size: 12px; font-weight: 800; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 40px; }
+        
+        .input-group { margin-bottom: 20px; position: relative; }
+        .input-group input { 
+            width: 100%; padding: 16px 20px 16px 50px; 
+            background: var(--input-bg); border: 1px solid var(--input-border); 
+            border-radius: 12px; box-sizing: border-box; font-size: 15px; 
+            font-weight: 600; color: var(--text-main); outline: none; transition: all 0.3s;
+        }
+        .input-group input:focus { border-color: var(--brand-orange); }
+        .input-icon { position: absolute; left: 18px; top: 16px; font-size: 18px; color: var(--text-muted); }
+        
+        input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px var(--panel-bg) inset !important;
+            -webkit-text-fill-color: var(--text-main) !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
+        .login-box button { 
+            width: 100%; padding: 16px; margin-top: 15px;
+            background: var(--brand-orange); color: white; border: none; 
+            border-radius: 12px; font-weight: 900; cursor: pointer; font-size: 16px; 
+            transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
+            box-shadow: 0 5px 20px rgba(255, 109, 0, 0.3);
+        }
+        .login-box button:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255, 109, 0, 0.5); }
+
+        @media screen and (max-width: 768px) {
+            .login-illustration { display: none; }
+            .login-wrapper { max-width: 400px; flex-direction: column; }
+        }
+
+        #dashboard-view { display: none; padding: 20px 15px 80px 15px; }
+        .container { max-width: 1500px; margin: 0 auto; }
+
+        .header-brand { 
+            background-color: var(--panel-bg); border: 1px solid var(--panel-border);
+            border-bottom: 4px solid var(--brand-orange); padding: 20px 30px; 
+            border-radius: 12px; margin-bottom: 25px; display: flex; 
+            justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
+        }
+        .header-titles { display: flex; align-items: center; gap: 20px; flex-wrap: wrap;}
+        .header-titles h1 { margin: 0; font-size: 24px; font-weight: 900; text-transform: uppercase;}
+        
+        .zone-selector-container { 
+            background: var(--bg-body); padding: 8px 15px; border-radius: 8px; 
+            display: flex; align-items: center; gap: 10px; border: 1px solid var(--panel-border); 
+        }
+        .zone-selector-container label { font-size: 12px; font-weight: bold; color: var(--text-muted); text-transform: uppercase;}
+        .zone-select { background: transparent; color: var(--text-main); border: none; font-weight: bold; font-size: 14px; outline: none; cursor: pointer; }
+        .zone-select option { background-color: var(--panel-bg); color: var(--text-main); }
+
+        .user-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;}
+        .btn-theme-toggle { background: var(--bg-body); color: var(--text-main); border: 1px solid var(--panel-border); padding: 10px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; transition: all 0.2s;}
+        .user-badge { background: rgba(255, 109, 0, 0.1); border: 1px solid rgba(255, 109, 0, 0.3); padding: 10px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; color: var(--brand-orange); }
+        .btn-logout { background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 13px; }
+
+        .botones-principales { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+        .btn-agregar-flotante, .btn-exportar { color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: filter 0.2s; }
+        .btn-agregar-flotante { background: var(--btn-en-camino); }
+        .btn-exportar { background: #10b981; }
+        .btn-cyan { background: var(--neon-cyan); color: #000; padding: 12px 24px; border-radius: 8px; font-weight: 800; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+
+        .admin-stats-grid { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 20px; margin-bottom: 25px; }
+        .stat-card { 
+            background: var(--panel-bg); padding: 20px; border-radius: 12px; 
+            border: 1px solid var(--panel-border); display: flex; flex-direction: column; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .stat-card h3 { 
+            margin-top: 0; color: var(--text-muted); font-size: 11px; font-weight: 900; 
+            text-transform: uppercase; border-bottom: 1px solid var(--panel-border); 
+            padding-bottom: 12px; margin-bottom: 15px; letter-spacing: 1px; 
+        }
+        .chart-container { position: relative; height: 180px; width: 100%; display: flex; justify-content: center; flex: 1; }
+        
+        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-content: center; height: 100%; }
+        .kpi-box { 
+            background: var(--bg-body); border: 1px solid var(--panel-border); 
+            border-radius: 8px; padding: 15px; text-align: center; display: flex; 
+            flex-direction: column; justify-content: center; position: relative; overflow: hidden;
+        }
+        .kpi-box::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+        .kpi-box.total::before { background: var(--neon-purple); box-shadow: 0 0 10px var(--neon-purple);}
+        .kpi-box.success::before { background: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan);}
+        .kpi-box.danger::before { background: var(--neon-pink); box-shadow: 0 0 10px var(--neon-pink);}
+        .kpi-box.warning::before { background: var(--neon-yellow); box-shadow: 0 0 10px var(--neon-yellow);}
+        .kpi-num { font-size: 28px; font-weight: 900; color: var(--text-main); line-height: 1; }
+        .kpi-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-top: 8px; letter-spacing: 0.5px;}
+
+        .control-panel { 
+            background-color: var(--panel-bg); padding: 15px 20px; border-radius: 8px; 
+            border: 1px solid var(--panel-border); margin-bottom: 25px; 
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; 
+        }
+        .filtros-grupo { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; flex: 1; }
+        .filtro-item { display: flex; align-items: center; background: var(--bg-body); border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; flex: 1; min-width: 200px; }
+        .filtro-item label { font-size: 11px; font-weight: 800; color: var(--text-muted); padding: 10px 15px; background: rgba(0,0,0,0.1); border-right: 1px solid var(--panel-border); white-space: nowrap;}
+        .filtro-item select, .filtro-item input { background: transparent; border: none; color: var(--text-main); font-weight: 700; font-size: 14px; outline: none; width: 100%; padding: 10px 15px; }
+        .filtro-item option { background-color: var(--panel-bg); color: var(--text-main); }
+
+        table { width: 100%; border-collapse: collapse; background-color: var(--panel-bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--panel-border); }
+        th, td { padding: 18px 20px; text-align: left; border-bottom: 1px solid var(--panel-border); vertical-align: top; }
+        th { background-color: rgba(0,0,0,0.2); color: var(--text-muted); font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+        tr:hover td { background-color: rgba(255,255,255,0.02); }
+
+        .cliente-nombre { font-weight: 900; color: var(--text-main); font-size: 17px; display: block; margin-bottom: 6px; }
+        .cliente-info { color: var(--text-muted); font-size: 14px; display: block; margin-bottom: 4px; font-weight: 600; }
+        .lbl-info { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-right: 6px; font-weight: 800; letter-spacing: 0.5px;}
+        
+        .badge-tipo { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 0.5px;}
+        .badge-tipo.alta { background: rgba(16, 185, 129, 0.1); color: var(--neon-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-tipo.averia { background: rgba(41, 121, 255, 0.1); color: var(--neon-blue); border: 1px solid rgba(41, 121, 255, 0.3); }
+        .badge-tipo.baja { background: rgba(239, 68, 68, 0.1); color: var(--neon-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        .estado-punto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        .ep-pend { background-color: var(--btn-pendiente); box-shadow: 0 0 8px var(--btn-pendiente); }
+        .ep-aten { background-color: var(--btn-realizado); box-shadow: 0 0 8px var(--btn-realizado); }
+        .ep-noat { background-color: var(--btn-sin-atender); box-shadow: 0 0 8px var(--btn-sin-atender); }
+        .ep-cami { background-color: var(--btn-en-camino); box-shadow: 0 0 8px var(--btn-en-camino); }
+
+        .acciones-wrapper { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 250px; margin: 0 0 0 auto; }
+        .btn-estado-principal { width: 100%; background-color: #2563eb; color: #ffffff; border: none; padding: 12px; border-radius: 6px; font-size: 13px; font-weight: 900; text-transform: uppercase; cursor: pointer; transition: 0.2s; text-align: center; }
+        .btn-estado-principal:hover { background-color: #1d4ed8; }
+        .btn-grid-row { display: flex; gap: 6px; width: 100%; }
+        .btn-accion { padding: 8px; font-size: 12px; font-weight: bold; border: 1px solid var(--panel-border); border-radius: 6px; cursor: pointer; text-align: center; text-decoration: none; flex: 1; color: var(--text-main); background: var(--bg-body); transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 6px;}
+        .btn-accion:hover { background: var(--panel-border); }
+
+        .modal-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 2000; padding: 15px; box-sizing: border-box; backdrop-filter: blur(4px);
+        }
+        .modal-content { 
+            background: var(--panel-bg); padding: 30px; border-radius: 12px; width: 100%; max-width: 650px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; border: 1px solid var(--panel-border); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); position: relative;
+        }
+        .btn-close-x { position: absolute; top: 15px; right: 15px; width: 30px; height: 30px; background: transparent; color: var(--text-muted); border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10;}
+        .btn-close-x:hover { color: var(--text-main); }
+
+        /* PESTAÑAS ALTA / AVERÍA / BAJA */
+        .modal-tabs { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+        .tab-btn { flex: 1; padding: 15px 10px; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--bg-body); color: var(--text-muted); font-size: 13px; font-weight: 900; cursor: pointer; transition: 0.2s; text-align: center; text-transform: uppercase; min-width: 120px;}
+        .tab-btn.active-alta { background: rgba(16, 185, 129, 0.15); color: var(--neon-green); border-color: var(--neon-green); box-shadow: 0 0 15px rgba(16,185,129,0.2); }
+        .tab-btn.active-averia { background: rgba(41, 121, 255, 0.15); color: var(--neon-blue); border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(41, 121, 255, 0.2); }
+        .tab-btn.active-baja { background: rgba(239, 68, 68, 0.15); color: var(--neon-red); border-color: var(--neon-red); box-shadow: 0 0 15px rgba(239,68,68,0.2); }
+
+        .search-box { background: rgba(0, 229, 255, 0.05); padding: 20px; border-radius: 12px; border: 1px dashed var(--neon-cyan); margin-bottom: 25px; }
+
+        .form-group { margin-bottom: 15px; width: 100%; }
+        .form-group label { display: block; font-weight: 800; margin-bottom: 6px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;}
+        .form-control { padding: 12px 14px; border: 1px solid var(--input-border); border-radius: 6px; font-size: 14px; outline: none; background-color: var(--input-bg); color: var(--text-main); width: 100%; box-sizing: border-box; font-weight: 600; transition: 0.2s;}
+        .form-control:focus { border-color: var(--brand-orange); }
+        select.form-control option { background-color: var(--panel-bg); color: var(--text-main); }
+        .horario-container { display: flex; gap: 15px; flex-wrap: wrap; }
+        .horario-container div { flex: 1; min-width: 150px; }
+        
+        .modal-buttons { display: flex; gap: 12px; margin-top: 25px; }
+        .btn-guardar { background: var(--brand-orange); color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: 900; font-size: 14px; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px;}
+        .btn-guardar:hover { filter: brightness(1.1); }
+        .btn-cancelar { background: transparent; color: var(--text-main); border: 1px solid var(--panel-border); padding: 14px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: 900; font-size: 14px; transition: 0.2s; text-transform: uppercase;}
+        .btn-cancelar:hover { background: var(--bg-body); }
+        
+        .grupo-alta, .grupo-averia, .grupo-baja { display: none; }
+
+        .multi-select-container { position: relative; width: 100%; user-select: none; }
+        .multi-select-display { padding: 12px 16px; border: 1px solid var(--input-border); border-radius: 6px; font-size: 14px; background-color: var(--input-bg); color: var(--text-main); width: 100%; box-sizing: border-box; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+        .multi-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 6px; margin-top: 5px; z-index: 2001; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .multi-select-dropdown.show { display: block; }
+        .multi-option { padding: 10px 15px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--panel-border); cursor: pointer; margin: 0; }
+        .multi-option:hover { background: var(--bg-body); }
+        .multi-option input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--brand-orange); cursor: pointer; pointer-events: none;}
+        .multi-option label { cursor: pointer; width: 100%; color: var(--text-main); font-size: 13px; pointer-events: none; margin: 0; font-weight: 600;}
+
+        #toast { visibility: hidden; min-width: 250px; background-color: var(--text-main); color: var(--bg-body); text-align: center; border-radius: 8px; padding: 16px 24px; position: fixed; z-index: 3000; left: 50%; bottom: 30px; transform: translateX(-50%); font-weight: 900; font-size: 13px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #toast.show { visibility: visible; bottom: 50px; transition: 0.3s; }
+        .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--neon-cyan); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .admin-only { display: none !important; }
+        .show-admin { display: block !important; }
+        .show-admin-flex { display: flex !important; }
+        .show-admin-grid { display: grid !important; }
+
+        @media screen and (max-width: 900px) {
+            .admin-stats-grid { grid-template-columns: 1fr; }
+            .kpi-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media screen and (max-width: 768px) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            tr { margin-bottom: 15px; border: 1px solid var(--panel-border); border-radius: 8px; background: var(--panel-bg); padding: 10px;}
+            td { border: none; padding: 8px 5px; width: 100% !important; box-sizing: border-box; }
+            td:last-child { border-bottom: none; border-top: 1px solid var(--panel-border); margin-top: 5px; padding-top: 10px;}
+            .acciones-wrapper { max-width: 100%; margin: 0; }
+            .filtros-grupo { flex-direction: column; width: 100%; align-items: stretch; gap: 10px; }
+            .filtro-item { width: 100%; margin-bottom: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="login-view">
+    <div class="login-wrapper">
+        <div class="login-illustration">
+            <!-- IMAGEN DEL TÉCNICO: Asegúrate de guardar una imagen llamada 'tecnico.png' en tu carpeta -->
+            <img src="tecnico.png" alt="Técnico NOC" onerror="this.style.display='none';">
+            <h2>TEN Soporte</h2>
+            <p>Plataforma de Operaciones de Fibra Óptica</p>
+        </div>
+        <form class="login-box" onsubmit="event.preventDefault(); iniciarSesion();">
+            <img src="logo.png" alt="Logo TEN" class="logo-oficial" onerror="this.style.display='none'; document.getElementById('altLogo').style.display='block';">
+            <h1 id="altLogo" style="display:none; color:var(--text-main); font-weight:900; margin:0 0 10px 0; font-size:40px;">TEN</h1>
+            <div class="login-subtitle">Centro de Operaciones NOC</div>
+            
+            <div class="input-group">
+                <span class="input-icon">👤</span>
+                <input type="email" id="txtEmail" placeholder="Correo Electrónico" required>
+            </div>
+            
+            <div class="input-group">
+                <span class="input-icon">🔒</span>
+                <input type="password" id="txtPassword" placeholder="Contraseña" required>
+            </div>
+            
+            <button type="submit">Ingresar al Sistema</button>
+            <p id="login-error" style="color: var(--btn-sin-atender); font-size: 13px; display: none; margin-top:15px; font-weight: bold;">Error: Verifica tus credenciales.</p>
+        </form>
+    </div>
+</div>
+
+<div id="dashboard-view">
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header-brand">
+            <div class="header-titles">
+                <h1>TEN - CENTRO DE OPERACIONES</h1>
+                <div class="zone-selector-container admin-only" id="contenedorSelectorZona">
+                    <label>ZONA:</label>
+                    <select id="selectorZona" class="zone-select" onchange="cambiarZona(this.value)">
+                        <option value="Norte">CONO NORTE</option>
+                        <option value="Lurin">LURÍN</option>
+                    </select>
+                </div>
+            </div>
+            <div class="user-info">
+                <button type="button" class="btn-theme-toggle" onclick="window.toggleTema()">🌓 Cambiar Tema</button>
+                <span class="user-badge" id="lblUsuarioActivo">👑 ADMINISTRADOR</span>
+                <button type="button" class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+            </div>
+        </div>
+
+        <div class="botones-principales admin-only" id="contenedorBotonesAccion">
+            <button type="button" class="btn-agregar-flotante" onclick="abrirModal()">+ Nuevo Trabajo</button>
+            <button type="button" class="btn-exportar" onclick="exportarAExcel()">📊 Exportar Excel</button>
+            <label class="btn-cyan" style="display:flex; align-items:center; gap:8px;">
+                📁 Subir BD Clientes
+                <input type="file" accept=".xlsx, .xls" style="display: none;" onchange="procesarExcelClientes(event)">
+            </label>
+            <div id="loaderUpload" class="loader"></div>
+        </div>
+
+        <!-- GRÁFICOS Y KPIS (2x2 Restaurado) -->
+        <div id="panelGraficosAdmin" class="admin-stats-grid admin-only">
+            <div class="stat-card">
+                <h3>RESUMEN DE ESTADOS</h3>
+                <div class="chart-container"><canvas id="graficoAvance"></canvas></div>
+            </div>
+            <div class="stat-card">
+                <h3>CARGA DE TÉCNICOS</h3>
+                <div class="chart-container"><canvas id="graficoTecnicos"></canvas></div>
+            </div>
+            <div class="stat-card">
+                <h3>TOTALES</h3>
+                <div class="kpi-grid">
+                    <div class="kpi-box total"><span class="kpi-num" id="kpiTotal">0</span><span class="kpi-label">Total</span></div>
+                    <div class="kpi-box success"><span class="kpi-num" id="kpiAtendidos">0</span><span class="kpi-label">Atendidos</span></div>
+                    <div class="kpi-box danger"><span class="kpi-num" id="kpiNoAtendidos">0</span><span class="kpi-label">No Atendidos</span></div>
+                    <div class="kpi-box warning"><span class="kpi-num" id="kpiPendientes">0</span><span class="kpi-label">Pendientes</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTROS -->
+        <div class="control-panel" id="panelFiltros">
+            <div class="filtros-grupo">
+                <div class="filtro-item">
+                    <label>FECHA:</label>
+                    <select id="filtroFecha" onchange="renderizarTabla()"><option value="todas">Todas las Fechas</option></select>
+                </div>
+                <div class="filtro-item admin-only" id="filtroTecnicoContainer">
+                    <label>TÉCNICO:</label>
+                    <select id="filtroTecnico" onchange="renderizarTabla()"><option value="todos">Todos</option></select>
+                </div>
+                <div class="filtro-item">
+                    <label>ESTADO:</label>
+                    <select id="filtroEstado" onchange="renderizarTabla()">
+                        <option value="todos">Todos</option>
+                        <option value="pendiente">Pendientes</option>
+                        <option value="en_camino">En Camino</option>
+                        <option value="atendido">Atendidos</option>
+                        <option value="no_atendido">No Atendidos</option>
+                    </select>
+                </div>
+                <div class="filtro-item" style="flex: 2;">
+                    <label>BUSCAR:</label>
+                    <input type="text" id="buscador" placeholder="DNI, nombre, tipo..." onkeyup="renderizarTabla()">
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLA -->
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 15%;">Estado</th>
+                    <th style="width: 30%;">Datos del Cliente</th>
+                    <th style="width: 35%;">Trabajo y Dirección</th>
+                    <th style="width: 20%; text-align: center;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaTrabajos">
+                <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Cargando...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL PRINCIPAL: NUEVO TRABAJO -->
+<div class="modal-overlay" id="modalAgregar">
+    <div class="modal-content" id="modalContentCaja" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModal()">×</button>
+        <h3 id="modalTitulo" style="margin-top: 0; color: var(--text-main); font-size: 20px; font-weight: 900; text-transform: uppercase;">Registro de Tarea</h3>
+        <input type="hidden" id="formTrabajoId">
+        <input type="hidden" id="formTipoTareaValue" value="alta">
+
+        <!-- PESTAÑAS (TABS) RESTAURADAS Y SEPARADAS -->
+        <div class="modal-tabs">
+            <button type="button" class="tab-btn active-alta" id="tabAlta" onclick="seleccionarTipoTarea('alta')">🚀 ALTA (Instalación)</button>
+            <!-- Botón de Avería en Azul brillante a petición del usuario -->
+            <button type="button" class="tab-btn" id="tabAveria" onclick="seleccionarTipoTarea('averia')" style="color: #2979ff; border-color: #2979ff;">🛠️ AVERÍA</button>
+            <button type="button" class="tab-btn" id="tabBaja" onclick="seleccionarTipoTarea('baja')">🛑 BAJA (Retiro)</button>
+        </div>
+
+        <!-- BUSCADOR EXCEL -->
+        <div class="search-box" id="cajaBuscador" style="display: none;">
+            <label style="color: var(--neon-cyan); font-size: 12px; font-weight: 900; margin-bottom: 8px;">🔍 AUTOCOMPLETAR CON ID (EXCEL)</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="formIdCliente" class="form-control" placeholder="Ej: 000178" style="border-color: var(--neon-cyan); flex-grow: 1;">
+                <button type="button" onclick="buscarCliente()" class="btn-guardar" style="width: auto; background: var(--neon-cyan); color: #000; padding: 10px 20px;">Buscar</button>
+            </div>
+            <span id="searchResult" style="font-size: 11px; font-weight: 800; display: block; margin-top: 8px;"></span>
+        </div>
+
+        <div class="horario-container">
+            <div class="form-group">
+                <label>Técnico(s) Asignado(s):</label>
+                <div class="multi-select-container" id="techSelectContainer">
+                    <div class="multi-select-display" id="techDisplay" onclick="window.toggleTechDropdown(event)">Sin Asignar</div>
+                    <div class="multi-select-dropdown" id="techDropdown"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Fecha Programada:</label>
+                <input type="date" id="formFecha" class="form-control">
+            </div>
+        </div>
+
+        <div class="horario-container">
+            <div class="form-group">
+                <label>Hora Inicio:</label>
+                <input type="time" id="formHoraInicio" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Hora Fin (Aprox):</label>
+                <input type="time" id="formHoraFin" class="form-control">
+            </div>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--panel-border); margin: 20px 0;">
+        
+        <!-- DATOS BÁSICOS (Totalmente editables) -->
+        <div class="form-group">
+            <label>Nombre del Cliente:</label>
+            <input type="text" id="formNombre" class="form-control" placeholder="Ej: Juan Perez">
+        </div>
+        
+        <div class="horario-container">
+            <div class="form-group">
+                <label>DNI / RUC:</label>
+                <input type="text" id="formDni" class="form-control" placeholder="Ej: 71234567">
+            </div>
+            <div class="form-group">
+                <label>Teléfono(s):</label>
+                <input type="text" id="formTelefono" class="form-control" placeholder="Ej: 987654321">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Dirección Exacta:</label>
+            <input type="text" id="formDireccion" class="form-control" placeholder="Ej: Mz A Lt 1">
+        </div>
+        <div class="form-group">
+            <label>Link de Google Maps (Ubicación):</label>
+            <input type="text" id="formMapa" class="form-control" placeholder="https://maps.app.goo.gl/...">
+        </div>
+
+        <!-- MUNDO: ALTA -->
+        <div class="grupo-alta" style="display: contents;">
+            <div class="form-group">
+                <label>Plan a Instalar:</label>
+                <select id="formPlanAlta" class="form-control">
+                    <option value="Instalación Solo Internet">Instalación Solo Internet</option>
+                    <option value="Instalación + Cable">Instalación + Cable</option>
+                    <option value="Traslado">Traslado</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Observaciones de Venta:</label>
+                <input type="text" id="formObsAlta" class="form-control" placeholder="Ej: Dejar 20m de cable extra">
+            </div>
+            <div class="horario-container">
+                <div class="form-group">
+                    <label>Caja NAP (Opcional):</label>
+                    <input type="text" id="formCajaAlta" class="form-control" placeholder="Ej: CAJA 01">
+                </div>
+                <div class="form-group">
+                    <label>Puerto Asignado (Opcional):</label>
+                    <input type="number" id="formPuertoAlta" class="form-control" placeholder="Ej: 8">
+                </div>
+            </div>
+        </div>
+
+        <!-- MUNDO: AVERIA -->
+        <div class="grupo-averia" style="display: none;">
+            <div class="form-group">
+                <label style="color: var(--neon-cyan);">Info de Red (Auto-Cargado):</label>
+                <input type="text" id="formInfoRedAveria" class="form-control" style="background: rgba(0,229,255,0.05); color: var(--neon-cyan);">
+            </div>
+            <div class="form-group">
+                <label>Tipo de Problema:</label>
+                <select id="formProblemaAveria" class="form-control">
+                    <option value="Luz Roja">Luz Roja (Corte de fibra)</option>
+                    <option value="Sin Internet">Sin Internet (Equipo ok)</option>
+                    <option value="Internet Lento">Internet Lento</option>
+                    <option value="Problema TV / Cable">Problema TV / Cable</option>
+                    <option value="Mantenimiento">Mantenimiento General</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Diagnóstico Inicial (Notas):</label>
+                <textarea id="formNotasAveria" class="form-control" rows="2" placeholder="Ej: Cliente indica que pasó un camión"></textarea>
+            </div>
+        </div>
+
+        <!-- MUNDO: BAJA -->
+        <div class="grupo-baja" style="display: none;">
+            <div class="form-group">
+                <label>Motivo de Baja:</label>
+                <input type="text" id="formMotivoBaja" class="form-control" placeholder="Ej: Viaje, Mal servicio, Económico">
+            </div>
+            <div class="form-group">
+                <label>Equipos a Recuperar:</label>
+                <input type="text" id="formEquiposBaja" class="form-control" placeholder="Ej: 1 Router Huawei, 1 Deco">
+            </div>
+        </div>
+        
+        <div class="modal-buttons" style="margin-top: 30px;">
+            <button type="button" class="btn-cancelar" onclick="window.cerrarModal()">Cancelar</button>
+            <button type="button" class="btn-guardar" onclick="window.guardarTrabajo()">Guardar Tarea</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ELIMINAR SEGURO (Elegante) -->
+<div class="modal-overlay" id="modalEliminar">
+    <div class="modal-content" style="max-width: 400px; text-align: center;" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModalEliminar()">×</button>
+        <h3 style="color: var(--neon-red); margin-top: 0; font-size: 20px;">🗑️ Eliminar Trabajo</h3>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">¿Estás seguro que deseas eliminar esta tarea permanentemente? No se podrá recuperar.</p>
+        <div class="modal-buttons" style="justify-content: center;">
+            <button type="button" class="btn-cancelar" onclick="window.cerrarModalEliminar()">Cancelar</button>
+            <button type="button" class="btn-guardar" style="background: var(--neon-red);" onclick="window.ejecutarEliminacion()">Sí, Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast">Mensaje</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, updateDoc, doc, deleteDoc, onSnapshot, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+      authDomain: "ten-soporte.firebaseapp.com",
+      projectId: "ten-soporte",
+      storageBucket: "ten-soporte.firebasestorage.app",
+      messagingSenderId: "498950424371",
+      appId: "1:498950424371:web:fce299a98cf8e57f822046"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'ten-noc-app';
+    
+    const coleccionTrabajos = collection(db, 'artifacts', appId, 'public', 'data', 'trabajos_v4');
+    const coleccionClientes = collection(db, 'artifacts', appId, 'public', 'data', 'clientes_base');
+
+    let dbTrabajos = [];
+    let isAdmin = false;
+    let nombreTecnicoLogueado = ""; 
+    let zonaActual = "Norte"; 
+    
+    const tecnicosNorte = ["PATRICIO", "RENZO", "JUAN", "JESUS", "LOLI", "MARCELINO", "RICARDO", "CLEBER"];
+    const tecnicosLurin = ["BILLS", "CIELO"];
+    
+    let chartAvance = null; 
+    let chartTecnicos = null;
+    let unsubscribeTrabajos = null;
+    let idTrabajoAEliminar = null;
+
+    const savedTheme = localStorage.getItem("temaTen") || "dark";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+
+    window.toggleTema = () => {
+        const currentTheme = document.documentElement.getAttribute("data-theme");
+        const newTheme = currentTheme === "light" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", newTheme);
+        localStorage.setItem("temaTen", newTheme);
+        if (isAdmin) renderizarTabla();
+    };
+
+    /* MODALES Y CLICS AFUERA */
+    window.cerrarModal = () => { document.getElementById("modalAgregar").style.display = "none"; document.getElementById('techDropdown').classList.remove('show'); };
+    window.cerrarModalEliminar = () => { document.getElementById("modalEliminar").style.display = "none"; idTrabajoAEliminar = null; };
+    
+    document.addEventListener('keydown', (e) => { 
+        if (e.key === "Escape") { window.cerrarModal(); window.cerrarModalEliminar(); }
+    });
+    
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => { 
+            if (e.target === overlay) { window.cerrarModal(); window.cerrarModalEliminar(); } 
+        });
+    });
+
+    window.toggleTechDropdown = (e) => { 
+        if(e) e.stopPropagation();
+        document.getElementById('techDropdown').classList.toggle('show'); 
+    };
+
+    document.addEventListener('click', (e) => {
+        let dropdown = document.getElementById('techDropdown');
+        let container = document.getElementById('techSelectContainer');
+        if (dropdown && dropdown.classList.contains('show')) {
+            if (container && !container.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        }
+    });
+
+    window.toggleCheckbox = (el) => {
+        let chk = el.querySelector('input');
+        chk.checked = !chk.checked;
+        let chks = document.querySelectorAll('#techDropdown input:checked');
+        document.getElementById('techDisplay').innerText = chks.length === 0 ? "Sin Asignar" : Array.from(chks).map(c=>c.value).join(', ');
+    };
+
+    window.seleccionarTipoTarea = (tipo) => {
+        document.getElementById('formTipoTareaValue').value = tipo;
+        
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active-alta', 'active-averia', 'active-baja');
+            // Reseteamos bordes especiales si es que los tienen
+            if(b.id === 'tabAveria') { b.style.color = '#8b9bb4'; b.style.borderColor = 'var(--panel-border)'; }
+        });
+        
+        let tabActiva = document.getElementById('tab' + tipo.charAt(0).toUpperCase() + tipo.slice(1));
+        tabActiva.classList.add('active-' + tipo);
+
+        if(tipo === 'averia') {
+            tabActiva.style.color = '#2979ff';
+            tabActiva.style.borderColor = '#2979ff';
+        }
+
+        document.getElementById('cajaBuscador').style.display = tipo === 'alta' ? 'none' : 'block';
+        document.querySelector('.grupo-alta').style.display = tipo === 'alta' ? 'contents' : 'none';
+        document.querySelector('.grupo-averia').style.display = tipo === 'averia' ? 'block' : 'none';
+        document.querySelector('.grupo-baja').style.display = tipo === 'baja' ? 'block' : 'none';
+    };
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById("login-view").style.display = "none";
+            document.getElementById("dashboard-view").style.display = "block";
+            isAdmin = (user.email === "admin@ten.com");
+            
+            if(!isAdmin) {
+                nombreTecnicoLogueado = user.email.split('@')[0].toUpperCase();
+                document.getElementById("lblUsuarioActivo").innerHTML = nombreTecnicoLogueado;
+                
+                document.querySelectorAll(".admin-only").forEach(el => el.classList.remove('show-admin', 'show-admin-flex', 'show-admin-grid'));
+                zonaActual = tecnicosLurin.includes(nombreTecnicoLogueado) ? "Lurin" : "Norte";
+            } else {
+                nombreTecnicoLogueado = "ADMIN";
+                document.getElementById("lblUsuarioActivo").innerHTML = `👑 ADMINISTRADOR`;
+                
+                document.getElementById("contenedorSelectorZona").classList.add('show-admin-flex');
+                document.getElementById("contenedorBotonesAccion").classList.add('show-admin-flex');
+                document.getElementById("panelGraficosAdmin").classList.add('show-admin-grid');
+                document.getElementById("filtroTecnicoContainer").classList.add('show-admin-flex');
+                
+                zonaActual = document.getElementById("selectorZona").value;
+            }
+            
+            actualizarFiltroTecnicos();
+            cargarTrabajosEnVivo(); 
+        } else {
+            if(unsubscribeTrabajos) unsubscribeTrabajos();
+            dbTrabajos = [];
+            document.getElementById("login-view").style.display = "flex";
+            document.getElementById("dashboard-view").style.display = "none";
+        }
+    });
+
+    window.iniciarSesion = () => {
+        const email = document.getElementById("txtEmail").value.trim();
+        const pass = document.getElementById("txtPassword").value;
+        signInWithEmailAndPassword(auth, email, pass).catch(() => { document.getElementById("login-error").style.display = "block"; });
+    };
+    window.cerrarSesion = () => { signOut(auth); };
+    
+    window.cambiarZona = (z) => { 
+        zonaActual = z; 
+        actualizarFiltroTecnicos(); 
+        renderizarTabla(); 
+    };
+    
+    function actualizarFiltroTecnicos() {
+        let lista = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
+        let html = `<option value="todos">Todos</option>`;
+        lista.forEach(t => { html += `<option value="${t}">${t}</option>`; });
+        document.getElementById("filtroTecnico").innerHTML = html;
+    }
+
+    function actualizarSelectTecnicosModal() {
+        let lista = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
+        let html = ``;
+        lista.forEach(t => { 
+            html += `<div class="multi-option" onclick="window.toggleCheckbox(this)"><input type="checkbox" value="${t}"><label>${t}</label></div>`; 
+        });
+        document.getElementById("techDropdown").innerHTML = html;
+        document.getElementById("techDisplay").innerText = "Sin Asignar";
+    }
+
+    function cargarTrabajosEnVivo() {
+        if(unsubscribeTrabajos) unsubscribeTrabajos();
+        unsubscribeTrabajos = onSnapshot(coleccionTrabajos, (snapshot) => {
+            dbTrabajos = []; 
+            snapshot.forEach((doc) => { dbTrabajos.push({ id: doc.id, ...doc.data() }); });
+            actualizarOpcionesFechas(); 
+            renderizarTabla();
+        });
+    }
+
+    window.procesarExcelClientes = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        document.getElementById('loaderUpload').style.display = 'block';
+        mostrarToast("Analizando Excel...");
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const dataJSON = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+                
+                let batch = writeBatch(db);
+                let contador = 0; let subidos = 0;
+
+                for (let row of dataJSON) {
+                    const idString = row["N° ID"] ? String(row["N° ID"]).trim() : null;
+                    if(!idString) continue; 
+
+                    let tels = [
+                        row["Telefono PRINCIPAL"] ? String(row["Telefono PRINCIPAL"]) : "", 
+                        row["Telefono 2"] ? String(row["Telefono 2"]) : "", 
+                        row["Telefono 3"] ? String(row["Telefono 3"]) : "", 
+                        row["Telefono 4"] ? String(row["Telefono 4"]) : "", 
+                        row["Telefono 5"] ? String(row["Telefono 5"]) : ""
+                    ].filter(Boolean).join(" / ");
+                    
+                    let infoTv = "No TV";
+                    if(row["CABLE / IPTV"] && String(row["CABLE / IPTV"]).trim() !== "") infoTv = row["CABLE / IPTV"] + " (+20 S/)";
+                    else if (row["CABLE INCL / IPTV INCL"] && String(row["CABLE INCL / IPTV INCL"]).trim() !== "") infoTv = row["CABLE INCL / IPTV INCL"] + " (Costo 0)";
+                    
+                    let mapUbicacion = row["UBICACIÓN"] || row["UBICACION"] || row["ubicacion"] || row["Ubicacion"] || "";
+
+                    batch.set(doc(coleccionClientes, idString), {
+                        id_cliente: idString, dni: row["N° Documento"] || "", nombre: row["Apellidos y Nombres"] || "",
+                        telefonos: tels, direccion: row["Dirección"] || "", ubicacion: mapUbicacion,
+                        zona: row["Zona"] || "", plan: row["PLAN"] || "", info_tv: infoTv
+                    });
+                    
+                    if (++contador === 400) { await batch.commit(); batch = writeBatch(db); contador = 0; }
+                    subidos++;
+                }
+                if (contador > 0) await batch.commit();
+                document.getElementById('loaderUpload').style.display = 'none';
+                mostrarToast(`¡Éxito! ${subidos} clientes actualizados.`);
+                event.target.value = "";
+            } catch (err) { console.error(err); mostrarToast("Error al leer Excel."); }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    window.buscarCliente = async () => {
+        const id = document.getElementById('formIdCliente').value.trim();
+        const msg = document.getElementById('searchResult');
+        if(!id) return msg.innerText = "Escribe un ID primero";
+        msg.innerText = "Buscando..."; msg.style.color = "var(--text-muted)";
+
+        const docSnap = await getDocs(query(coleccionClientes, where("id_cliente", "==", id)));
+        if (!docSnap.empty) {
+            const data = docSnap.docs[0].data();
+            document.getElementById('formNombre').value = data.nombre;
+            document.getElementById('formDni').value = data.dni;
+            document.getElementById('formTelefono').value = data.telefonos;
+            document.getElementById('formDireccion').value = data.zona ? `${data.zona} - ${data.direccion}` : data.direccion;
+            document.getElementById('formMapa').value = data.ubicacion;
+            document.getElementById('formInfoRedAveria').value = `Plan: ${data.plan} | TV: ${data.info_tv}`;
+            msg.innerText = "✅ Cliente Encontrado y Autocompletado"; msg.style.color = "var(--neon-green)";
+        } else {
+            msg.innerText = "❌ ID no encontrado en la base de datos."; msg.style.color = "var(--neon-red)";
+        }
+    };
+
+    window.abrirModal = () => {
+        if(isAdmin) zonaActual = document.getElementById("selectorZona").value;
+        
+        document.getElementById('formTrabajoId').value = "";
+        document.querySelectorAll("#modalAgregar input[type=text]:not(.multi-select-display), #modalAgregar input[type=number], #modalAgregar textarea").forEach(i => i.value = "");
+        document.getElementById('formFecha').value = new Date().toISOString().split('T')[0];
+        document.getElementById('searchResult').innerText = "";
+        
+        actualizarSelectTecnicosModal();
+        window.seleccionarTipoTarea('alta'); // Por defecto abre en Alta
+        document.getElementById('modalAgregar').style.display = 'flex';
+    };
+
+    window.guardarTrabajo = async () => {
+        let techSelec = Array.from(document.querySelectorAll('#techDropdown input:checked')).map(c => c.value);
+        if(techSelec.length === 0) techSelec = ["Sin Asignar"];
+
+        let tipo = document.getElementById('formTipoTareaValue').value;
+        let data = {
+            tipoTarea: tipo,
+            fecha: document.getElementById('formFecha').value,
+            horaInicio: document.getElementById('formHoraInicio').value,
+            horaFin: document.getElementById('formHoraFin').value,
+            tecnicos: techSelec,
+            cliente: document.getElementById('formNombre').value || "Desconocido",
+            dni: document.getElementById('formDni').value,
+            tel: document.getElementById('formTelefono').value,
+            dir: document.getElementById('formDireccion').value,
+            mapa: document.getElementById('formMapa').value,
+            zona: zonaActual
+        };
+
+        if (tipo === 'alta') {
+            data.detalle = document.getElementById('formPlanAlta').value;
+            data.caja = document.getElementById('formCajaAlta').value;
+            data.puerto = document.getElementById('formPuertoAlta').value;
+            data.notas = document.getElementById('formObsAlta').value;
+        } else if (tipo === 'averia') {
+            data.idCliente = document.getElementById('formIdCliente').value;
+            data.detalle = document.getElementById('formProblemaAveria').value;
+            data.notas = document.getElementById('formNotasAveria').value;
+            data.infoRed = document.getElementById('formInfoRedAveria').value;
+        } else if (tipo === 'baja') {
+            data.idCliente = document.getElementById('formIdCliente').value;
+            data.detalle = "Retiro de Equipos";
+            data.notas = document.getElementById('formMotivoBaja').value;
+            data.equipos = document.getElementById('formEquiposBaja').value;
+        }
+
+        let idTrabajo = document.getElementById('formTrabajoId').value;
+        if(!idTrabajo) data.estado = "pendiente";
+
+        try {
+            if (idTrabajo) await updateDoc(doc(coleccionTrabajos, idTrabajo), data);
+            else await addDoc(coleccionTrabajos, data);
+            window.cerrarModal(); mostrarToast("Tarea guardada exitosamente");
+        } catch (e) { mostrarToast("Error al guardar"); console.error(e); }
+    };
+
+    window.renderizarTabla = () => {
+        const tbody = document.getElementById("tablaTrabajos");
+        const filtroFecha = document.getElementById("filtroFecha").value;
+        const filtroEstado = document.getElementById("filtroEstado").value;
+        const txtBuscar = document.getElementById("buscador").value.toLowerCase();
+        
+        tbody.innerHTML = ""; 
+        let pGrafico = [];
+        
+        let tZona = [...dbTrabajos].filter(t => (t.zona || "Norte") === zonaActual).sort((a,b) => {
+            let res = (b.fecha||"").localeCompare(a.fecha||"");
+            if (res === 0) return (a.horaInicio || "23:59").localeCompare(b.horaInicio || "23:59"); 
+            return res;
+        });
+
+        tZona.forEach(t => {
+            try {
+                let asig = t.tecnicos || ["Sin Asignar"];
+                if (typeof asig === 'string') asig = [asig];
+
+                if (!isAdmin && !asig.includes(nombreTecnicoLogueado) && !asig.includes("Todos")) return;
+                if (isAdmin && document.getElementById("filtroTecnico").value !== "todos" && !asig.includes(document.getElementById("filtroTecnico").value)) return;
+                if (filtroFecha !== "todas" && t.fecha !== filtroFecha) return;
+                
+                let estActual = String(t.estado || "pendiente").toLowerCase();
+                if (filtroEstado !== "todos" && estActual !== filtroEstado) return; 
+                
+                if (txtBuscar && !`${t.cliente} ${t.dni} ${t.dir} ${t.detalle}`.toLowerCase().includes(txtBuscar)) return;
+
+                pGrafico.push(t);
+                
+                let esAten = (estActual === "atendido"); 
+                let esSin = (estActual === "no_atendido"); 
+                let esCamino = (estActual === "en_camino");
+
+                let iconEst = esAten ? "ep-aten" : (esSin ? "ep-noat" : (esCamino ? "ep-cami" : "ep-pend"));
+                let textEst = esAten ? "ATENDIDO" : (esSin ? "NO ATENDIDO" : (esCamino ? "EN CAMINO" : "PENDIENTE"));
+                
+                let colorBadge = t.tipoTarea === 'alta' ? 'alta' : (t.tipoTarea === 'averia' ? 'averia' : 'baja');
+                let nombreTipo = t.tipoTarea === 'alta' ? '🚀 ALTA' : (t.tipoTarea === 'averia' ? '🛠️ AVERÍA' : '🛑 BAJA');
+
+                let infoCli = `<span class="cliente-nombre">${t.cliente}</span>
+                               <span class="cliente-info"><span class="lbl-info">DNI/RUC:</span> ${t.dni||'-'}</span>
+                               <span class="cliente-info"><span class="lbl-info">TEL:</span> ${t.tel||'-'}</span>`;
+
+                let extrasHtml = "";
+                if(t.tipoTarea === 'alta' && (t.caja || t.puerto)) extrasHtml = `<br><span class="cliente-info" style="color:var(--neon-purple)"><span class="lbl-info">CAJA:</span> ${t.caja||'--'} | <span class="lbl-info">P:</span> ${t.puerto||'--'}</span>`;
+                if(t.tipoTarea === 'averia' && t.infoRed) extrasHtml = `<br><span class="cliente-info" style="color:var(--neon-cyan)"><span class="lbl-info">RED:</span> ${t.infoRed}</span>`;
+                if(t.tipoTarea === 'baja' && t.equipos) extrasHtml = `<br><span class="cliente-info" style="color:var(--neon-red)"><span class="lbl-info">RECOGER:</span> ${t.equipos}</span>`;
+
+                let dirH = `<span class="badge-tipo ${colorBadge}">${nombreTipo} - ${t.detalle}</span>
+                            <span class="cliente-info" style="margin-top:6px;"><span class="lbl-info">DIR:</span> ${t.dir}</span>
+                            <span class="cliente-info"><span class="lbl-info">FECHA:</span> ${formatoFecha(t.fecha)} | ${t.horaInicio||'--:--'} a ${t.horaFin||'--:--'}</span>
+                            <span class="cliente-info"><span class="lbl-info">TEC:</span> <span style="color:var(--btn-en-camino); font-weight:800">${asig.join(", ")}</span></span>
+                            ${extrasHtml}
+                            ${t.notas ? `<span class="cliente-info" style="color:var(--btn-pendiente); margin-top:5px;"><span class="lbl-info">NOTA:</span> ${t.notas}</span>` : ''}`;
+
+                let numTelSeguro = String(t.tel || '');
+                let numLimpio = numTelSeguro.replace(/\D/g, '');
+                let linkWsp = numLimpio.length > 5 ? `https://wa.me/51${numLimpio}` : '#';
+                
+                let txtCop = `*FECHA:* ${formatoFecha(t.fecha)}\n*CLIENTE:* ${t.cliente}\n*DIR:* ${t.dir}\n*TAREA:* ${t.detalle}`;
+
+                let tr = document.createElement("tr"); 
+                tr.innerHTML = `
+                    <td><span class="estado-punto ${iconEst}"></span><span style="font-size:11px; font-weight:900; color:var(--text-muted);">${textEst}</span></td>
+                    <td>${infoCli}</td>
+                    <td>${dirH}</td>
+                    <td>
+                        <div class="acciones-wrapper">
+                            <button type="button" class="btn-estado-principal" onclick="cambiarEstado('${t.id}', '${estActual}')">⟳ ESTADO</button>
+                            <div class="btn-grid-row">
+                                ${t.mapa ? `<a href="${t.mapa}" target="_blank" class="btn-accion" style="color:var(--neon-pink)">📍 Map</a>` : ''}
+                                ${numLimpio.length > 5 ? `<a href="${linkWsp}" target="_blank" class="btn-accion" style="color:var(--wsp-green)">💬 Wsp</a>` : ''}
+                                <button type="button" class="btn-accion" onclick="copiarDatos(this)">📋 Info</button>
+                            </div>
+                            ${isAdmin ? `<div class="btn-grid-row"><button type="button" class="btn-accion" style="color:var(--neon-red)" onclick="preguntarEliminar('${t.id}')">🗑️ Eliminar</button></div>` : ''}
+                            <textarea style="display:none;" class="texto-secreto">${txtCop}</textarea>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            } catch (err) {
+                console.error("Error dibujando fila", err);
+            }
+        });
+
+        // La función de gráficos se encarga de llenar las cajas KPIs
+        actualizarGraficosGerenciales(pGrafico);
+    };
+
+    function actualizarGraficosGerenciales(trabajosFiltrados) {
+        if(!isAdmin) return;
+        
+        setTimeout(() => {
+            try {
+                let pend = 0, aten = 0, noAten = 0; 
+                let cTech = {};
+                
+                trabajosFiltrados.forEach(t => {
+                    let est = String(t.estado || "pendiente").toLowerCase();
+                    if (est === "atendido") aten++; 
+                    else if (est === "no_atendido") noAten++; 
+                    else pend++; // 'en_camino' y 'pendiente' suman aquí
+
+                    let asig = t.tecnicos || [];
+                    if(typeof asig === 'string') asig = [asig];
+                    asig.forEach(tech => { 
+                        if (tech !== "Sin Asignar" && tech !== "Todos") { cTech[tech] = (cTech[tech] || 0) + 1; }
+                    });
+                });
+
+                // ACTUALIZAMOS LAS 4 CAJAS DE KPIs
+                document.getElementById('kpiTotal').innerText = trabajosFiltrados.length;
+                document.getElementById('kpiAtendidos').innerText = aten; 
+                document.getElementById('kpiPendientes').innerText = pend; 
+                document.getElementById('kpiNoAtendidos').innerText = noAten;
+
+                const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+                const textColor = isDark ? '#8b9bb4' : '#64748b';
+                const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+
+                // DIBUJAR GRÁFICO DE ANILLO (ESTADOS)
+                const canvasA = document.getElementById('graficoAvance');
+                if(canvasA) {
+                    const ctxA = canvasA.getContext('2d');
+                    if (chartAvance) chartAvance.destroy();
+                    
+                    let dataG = (aten === 0 && noAten === 0 && pend === 0) ? [1] : [aten, noAten, pend];
+                    let colorsG = (aten === 0 && noAten === 0 && pend === 0) ? ['#232838'] : ['#00e5ff', '#ff1744', '#ffea00'];
+                    let labelsG = (aten === 0 && noAten === 0 && pend === 0) ? ['Sin Tareas'] : ['Atendidos', 'No Atendidos', 'Pendientes'];
+
+                    chartAvance = new Chart(ctxA, { 
+                        type: 'doughnut', 
+                        data: { labels: labelsG, datasets: [{ data: dataG, backgroundColor: colorsG, borderWidth: 0, hoverOffset: 4, cutout: '75%' }] }, 
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: textColor, font: {size: 11} } } } } 
+                    });
+                }
+
+                // DIBUJAR GRÁFICO DE BARRAS (TÉCNICOS)
+                const canvasT = document.getElementById('graficoTecnicos');
+                if(canvasT) {
+                    const ctxT = canvasT.getContext('2d');
+                    if (chartTecnicos) chartTecnicos.destroy();
+                    
+                    let gradient = ctxT.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, '#00e5ff');
+                    gradient.addColorStop(1, '#d500f9');
+
+                    chartTecnicos = new Chart(ctxT, { 
+                        type: 'bar', 
+                        data: { labels: Object.keys(cTech), datasets: [{ data: Object.values(cTech), backgroundColor: gradient, borderRadius: 6, barThickness: 40 }] }, 
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid:{color: gridColor}, ticks: { stepSize: 1, color: textColor } }, x: { grid:{display:false}, ticks: { color: textColor, font:{size:10} } } } } 
+                    });
+                }
+            } catch(e) {
+                console.error("Error dibujando los gráficos:", e);
+            }
+        }, 150);
+    }
+
+    function actualizarOpcionesFechas() {
+        const sel = document.getElementById("filtroFecha");
+        const tZona = dbTrabajos.filter(t => (t.zona || "Norte") === zonaActual);
+        const fechas = [...new Set(tZona.map(t => String(t.fecha)))].sort((a,b) => b.localeCompare(a));
+        let h = `<option value="todas">Todas las Fechas</option>`;
+        fechas.forEach(f => { h += `<option value="${f}">${formatoFecha(f)}</option>`; });
+        let v = sel.value; sel.innerHTML = h; if(fechas.includes(v)) sel.value = v;
+    }
+
+    window.exportarAExcel = () => {
+        try {
+            if (!isAdmin) return;
+            const filtroFecha = document.getElementById("filtroFecha").value;
+            let datosExportar = dbTrabajos.filter(t => (t.zona || "Norte") === zonaActual);
+            if (filtroFecha !== "todas") datosExportar = datosExportar.filter(t => t.fecha === filtroFecha);
+            
+            let dataClean = datosExportar.map(t => {
+                let tecnicos = t.tecnicos || [];
+                if (typeof tecnicos === 'string') tecnicos = [tecnicos];
+                
+                return {
+                    "Fecha": String(t.fecha || ""),
+                    "Hora": `${t.horaInicio||''} - ${t.horaFin||''}`,
+                    "Categoría": String(t.tipoTarea || t.tipo || "").toUpperCase(),
+                    "Detalle": String(t.detalle || ""),
+                    "Estado": String(t.estado || "").toUpperCase(),
+                    "Cliente": String(t.cliente || ""),
+                    "DNI/RUC": String(t.dni || t.doc || ""),
+                    "Teléfono": String(t.tel || ""),
+                    "Dirección": String(t.dir || ""),
+                    "Técnicos": tecnicos.join(", "),
+                    "Notas": String(t.notas || ""),
+                    "Caja NAP": String(t.caja || ""),
+                    "Puerto": String(t.puerto || "")
+                };
+            });
+
+            if (dataClean.length === 0) return mostrarToast("No hay datos para exportar");
+            const hojaExcel = XLSX.utils.json_to_sheet(dataClean);
+            const libroExcel = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(libroExcel, hojaExcel, `Reporte TEN`);
+            XLSX.writeFile(libroExcel, `Reporte_TEN_${new Date().toLocaleDateString('es-PE').replace(/\//g, '-')}.xlsx`);
+            mostrarToast("Excel descargado correctamente");
+        } catch (error) {
+            console.error(error);
+            mostrarToast("Error al exportar el Excel");
+        }
+    };
+
+    window.cambiarEstado = async (id, estadoActual) => {
+        let nE = "pendiente";
+        if(estadoActual === "pendiente") nE = "en_camino";
+        else if (estadoActual === "en_camino") nE = "atendido";
+        else if (estadoActual === "atendido") nE = "no_atendido";
+        
+        await updateDoc(doc(coleccionTrabajos, id), { estado: nE });
+        mostrarToast("Estado actualizado");
+    };
+    
+    window.preguntarEliminar = (id) => {
+        idTrabajoAEliminar = id;
+        document.getElementById('modalEliminar').style.display = 'flex';
+    };
+    
+    window.ejecutarEliminacion = async () => {
+        if(idTrabajoAEliminar) {
+            await deleteDoc(doc(coleccionTrabajos, idTrabajoAEliminar)); 
+            mostrarToast("Trabajo Eliminado");
+            window.cerrarModalEliminar();
+        }
+    };
+
+    function formatoFecha(fs) { if(!fs) return ""; let p = String(fs).split("-"); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : fs; }
+    function mostrarToast(msg) { const t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000); }
+    window.copiarDatos = (btn) => { 
+        let txt = btn.closest("td").querySelector(".texto-secreto").value; 
+        navigator.clipboard ? navigator.clipboard.writeText(txt).then(()=>mostrarToast("Copiado")) : mostrarToast("Error al copiar"); 
+    };
+</script>
+</body>
+</html>
