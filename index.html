@@ -78,16 +78,29 @@
             <div id="loaderUpload" class="loader"></div>
         </div>
 
-        <!-- GRÁFICOS Y KPIS (2x2 Restaurado) -->
+        <!-- GRÁFICOS, CALENDARIO Y KPIS -->
         <div id="panelGraficosAdmin" class="admin-stats-grid admin-only">
-            <div class="stat-card">
-                <h3>RESUMEN DE ESTADOS</h3>
-                <div class="chart-container"><canvas id="graficoAvance"></canvas></div>
+            
+            <!-- NUEVO: CALENDARIO TIPO GOOGLE CALENDAR (TIMELINE DIARIO) -->
+            <div class="stat-card" style="grid-column: span 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px; margin-bottom: 15px;">
+                    <h3 style="margin: 0; border: none; padding: 0;">AGENDA NOC (TIMELINE)</h3>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="date" id="calFechaNavegador" class="form-control" style="padding: 4px 8px; font-size: 11px; width: auto; height: 28px;" onchange="window.renderizarCalendario()">
+                    </div>
+                </div>
+                <div id="calendarioNOC" class="calendar-timeline-container">
+                    <!-- JS inyectará las horas y bloques aquí -->
+                </div>
             </div>
+
+            <!-- CARGA DE TÉCNICOS (SE MANTIENE) -->
             <div class="stat-card">
                 <h3>CARGA DE TÉCNICOS</h3>
                 <div class="chart-container"><canvas id="graficoTecnicos"></canvas></div>
             </div>
+
+            <!-- TOTALES / KPIS (SE MANTIENE) -->
             <div class="stat-card">
                 <h3>TOTALES</h3>
                 <div class="kpi-grid">

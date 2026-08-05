@@ -279,3 +279,105 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
     .filtros-grupo { flex-direction: column; width: 100%; align-items: stretch; gap: 10px; }
     .filtro-item { width: 100%; margin-bottom: 0; }
 }
+
+/* ====================================================
+   CALENDARIO DIARIO TIPO GOOGLE CALENDAR
+==================================================== */
+.calendar-timeline-container {
+    position: relative;
+    height: 220px; /* Puedes aumentarlo si le das más altura al panel */
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    background: var(--bg-body);
+    display: flex;
+    flex-direction: column;
+}
+
+.cal-hour-row {
+    display: flex;
+    min-height: 40px;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    position: relative;
+}
+
+[data-theme="light"] .cal-hour-row {
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+.cal-hour-label {
+    width: 50px;
+    min-width: 50px;
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-align: right;
+    padding-right: 10px;
+    padding-top: 4px;
+    border-right: 1px solid var(--panel-border);
+    user-select: none;
+}
+
+.cal-hour-track {
+    flex: 1;
+    position: relative;
+}
+
+/* BLOQUE DE TRABAJO EN EL CALENDARIO */
+.cal-event-block {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.2s, filter 0.2s;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    border-left: 4px solid;
+    z-index: 10;
+}
+
+.cal-event-block:hover {
+    transform: scale(1.02);
+    filter: brightness(1.15);
+    z-index: 20;
+}
+
+.cal-event-title {
+    font-weight: 900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+
+.cal-event-sub {
+    font-size: 9px;
+    opacity: 0.85;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Colores de tarea en el calendario según tipo */
+.cal-event-alta {
+    background: rgba(16, 185, 129, 0.15);
+    border-left-color: var(--neon-green);
+    color: var(--text-main);
+}
+.cal-event-averia {
+    background: rgba(41, 121, 255, 0.15);
+    border-left-color: var(--neon-blue);
+    color: var(--text-main);
+}
+.cal-event-baja {
+    background: rgba(239, 68, 68, 0.15);
+    border-left-color: var(--neon-red);
+    color: var(--text-main);
+}

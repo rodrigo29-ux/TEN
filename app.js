@@ -27,7 +27,6 @@ let zonaActual = "Norte";
 const tecnicosNorte = ["PATRICIO", "RENZO", "JUAN", "JESUS", "LOLI", "MARCELINO", "RICARDO", "CLEBER"];
 const tecnicosLurin = ["BILLS", "CIELO"];
 
-let chartAvance = null; 
 let chartTecnicos = null;
 let unsubscribeTrabajos = null;
 let idTrabajoAEliminar = null;
@@ -126,6 +125,11 @@ onAuthStateChanged(auth, (user) => {
             zonaActual = document.getElementById("selectorZona").value;
         }
         
+        // Inicializar fecha del calendario
+        if (document.getElementById("calFechaNavegador") && !document.getElementById("calFechaNavegador").value) {
+            document.getElementById("calFechaNavegador").value = new Date().toISOString().split('T')[0];
+        }
+
         actualizarFiltroTecnicos();
         cargarTrabajosEnVivo(); 
     } else {
@@ -425,26 +429,12 @@ function actualizarGraficosGerenciales(trabajosFiltrados) {
             document.getElementById('kpiPendientes').innerText = pend; 
             document.getElementById('kpiNoAtendidos').innerText = noAten;
 
+            // Reemplazamos el gráfico de anillo por el calendario
+            window.renderizarCalendario();
+
             const isDark = document.documentElement.getAttribute("data-theme") !== "light";
             const textColor = isDark ? '#8b9bb4' : '#64748b';
             const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-
-            // DIBUJAR GRÁFICO DE ANILLO (ESTADOS)
-            const canvasA = document.getElementById('graficoAvance');
-            if(canvasA) {
-                const ctxA = canvasA.getContext('2d');
-                if (chartAvance) chartAvance.destroy();
-                
-                let dataG = (aten === 0 && noAten === 0 && pend === 0) ? [1] : [aten, noAten, pend];
-                let colorsG = (aten === 0 && noAten === 0 && pend === 0) ? ['#232838'] : ['#00e5ff', '#ff1744', '#ffea00'];
-                let labelsG = (aten === 0 && noAten === 0 && pend === 0) ? ['Sin Tareas'] : ['Atendidos', 'No Atendidos', 'Pendientes'];
-
-                chartAvance = new Chart(ctxA, { 
-                    type: 'doughnut', 
-                    data: { labels: labelsG, datasets: [{ data: dataG, backgroundColor: colorsG, borderWidth: 0, hoverOffset: 4, cutout: '75%' }] }, 
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: textColor, font: {size: 11} } } } } 
-                });
-            }
 
             // DIBUJAR GRÁFICO DE BARRAS (TÉCNICOS)
             const canvasT = document.getElementById('graficoTecnicos');
@@ -467,6 +457,88 @@ function actualizarGraficosGerenciales(trabajosFiltrados) {
         }
     }, 150);
 }
+
+window.renderizarCalendario = () => {
+    const cont = document.getElementById("calendarioNOC");
+    const fechaInput = document.getElementById("calFechaNavegador");
+    if (!cont || !fechaInput) return;
+
+    const fechaSeleccionada = fechaInput.value || new Date().toISOString().split('T')[0];
+    
+    // 1. Filtrar los trabajos para la fecha seleccionada y la zona activa
+    const trabajosDia = dbTrabajos.filter(t => 
+        (t.zona || "Norte") === zonaActual && 
+        t.fecha === fechaSeleccionada
+    );
+
+    // 2. Dibujar las 24 horas del día (00:00 a 23:00)
+    let htmlHoras = "";
+    for (let h = 6; h <= 20; h++) { // Rango por defecto 6 AM a 8 PM (ajustable)
+        let horaStr = (h < 10 ? "0" + h : h) + ":00";
+        htmlHoras += `
+            <div class="cal-hour-row" id="cal-hour-${h}">
+                <div class="cal-hour-label">${horaStr}</div>
+                <div class="cal-hour-track" id="track-h-${h}"></div>
+            </div>
+        `;
+    }
+    cont.innerHTML = htmlHoras;
+
+    // 3. Colocar los bloques de trabajo en su hora correspondiente
+    trabajosDia.forEach(t => {
+        let hInicio = t.horaInicio || "08:00";
+        let hFin = t.horaFin || "09:00";
+
+        // Parsear hora (ej: "09:30" => 9 y 30)
+        let [hIni, mIni] = hInicio.split(":").map(Number);
+        let [hEnd, mEnd] = hFin.split(":").map(Number);
+
+        // Si la hora está fuera de rango (ej. antes de las 6am), la situamos al límite
+        if (hIni < 6) hIni = 6;
+        if (hEnd > 20 || hEnd < hIni) hEnd = hIni + 1;
+
+        // Calcular desplazamiento vertical (Top) y Altura en píxeles
+        // Cada hora mide 40px de alto -> 1 minuto = 40/60 px
+        let topPx = (mIni / 60) * 40;
+        let duracionMinutos = ((hEnd - hIni) * 60) + (mEnd - mIni);
+        let heightPx = Math.max((duracionMinutos / 60) * 40, 26); // Altura mínima 26px para que se lea
+
+        // Clase según el tipo de tarea
+        let claseTipo = "cal-event-alta";
+        if (t.tipoTarea === "averia") claseTipo = "cal-event-averia";
+        if (t.tipoTarea === "baja") claseTipo = "cal-event-baja";
+
+        // Resumen de técnicos
+        let tecs = Array.isArray(t.tecnicos) ? t.tecnicos.join(", ") : (t.tecnicos || "Sin Asignar");
+
+        // Crear elemento flotante
+        const trackDiv = document.getElementById(`track-h-${hIni}`);
+        if (trackDiv) {
+            const block = document.createElement("div");
+            block.className = `cal-event-block ${claseTipo}`;
+            block.style.top = `${topPx}px`;
+            block.style.height = `${heightPx}px`;
+            block.title = `${t.cliente}\nHorario: ${t.horaInicio} - ${t.horaFin}\nTécnicos: ${tecs}\nNotas: ${t.notas || "Ninguna"}`;
+            
+            block.innerHTML = `
+                <div class="cal-event-title">${t.horaInicio} ${t.cliente}</div>
+                <div class="cal-event-sub">🛠️ ${tecs} | 💬 ${t.notas || t.detalle || ""}</div>
+            `;
+
+            // Opcional: Que al hacer clic en el bloque del calendario te llene el buscador
+            block.onclick = () => {
+                const search = document.getElementById("buscador");
+                if(search) {
+                    search.value = t.cliente;
+                    renderizarTabla();
+                    mostrarToast("Filtrando en tabla: " + t.cliente);
+                }
+            };
+
+            trackDiv.appendChild(block);
+        }
+    });
+};
 
 function actualizarOpcionesFechas() {
     const sel = document.getElementById("filtroFecha");
