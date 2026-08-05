@@ -21,8 +21,8 @@ const coleccionClientes = collection(db, 'artifacts', appId, 'public', 'data', '
 
 let dbTrabajos = [];
 let isAdmin = false;
-let nombreTecnicoLogueado = ""; 
-let zonaActual = "Norte"; 
+let nombreTecnicoLogueado = "";
+let zonaActual = "Norte";
 
 const tecnicosNorte = ["PATRICIO", "RENZO", "JUAN", "JESUS", "LOLI", "MARCELINO", "RICARDO", "CLEBER"];
 const tecnicosLurin = ["BILLS", "CIELO"];
@@ -30,6 +30,10 @@ const tecnicosLurin = ["BILLS", "CIELO"];
 let chartTecnicos = null;
 let unsubscribeTrabajos = null;
 let idTrabajoAEliminar = null;
+
+// Variables para el calendario premium
+let semanaOffset = 0;
+let diaSeleccionado = null;
 
 const savedTheme = localStorage.getItem("temaTen") || "dark";
 document.documentElement.setAttribute("data-theme", savedTheme);
@@ -46,19 +50,25 @@ window.toggleTema = () => {
 window.cerrarModal = () => { document.getElementById("modalAgregar").style.display = "none"; document.getElementById('techDropdown').classList.remove('show'); };
 window.cerrarModalEliminar = () => { document.getElementById("modalEliminar").style.display = "none"; idTrabajoAEliminar = null; };
 
-document.addEventListener('keydown', (e) => { 
+document.addEventListener('keydown', (e) => {
     if (e.key === "Escape") { window.cerrarModal(); window.cerrarModalEliminar(); }
 });
 
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => { 
-        if (e.target === overlay) { window.cerrarModal(); window.cerrarModalEliminar(); } 
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            window.cerrarModal();
+            window.cerrarModalEliminar();
+            if (document.getElementById('modalCalendario').style.display === 'flex') {
+                window.cerrarModalCalendario();
+            }
+        }
     });
 });
 
-window.toggleTechDropdown = (e) => { 
+window.toggleTechDropdown = (e) => {
     if(e) e.stopPropagation();
-    document.getElementById('techDropdown').classList.toggle('show'); 
+    document.getElementById('techDropdown').classList.toggle('show');
 };
 
 document.addEventListener('click', (e) => {
@@ -80,13 +90,12 @@ window.toggleCheckbox = (el) => {
 
 window.seleccionarTipoTarea = (tipo) => {
     document.getElementById('formTipoTareaValue').value = tipo;
-    
+
     document.querySelectorAll('.tab-btn').forEach(b => {
         b.classList.remove('active-alta', 'active-averia', 'active-baja');
-        // Reseteamos bordes especiales si es que los tienen
         if(b.id === 'tabAveria') { b.style.color = '#8b9bb4'; b.style.borderColor = 'var(--panel-border)'; }
     });
-    
+
     let tabActiva = document.getElementById('tab' + tipo.charAt(0).toUpperCase() + tipo.slice(1));
     tabActiva.classList.add('active-' + tipo);
 
@@ -106,32 +115,34 @@ onAuthStateChanged(auth, (user) => {
         document.getElementById("login-view").style.display = "none";
         document.getElementById("dashboard-view").style.display = "block";
         isAdmin = (user.email === "admin@ten.com");
-        
+
         if(!isAdmin) {
             nombreTecnicoLogueado = user.email.split('@')[0].toUpperCase();
             document.getElementById("lblUsuarioActivo").innerHTML = nombreTecnicoLogueado;
-            
+
             document.querySelectorAll(".admin-only").forEach(el => el.classList.remove('show-admin', 'show-admin-flex', 'show-admin-grid'));
             zonaActual = tecnicosLurin.includes(nombreTecnicoLogueado) ? "Lurin" : "Norte";
         } else {
             nombreTecnicoLogueado = "ADMIN";
             document.getElementById("lblUsuarioActivo").innerHTML = `👑 ADMINISTRADOR`;
-            
+
             document.getElementById("contenedorSelectorZona").classList.add('show-admin-flex');
             document.getElementById("contenedorBotonesAccion").classList.add('show-admin-flex');
             document.getElementById("panelGraficosAdmin").classList.add('show-admin-grid');
             document.getElementById("filtroTecnicoContainer").classList.add('show-admin-flex');
-            
+
             zonaActual = document.getElementById("selectorZona").value;
         }
-        
-        // Inicializar fecha del calendario
-        if (document.getElementById("calFechaNavegador") && !document.getElementById("calFechaNavegador").value) {
-            document.getElementById("calFechaNavegador").value = new Date().toISOString().split('T')[0];
-        }
+
+        // Inicializar calendario premium después de cargar datos
+        setTimeout(() => {
+            if (typeof window.renderizarCalendario === 'function') {
+                window.renderizarCalendario();
+            }
+        }, 800);
 
         actualizarFiltroTecnicos();
-        cargarTrabajosEnVivo(); 
+        cargarTrabajosEnVivo();
     } else {
         if(unsubscribeTrabajos) unsubscribeTrabajos();
         dbTrabajos = [];
@@ -147,10 +158,10 @@ window.iniciarSesion = () => {
 };
 window.cerrarSesion = () => { signOut(auth); };
 
-window.cambiarZona = (z) => { 
-    zonaActual = z; 
-    actualizarFiltroTecnicos(); 
-    renderizarTabla(); 
+window.cambiarZona = (z) => {
+    zonaActual = z;
+    actualizarFiltroTecnicos();
+    renderizarTabla();
 };
 
 function actualizarFiltroTecnicos() {
@@ -163,8 +174,8 @@ function actualizarFiltroTecnicos() {
 function actualizarSelectTecnicosModal() {
     let lista = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
     let html = ``;
-    lista.forEach(t => { 
-        html += `<div class="multi-option" onclick="window.toggleCheckbox(this)"><input type="checkbox" value="${t}"><label>${t}</label></div>`; 
+    lista.forEach(t => {
+        html += `<div class="multi-option" onclick="window.toggleCheckbox(this)"><input type="checkbox" value="${t}"><label>${t}</label></div>`;
     });
     document.getElementById("techDropdown").innerHTML = html;
     document.getElementById("techDisplay").innerText = "Sin Asignar";
@@ -173,10 +184,14 @@ function actualizarSelectTecnicosModal() {
 function cargarTrabajosEnVivo() {
     if(unsubscribeTrabajos) unsubscribeTrabajos();
     unsubscribeTrabajos = onSnapshot(coleccionTrabajos, (snapshot) => {
-        dbTrabajos = []; 
+        dbTrabajos = [];
         snapshot.forEach((doc) => { dbTrabajos.push({ id: doc.id, ...doc.data() }); });
-        actualizarOpcionesFechas(); 
+        actualizarOpcionesFechas();
         renderizarTabla();
+        // Actualizar calendario premium después de cambios en datos
+        if (typeof window.renderizarCalendario === 'function') {
+            window.renderizarCalendario();
+        }
     });
 }
 
@@ -191,26 +206,26 @@ window.procesarExcelClientes = async (event) => {
         try {
             const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
             const dataJSON = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
-            
+
             let batch = writeBatch(db);
             let contador = 0; let subidos = 0;
 
             for (let row of dataJSON) {
                 const idString = row["N° ID"] ? String(row["N° ID"]).trim() : null;
-                if(!idString) continue; 
+                if(!idString) continue;
 
                 let tels = [
-                    row["Telefono PRINCIPAL"] ? String(row["Telefono PRINCIPAL"]) : "", 
-                    row["Telefono 2"] ? String(row["Telefono 2"]) : "", 
-                    row["Telefono 3"] ? String(row["Telefono 3"]) : "", 
-                    row["Telefono 4"] ? String(row["Telefono 4"]) : "", 
+                    row["Telefono PRINCIPAL"] ? String(row["Telefono PRINCIPAL"]) : "",
+                    row["Telefono 2"] ? String(row["Telefono 2"]) : "",
+                    row["Telefono 3"] ? String(row["Telefono 3"]) : "",
+                    row["Telefono 4"] ? String(row["Telefono 4"]) : "",
                     row["Telefono 5"] ? String(row["Telefono 5"]) : ""
                 ].filter(Boolean).join(" / ");
-                
+
                 let infoTv = "No TV";
                 if(row["CABLE / IPTV"] && String(row["CABLE / IPTV"]).trim() !== "") infoTv = row["CABLE / IPTV"] + " (+20 S/)";
                 else if (row["CABLE INCL / IPTV INCL"] && String(row["CABLE INCL / IPTV INCL"]).trim() !== "") infoTv = row["CABLE INCL / IPTV INCL"] + " (Costo 0)";
-                
+
                 let mapUbicacion = row["UBICACIÓN"] || row["UBICACION"] || row["ubicacion"] || row["Ubicacion"] || "";
 
                 batch.set(doc(coleccionClientes, idString), {
@@ -218,7 +233,7 @@ window.procesarExcelClientes = async (event) => {
                     telefonos: tels, direccion: row["Dirección"] || "", ubicacion: mapUbicacion,
                     zona: row["Zona"] || "", plan: row["PLAN"] || "", info_tv: infoTv
                 });
-                
+
                 if (++contador === 400) { await batch.commit(); batch = writeBatch(db); contador = 0; }
                 subidos++;
             }
@@ -254,14 +269,14 @@ window.buscarCliente = async () => {
 
 window.abrirModal = () => {
     if(isAdmin) zonaActual = document.getElementById("selectorZona").value;
-    
+
     document.getElementById('formTrabajoId').value = "";
     document.querySelectorAll("#modalAgregar input[type=text]:not(.multi-select-display), #modalAgregar input[type=number], #modalAgregar textarea").forEach(i => i.value = "");
     document.getElementById('formFecha').value = new Date().toISOString().split('T')[0];
     document.getElementById('searchResult').innerText = "";
-    
+
     actualizarSelectTecnicosModal();
-    window.seleccionarTipoTarea('alta'); // Por defecto abre en Alta
+    window.seleccionarTipoTarea('alta');
     document.getElementById('modalAgregar').style.display = 'flex';
 };
 
@@ -316,13 +331,13 @@ window.renderizarTabla = () => {
     const filtroFecha = document.getElementById("filtroFecha").value;
     const filtroEstado = document.getElementById("filtroEstado").value;
     const txtBuscar = document.getElementById("buscador").value.toLowerCase();
-    
-    tbody.innerHTML = ""; 
+
+    tbody.innerHTML = "";
     let pGrafico = [];
-    
+
     let tZona = [...dbTrabajos].filter(t => (t.zona || "Norte") === zonaActual).sort((a,b) => {
         let res = (b.fecha||"").localeCompare(a.fecha||"");
-        if (res === 0) return (a.horaInicio || "23:59").localeCompare(b.horaInicio || "23:59"); 
+        if (res === 0) return (a.horaInicio || "23:59").localeCompare(b.horaInicio || "23:59");
         return res;
     });
 
@@ -334,21 +349,21 @@ window.renderizarTabla = () => {
             if (!isAdmin && !asig.includes(nombreTecnicoLogueado) && !asig.includes("Todos")) return;
             if (isAdmin && document.getElementById("filtroTecnico").value !== "todos" && !asig.includes(document.getElementById("filtroTecnico").value)) return;
             if (filtroFecha !== "todas" && t.fecha !== filtroFecha) return;
-            
+
             let estActual = String(t.estado || "pendiente").toLowerCase();
-            if (filtroEstado !== "todos" && estActual !== filtroEstado) return; 
-            
+            if (filtroEstado !== "todos" && estActual !== filtroEstado) return;
+
             if (txtBuscar && !`${t.cliente} ${t.dni} ${t.dir} ${t.detalle}`.toLowerCase().includes(txtBuscar)) return;
 
             pGrafico.push(t);
-            
-            let esAten = (estActual === "atendido"); 
-            let esSin = (estActual === "no_atendido"); 
+
+            let esAten = (estActual === "atendido");
+            let esSin = (estActual === "no_atendido");
             let esCamino = (estActual === "en_camino");
 
             let iconEst = esAten ? "ep-aten" : (esSin ? "ep-noat" : (esCamino ? "ep-cami" : "ep-pend"));
             let textEst = esAten ? "ATENDIDO" : (esSin ? "NO ATENDIDO" : (esCamino ? "EN CAMINO" : "PENDIENTE"));
-            
+
             let colorBadge = t.tipoTarea === 'alta' ? 'alta' : (t.tipoTarea === 'averia' ? 'averia' : 'baja');
             let nombreTipo = t.tipoTarea === 'alta' ? '🚀 ALTA' : (t.tipoTarea === 'averia' ? '🛠️ AVERÍA' : '🛑 BAJA');
 
@@ -371,10 +386,10 @@ window.renderizarTabla = () => {
             let numTelSeguro = String(t.tel || '');
             let numLimpio = numTelSeguro.replace(/\D/g, '');
             let linkWsp = numLimpio.length > 5 ? `https://wa.me/51${numLimpio}` : '#';
-            
+
             let txtCop = `*FECHA:* ${formatoFecha(t.fecha)}\n*CLIENTE:* ${t.cliente}\n*DIR:* ${t.dir}\n*TAREA:* ${t.detalle}`;
 
-            let tr = document.createElement("tr"); 
+            let tr = document.createElement("tr");
             tr.innerHTML = `
                 <td><span class="estado-punto ${iconEst}"></span><span style="font-size:11px; font-weight:900; color:var(--text-muted);">${textEst}</span></td>
                 <td>${infoCli}</td>
@@ -398,58 +413,57 @@ window.renderizarTabla = () => {
         }
     });
 
-    // La función de gráficos se encarga de llenar las cajas KPIs
     actualizarGraficosGerenciales(pGrafico);
 };
 
 function actualizarGraficosGerenciales(trabajosFiltrados) {
     if(!isAdmin) return;
-    
+
     setTimeout(() => {
         try {
-            let pend = 0, aten = 0, noAten = 0; 
+            let pend = 0, aten = 0, noAten = 0;
             let cTech = {};
-            
+
             trabajosFiltrados.forEach(t => {
                 let est = String(t.estado || "pendiente").toLowerCase();
-                if (est === "atendido") aten++; 
-                else if (est === "no_atendido") noAten++; 
-                else pend++; // 'en_camino' y 'pendiente' suman aquí
+                if (est === "atendido") aten++;
+                else if (est === "no_atendido") noAten++;
+                else pend++;
 
                 let asig = t.tecnicos || [];
                 if(typeof asig === 'string') asig = [asig];
-                asig.forEach(tech => { 
+                asig.forEach(tech => {
                     if (tech !== "Sin Asignar" && tech !== "Todos") { cTech[tech] = (cTech[tech] || 0) + 1; }
                 });
             });
 
-            // ACTUALIZAMOS LAS 4 CAJAS DE KPIs
             document.getElementById('kpiTotal').innerText = trabajosFiltrados.length;
-            document.getElementById('kpiAtendidos').innerText = aten; 
-            document.getElementById('kpiPendientes').innerText = pend; 
+            document.getElementById('kpiAtendidos').innerText = aten;
+            document.getElementById('kpiPendientes').innerText = pend;
             document.getElementById('kpiNoAtendidos').innerText = noAten;
 
-            // Reemplazamos el gráfico de anillo por el calendario
-            window.renderizarCalendario();
+            // Actualizar el calendario premium (ya se llama desde varios sitios, pero aquí también por seguridad)
+            if (typeof window.renderizarCalendario === 'function') {
+                window.renderizarCalendario();
+            }
 
             const isDark = document.documentElement.getAttribute("data-theme") !== "light";
             const textColor = isDark ? '#8b9bb4' : '#64748b';
             const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
 
-            // DIBUJAR GRÁFICO DE BARRAS (TÉCNICOS)
             const canvasT = document.getElementById('graficoTecnicos');
             if(canvasT) {
                 const ctxT = canvasT.getContext('2d');
                 if (chartTecnicos) chartTecnicos.destroy();
-                
+
                 let gradient = ctxT.createLinearGradient(0, 0, 0, 400);
                 gradient.addColorStop(0, '#00e5ff');
                 gradient.addColorStop(1, '#d500f9');
 
-                chartTecnicos = new Chart(ctxT, { 
-                    type: 'bar', 
-                    data: { labels: Object.keys(cTech), datasets: [{ data: Object.values(cTech), backgroundColor: gradient, borderRadius: 6, barThickness: 40 }] }, 
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid:{color: gridColor}, ticks: { stepSize: 1, color: textColor } }, x: { grid:{display:false}, ticks: { color: textColor, font:{size:10} } } } } 
+                chartTecnicos = new Chart(ctxT, {
+                    type: 'bar',
+                    data: { labels: Object.keys(cTech), datasets: [{ data: Object.values(cTech), backgroundColor: gradient, borderRadius: 6, barThickness: 40 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid:{color: gridColor}, ticks: { stepSize: 1, color: textColor } }, x: { grid:{display:false}, ticks: { color: textColor, font:{size:10} } } } }
                 });
             }
         } catch(e) {
@@ -458,88 +472,216 @@ function actualizarGraficosGerenciales(trabajosFiltrados) {
     }, 150);
 }
 
+// ==================== NUEVO CALENDARIO PREMIUM ====================
 window.renderizarCalendario = () => {
-    const cont = document.getElementById("calendarioNOC");
-    const fechaInput = document.getElementById("calFechaNavegador");
-    if (!cont || !fechaInput) return;
+    const weekStrip = document.getElementById("calWeekStrip");
+    const dayHeader = document.getElementById("calDayHeader");
+    const timelineMini = document.getElementById("calTimelineMini");
+    const lblSemana = document.getElementById("lblSemanaActual");
 
-    const fechaSeleccionada = fechaInput.value || new Date().toISOString().split('T')[0];
-    
-    // 1. Filtrar los trabajos para la fecha seleccionada y la zona activa
-    const trabajosDia = dbTrabajos.filter(t => 
-        (t.zona || "Norte") === zonaActual && 
-        t.fecha === fechaSeleccionada
-    );
+    if (!weekStrip || !dayHeader || !timelineMini) return;
 
-    // 2. Dibujar las 24 horas del día (00:00 a 23:00)
-    let htmlHoras = "";
-    for (let h = 6; h <= 20; h++) { // Rango por defecto 6 AM a 8 PM (ajustable)
-        let horaStr = (h < 10 ? "0" + h : h) + ":00";
-        htmlHoras += `
-            <div class="cal-hour-row" id="cal-hour-${h}">
-                <div class="cal-hour-label">${horaStr}</div>
-                <div class="cal-hour-track" id="track-h-${h}"></div>
+    const hoy = new Date();
+    const lunesBase = new Date(hoy);
+    lunesBase.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+    lunesBase.setHours(0,0,0,0);
+    lunesBase.setDate(lunesBase.getDate() + (semanaOffset * 7));
+
+    const domingo = new Date(lunesBase);
+    domingo.setDate(lunesBase.getDate() + 6);
+
+    const opciones = { day: 'numeric', month: 'short' };
+    lblSemana.textContent = `${lunesBase.toLocaleDateString('es', opciones)} — ${domingo.toLocaleDateString('es', opciones)}`;
+
+    const hoyStr = hoy.toISOString().split('T')[0];
+    if (!diaSeleccionado || diaSeleccionado < lunesBase.toISOString().split('T')[0] || diaSeleccionado > domingo.toISOString().split('T')[0]) {
+        diaSeleccionado = (hoy >= lunesBase && hoy <= domingo) ? hoyStr : lunesBase.toISOString().split('T')[0];
+    }
+
+    const diasSemana = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
+    let htmlStrip = '';
+
+    for (let i = 0; i < 7; i++) {
+        const dia = new Date(lunesBase);
+        dia.setDate(lunesBase.getDate() + i);
+        const diaStr = dia.toISOString().split('T')[0];
+        const diaNum = dia.getDate();
+
+        const trabajosDia = dbTrabajos.filter(t =>
+            (t.zona || "Norte") === zonaActual &&
+            t.fecha === diaStr
+        );
+
+        const isActive = diaStr === diaSeleccionado;
+        const isToday = diaStr === hoyStr;
+
+        htmlStrip += `
+            <div class="cal-week-day ${isActive ? 'active' : ''} ${isToday ? 'today' : ''}"
+                 onclick="seleccionarDia('${diaStr}')">
+                <div class="cal-week-dayname">${diasSemana[i]}</div>
+                <div class="cal-week-daynum">${diaNum}</div>
+                ${trabajosDia.length > 0 ? `<div class="cal-week-daycount">${trabajosDia.length}</div>` : ''}
             </div>
         `;
     }
-    cont.innerHTML = htmlHoras;
+    weekStrip.innerHTML = htmlStrip;
 
-    // 3. Colocar los bloques de trabajo en su hora correspondiente
-    trabajosDia.forEach(t => {
-        let hInicio = t.horaInicio || "08:00";
-        let hFin = t.horaFin || "09:00";
+    const fechaSel = new Date(diaSeleccionado + 'T00:00:00');
+    const nombreDia = fechaSel.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'short' }).toUpperCase();
+    dayHeader.textContent = nombreDia;
 
-        // Parsear hora (ej: "09:30" => 9 y 30)
-        let [hIni, mIni] = hInicio.split(":").map(Number);
-        let [hEnd, mEnd] = hFin.split(":").map(Number);
+    const trabajosSel = dbTrabajos.filter(t =>
+        (t.zona || "Norte") === zonaActual &&
+        t.fecha === diaSeleccionado
+    ).sort((a, b) => (a.horaInicio || '23:59').localeCompare(b.horaInicio || '23:59'));
 
-        // Si la hora está fuera de rango (ej. antes de las 6am), la situamos al límite
-        if (hIni < 6) hIni = 6;
-        if (hEnd > 20 || hEnd < hIni) hEnd = hIni + 1;
+    if (trabajosSel.length === 0) {
+        timelineMini.innerHTML = '<span style="color: var(--text-muted); font-size: 11px; opacity: 0.7;">📭 Sin trabajos programados</span>';
+    } else {
+        let htmlPills = '';
+        trabajosSel.forEach(t => {
+            const tipo = t.tipoTarea || 'alta';
+            const tecs = Array.isArray(t.tecnicos) ? t.tecnicos.join(', ') : (t.tecnicos || 'Sin asignar');
+            const hora = t.horaInicio || '--:--';
 
-        // Calcular desplazamiento vertical (Top) y Altura en píxeles
-        // Cada hora mide 40px de alto -> 1 minuto = 40/60 px
-        let topPx = (mIni / 60) * 40;
-        let duracionMinutos = ((hEnd - hIni) * 60) + (mEnd - mIni);
-        let heightPx = Math.max((duracionMinutos / 60) * 40, 26); // Altura mínima 26px para que se lea
-
-        // Clase según el tipo de tarea
-        let claseTipo = "cal-event-alta";
-        if (t.tipoTarea === "averia") claseTipo = "cal-event-averia";
-        if (t.tipoTarea === "baja") claseTipo = "cal-event-baja";
-
-        // Resumen de técnicos
-        let tecs = Array.isArray(t.tecnicos) ? t.tecnicos.join(", ") : (t.tecnicos || "Sin Asignar");
-
-        // Crear elemento flotante
-        const trackDiv = document.getElementById(`track-h-${hIni}`);
-        if (trackDiv) {
-            const block = document.createElement("div");
-            block.className = `cal-event-block ${claseTipo}`;
-            block.style.top = `${topPx}px`;
-            block.style.height = `${heightPx}px`;
-            block.title = `${t.cliente}\nHorario: ${t.horaInicio} - ${t.horaFin}\nTécnicos: ${tecs}\nNotas: ${t.notas || "Ninguna"}`;
-            
-            block.innerHTML = `
-                <div class="cal-event-title">${t.horaInicio} ${t.cliente}</div>
-                <div class="cal-event-sub">🛠️ ${tecs} | 💬 ${t.notas || t.detalle || ""}</div>
+            htmlPills += `
+                <div class="cal-event-pill ${tipo}"
+                     onclick="filtrarPorCliente('${t.cliente.replace(/'/g, "\\'")}')"
+                     title="${t.cliente} | ${hora} | ${tecs} | ${t.detalle || ''}">
+                    <span class="cal-event-dot"></span>
+                    ${hora} · ${t.cliente.split(' ')[0]}
+                </div>
             `;
-
-            // Opcional: Que al hacer clic en el bloque del calendario te llene el buscador
-            block.onclick = () => {
-                const search = document.getElementById("buscador");
-                if(search) {
-                    search.value = t.cliente;
-                    renderizarTabla();
-                    mostrarToast("Filtrando en tabla: " + t.cliente);
-                }
-            };
-
-            trackDiv.appendChild(block);
-        }
-    });
+        });
+        timelineMini.innerHTML = htmlPills;
+    }
 };
 
+window.navegarSemana = (offset) => {
+    semanaOffset += offset;
+    window.renderizarCalendario();
+};
+
+window.irAHoy = () => {
+    semanaOffset = 0;
+    diaSeleccionado = new Date().toISOString().split('T')[0];
+    window.renderizarCalendario();
+};
+
+window.seleccionarDia = (fechaStr) => {
+    diaSeleccionado = fechaStr;
+    window.renderizarCalendario();
+};
+
+window.filtrarPorCliente = (nombre) => {
+    const buscador = document.getElementById("buscador");
+    if (buscador) {
+        buscador.value = nombre;
+        renderizarTabla();
+        mostrarToast(`🔍 Filtrando: ${nombre}`);
+        document.querySelector('table')?.scrollIntoView({ behavior: 'smooth' });
+    }
+};
+
+// ==================== MODAL CALENDARIO GENERAL ====================
+const coloresTecnicos = [
+    '#2979ff', '#f50057', '#00e676', '#ffea00',
+    '#d500f9', '#ff6d00', '#00e5ff', '#10b981'
+];
+
+window.abrirModalCalendario = () => {
+    document.getElementById('modalCalendario').style.display = 'flex';
+
+    let listaTecnicos = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
+    let htmlFiltro = `<option value="todos">Todos los Técnicos</option>`;
+    listaTecnicos.forEach(t => { htmlFiltro += `<option value="${t}">${t}</option>`; });
+    document.getElementById("filtroTecnicoCalendario").innerHTML = htmlFiltro;
+
+    actualizarCalendarioGeneral();
+};
+
+window.cerrarModalCalendario = () => {
+    document.getElementById('modalCalendario').style.display = 'none';
+};
+
+window.actualizarCalendarioGeneral = () => {
+    const calendarEl = document.getElementById('calendarioGeneral');
+    const tecnicoFiltro = document.getElementById('filtroTecnicoCalendario')?.value || 'todos';
+
+    if (!calendarEl) return;
+
+    if (window.calendarioInstancia) {
+        window.calendarioInstancia.destroy();
+    }
+
+    let eventos = [];
+    const coloresAsignados = {};
+    let idxColor = 0;
+
+    dbTrabajos.forEach(t => {
+        if ((t.zona || "Norte") !== zonaActual) return;
+
+        let tecnicos = Array.isArray(t.tecnicos) ? t.tecnicos : [t.tecnicos || 'Sin Asignar'];
+
+        if (tecnicoFiltro !== 'todos' && !tecnicos.includes(tecnicoFiltro)) return;
+
+        const techPrincipal = tecnicos[0];
+        if (!coloresAsignados[techPrincipal]) {
+            coloresAsignados[techPrincipal] = coloresTecnicos[idxColor % coloresTecnicos.length];
+            idxColor++;
+        }
+
+        const fechaIni = t.fecha + 'T' + (t.horaInicio || '08:00') + ':00';
+        const fechaFin = t.fecha + 'T' + (t.horaFin || '09:00') + ':00';
+
+        let claseColor = 'cal-event-alta';
+        if (t.tipoTarea === 'averia') claseColor = 'cal-event-averia';
+        if (t.tipoTarea === 'baja') claseColor = 'cal-event-baja';
+
+        eventos.push({
+            id: t.id,
+            title: `${t.horaInicio || ''} ${t.cliente}`,
+            start: fechaIni,
+            end: fechaFin,
+            backgroundColor: coloresAsignados[techPrincipal] + 'CC',
+            borderColor: coloresAsignados[techPrincipal],
+            textColor: '#ffffff',
+            extendedProps: {
+                detalle: t.detalle || '',
+                estado: t.estado || 'pendiente',
+                tecnicos: tecnicos.join(', '),
+                notas: t.notas || '',
+                claseTipo: claseColor
+            }
+        });
+    });
+
+    window.calendarioInstancia = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        locale: 'es',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'timeGridDay,timeGridWeek,dayGridMonth'
+        },
+        slotMinTime: '06:00:00',
+        slotMaxTime: '22:00:00',
+        allDaySlot: false,
+        events: eventos,
+        eventClick: function(info) {
+            const props = info.event.extendedProps;
+            mostrarToast(`${info.event.title} | ${props.detalle} | Téc: ${props.tecnicos} | Estado: ${props.estado.toUpperCase()}`);
+        },
+        eventDidMount: function(info) {
+            const props = info.event.extendedProps;
+            info.el.title = `${info.event.title}\nTécnicos: ${props.tecnicos}\nDetalle: ${props.detalle}\nNotas: ${props.notas}`;
+        }
+    });
+
+    window.calendarioInstancia.render();
+};
+
+// ==================== FUNCIONES AUXILIARES ====================
 function actualizarOpcionesFechas() {
     const sel = document.getElementById("filtroFecha");
     const tZona = dbTrabajos.filter(t => (t.zona || "Norte") === zonaActual);
@@ -555,11 +697,11 @@ window.exportarAExcel = () => {
         const filtroFecha = document.getElementById("filtroFecha").value;
         let datosExportar = dbTrabajos.filter(t => (t.zona || "Norte") === zonaActual);
         if (filtroFecha !== "todas") datosExportar = datosExportar.filter(t => t.fecha === filtroFecha);
-        
+
         let dataClean = datosExportar.map(t => {
             let tecnicos = t.tecnicos || [];
             if (typeof tecnicos === 'string') tecnicos = [tecnicos];
-            
+
             return {
                 "Fecha": String(t.fecha || ""),
                 "Hora": `${t.horaInicio||''} - ${t.horaFin||''}`,
@@ -594,7 +736,7 @@ window.cambiarEstado = async (id, estadoActual) => {
     if(estadoActual === "pendiente") nE = "en_camino";
     else if (estadoActual === "en_camino") nE = "atendido";
     else if (estadoActual === "atendido") nE = "no_atendido";
-    
+
     await updateDoc(doc(coleccionTrabajos, id), { estado: nE });
     mostrarToast("Estado actualizado");
 };
@@ -606,7 +748,7 @@ window.preguntarEliminar = (id) => {
 
 window.ejecutarEliminacion = async () => {
     if(idTrabajoAEliminar) {
-        await deleteDoc(doc(coleccionTrabajos, idTrabajoAEliminar)); 
+        await deleteDoc(doc(coleccionTrabajos, idTrabajoAEliminar));
         mostrarToast("Trabajo Eliminado");
         window.cerrarModalEliminar();
     }
@@ -614,113 +756,7 @@ window.ejecutarEliminacion = async () => {
 
 function formatoFecha(fs) { if(!fs) return ""; let p = String(fs).split("-"); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : fs; }
 function mostrarToast(msg) { const t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000); }
-window.copiarDatos = (btn) => { 
-    let txt = btn.closest("td").querySelector(".texto-secreto").value; 
-    navigator.clipboard ? navigator.clipboard.writeText(txt).then(()=>mostrarToast("Copiado")) : mostrarToast("Error al copiar"); 
-};
-
-// Paleta de colores para diferenciar técnicos
-const coloresTecnicos = [
-    '#2979ff', '#f50057', '#00e676', '#ffea00', 
-    '#d500f9', '#ff6d00', '#00e5ff', '#10b981'
-];
-
-window.abrirModalCalendario = () => {
-    document.getElementById('modalCalendario').style.display = 'flex';
-    
-    // Poblar el filtro de técnicos del calendario
-    let listaTecnicos = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
-    let htmlFiltro = `<option value="todos">Todos los Técnicos</option>`;
-    listaTecnicos.forEach(t => { htmlFiltro += `<option value="${t}">${t}</option>`; });
-    document.getElementById("filtroTecnicoCalendario").innerHTML = htmlFiltro;
-
-    actualizarCalendarioGeneral();
-};
-
-window.cerrarModalCalendario = () => {
-    document.getElementById('modalCalendario').style.display = 'none';
-};
-
-// Modificamos el evento global de cierre para incluir este nuevo modal
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => { 
-        if (e.target === overlay) { 
-            window.cerrarModal(); 
-            window.cerrarModalEliminar(); 
-            window.cerrarModalCalendario(); 
-        } 
-    });
-});
-
-window.actualizarCalendarioGeneral = () => {
-    const calendarEl = document.getElementById('calendarioGeneral');
-    if(!calendarEl) return;
-
-    const filtro = document.getElementById('filtroTecnicoCalendario').value;
-    let eventosFormateados = [];
-
-    // Mapear trabajos a eventos
-    dbTrabajos.forEach(t => {
-        if ((t.zona || "Norte") !== zonaActual) return;
-
-        let asig = t.tecnicos || ["Sin Asignar"];
-        if (typeof asig === 'string') asig = [asig];
-
-        // Filtro por técnico
-        if (filtro !== "todos" && !asig.includes(filtro)) return;
-
-        // Asignar color basado en el primer técnico asignado
-        let tecnicoPrincipal = asig[0];
-        let listaActual = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
-        let indexColor = listaActual.indexOf(tecnicoPrincipal);
-        let colorFondo = indexColor >= 0 ? coloresTecnicos[indexColor % coloresTecnicos.length] : '#8b9bb4';
-
-        let startDateTime = t.fecha;
-        let endDateTime = t.fecha;
-        if(t.horaInicio) startDateTime += 'T' + t.horaInicio + ':00';
-        if(t.horaFin) endDateTime += 'T' + t.horaFin + ':00';
-
-        eventosFormateados.push({
-            id: t.id,
-            title: `${tecnicoPrincipal} - ${t.cliente}`, // Muestra el usuario y cliente
-            start: startDateTime,
-            end: (t.horaInicio && t.horaFin) ? endDateTime : undefined,
-            backgroundColor: colorFondo,
-            textColor: '#000', // Contraste con los colores brillantes
-            extendedProps: {
-                detalle: t.detalle,
-                direccion: t.dir,
-                estado: t.estado
-            }
-        });
-    });
-
-    // Destruir instancia anterior si existe para evitar duplicados
-    if (window.calendarioInstancia) {
-        window.calendarioInstancia.destroy();
-    }
-
-    // Inicializar FullCalendar
-    window.calendarioInstancia = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridWeek', // Vista semanal por defecto para ver cruces
-        locale: 'es',
-        headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'timeGridDay,timeGridWeek,dayGridMonth'
-        },
-        slotMinTime: '06:00:00', // Jornada laboral
-        slotMaxTime: '22:00:00',
-        allDaySlot: true,
-        events: eventosFormateados,
-        eventClick: function(info) {
-            // Reutilizamos tu sistema de Toast para mostrar detalles rápidos al hacer clic
-            mostrarToast(`${info.event.title} | ${info.event.extendedProps.detalle} | Estado: ${info.event.extendedProps.estado.toUpperCase()}`);
-        }
-    });
-
-    // Renderizar (debe ejecutarse después de que el modal esté visible `display: flex`)
-    setTimeout(() => {
-        window.calendarioInstancia.render();
-    }, 100);
+window.copiarDatos = (btn) => {
+    let txt = btn.closest("td").querySelector(".texto-secreto").value;
+    navigator.clipboard ? navigator.clipboard.writeText(txt).then(()=>mostrarToast("Copiado")) : mostrarToast("Error al copiar");
 };

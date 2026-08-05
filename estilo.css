@@ -413,3 +413,221 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
     cursor: pointer; border-radius: 6px; padding: 4px; border: none; font-size: 11px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 .fc-timegrid-slot-label-cushion { color: var(--text-muted); font-weight: bold; }
+
+/* ====================================================
+   CALENDARIO PREMIUM - NUEVO DISEÑO
+==================================================== */
+.calendar-premium-card {
+    overflow: hidden;
+    background: linear-gradient(145deg, var(--panel-bg) 0%, rgba(21,25,36,0.8) 100%);
+}
+.calendar-premium-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.calendar-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.cal-nav-btn {
+    background: var(--bg-body);
+    border: 1px solid var(--panel-border);
+    color: var(--text-main);
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-weight: bold;
+}
+.cal-nav-btn:hover {
+    background: var(--brand-orange);
+    border-color: var(--brand-orange);
+    color: white;
+    transform: scale(1.05);
+}
+.cal-today-btn {
+    width: auto;
+    padding: 0 12px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    background: rgba(255,109,0,0.15);
+    border-color: rgba(255,109,0,0.3);
+    color: var(--brand-orange);
+}
+.cal-semana-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-muted);
+    min-width: 100px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+/* Vista rápida del día */
+.cal-day-quickview {
+    background: rgba(0,0,0,0.15);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid var(--panel-border);
+    min-height: 100px;
+    transition: all 0.3s;
+}
+.cal-day-header {
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--neon-cyan);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+.cal-timeline-mini {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-height: 40px;
+}
+
+/* Píldoras de eventos en el mini timeline */
+.cal-event-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-left: 3px solid;
+    white-space: nowrap;
+    animation: pillFadeIn 0.3s ease;
+}
+.cal-event-pill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    filter: brightness(1.15);
+}
+.cal-event-pill.alta {
+    background: rgba(16,185,129,0.12);
+    border-left-color: var(--neon-green);
+    color: var(--neon-green);
+}
+.cal-event-pill.averia {
+    background: rgba(41,121,255,0.12);
+    border-left-color: var(--neon-blue);
+    color: var(--neon-blue);
+}
+.cal-event-pill.baja {
+    background: rgba(239,68,68,0.12);
+    border-left-color: var(--neon-red);
+    color: var(--neon-red);
+}
+.cal-event-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 6px currentColor;
+}
+
+/* Tira semanal */
+.cal-week-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+.cal-week-day {
+    background: rgba(0,0,0,0.1);
+    border-radius: 8px;
+    padding: 8px 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    position: relative;
+}
+.cal-week-day:hover {
+    background: rgba(255,109,0,0.08);
+    border-color: rgba(255,109,0,0.2);
+}
+.cal-week-day.active {
+    background: rgba(255,109,0,0.15);
+    border-color: var(--brand-orange);
+    box-shadow: 0 0 15px rgba(255,109,0,0.2);
+}
+.cal-week-day.today {
+    border-color: var(--neon-cyan);
+    background: rgba(0,229,255,0.05);
+}
+.cal-week-dayname {
+    font-size: 9px;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.cal-week-daynum {
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--text-main);
+    margin: 4px 0;
+}
+.cal-week-day.active .cal-week-daynum {
+    color: var(--brand-orange);
+}
+.cal-week-daycount {
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--neon-cyan);
+    background: rgba(0,229,255,0.1);
+    border-radius: 10px;
+    padding: 1px 6px;
+    display: inline-block;
+}
+
+@keyframes pillFadeIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Modal FullCalendar mejoras */
+.modal-fullscreen {
+    max-width: 95vw !important;
+    height: 95vh !important;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 30px !important;
+    background: var(--panel-bg);
+    border-radius: 16px;
+    border: 1px solid var(--panel-border);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+}
+
+/* Scrollbar personalizada */
+.calendar-premium-card::-webkit-scrollbar,
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+.calendar-premium-card::-webkit-scrollbar-track,
+.modal-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+.calendar-premium-card::-webkit-scrollbar-thumb,
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--panel-border);
+    border-radius: 10px;
+}

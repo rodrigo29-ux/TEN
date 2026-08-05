@@ -83,17 +83,24 @@
         <!-- GRÁFICOS, CALENDARIO Y KPIS -->
         <div id="panelGraficosAdmin" class="admin-stats-grid admin-only">
             
-            <!-- NUEVO: CALENDARIO TIPO GOOGLE CALENDAR (TIMELINE DIARIO) -->
-            <div class="stat-card" style="grid-column: span 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px; margin-bottom: 15px;">
-                    <h3 style="margin: 0; border: none; padding: 0;">AGENDA NOC (TIMELINE)</h3>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="date" id="calFechaNavegador" class="form-control" style="padding: 4px 8px; font-size: 11px; width: auto; height: 28px;" onchange="window.renderizarCalendario()">
+            <!-- NUEVO: CALENDARIO SEMANAL PREMIUM -->
+            <div class="stat-card calendar-premium-card" style="grid-column: span 1;">
+                <div class="calendar-premium-header">
+                    <h3 style="margin: 0; border: none; padding: 0;">📅 AGENDA NOC</h3>
+                    <div class="calendar-nav">
+                        <button class="cal-nav-btn" onclick="navegarSemana(-1)" title="Semana anterior">◀</button>
+                        <span class="cal-semana-label" id="lblSemanaActual"></span>
+                        <button class="cal-nav-btn" onclick="navegarSemana(1)" title="Semana siguiente">▶</button>
+                        <button class="cal-nav-btn cal-today-btn" onclick="irAHoy()">HOY</button>
                     </div>
                 </div>
-                <div id="calendarioNOC" class="calendar-timeline-container">
-                    <!-- JS inyectará las horas y bloques aquí -->
+                <!-- Vista rápida: timeline diario (día seleccionado) -->
+                <div class="cal-day-quickview" id="calDayQuickview">
+                    <div class="cal-day-header" id="calDayHeader">LUNES 05</div>
+                    <div class="cal-timeline-mini" id="calTimelineMini"></div>
                 </div>
+                <!-- Mini calendario semanal (7 días en horizontal) -->
+                <div class="cal-week-strip" id="calWeekStrip"></div>
             </div>
 
             <!-- CARGA DE TÉCNICOS (SE MANTIENE) -->
