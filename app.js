@@ -21,6 +21,7 @@ const coleccionClientes = collection(db, 'artifacts', appId, 'public', 'data', '
 
 let dbTrabajos = [];
 let isAdmin = false;
+let isVentas = false;
 let nombreTecnicoLogueado = "";
 let zonaActual = "Norte";
 
@@ -43,7 +44,7 @@ window.toggleTema = () => {
     const newTheme = currentTheme === "light" ? "dark" : "light";
     document.documentElement.setAttribute("data-theme", newTheme);
     localStorage.setItem("temaTen", newTheme);
-    if (isAdmin) renderizarTabla();
+    if (isAdmin || isVentas) renderizarTabla();
 };
 
 /* MODALES Y CLICS AFUERA */
@@ -114,33 +115,66 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         document.getElementById("login-view").style.display = "none";
         document.getElementById("dashboard-view").style.display = "block";
+        
         isAdmin = (user.email === "admin@ten.com");
+        isVentas = (user.email.includes("ventas"));
 
-        if(!isAdmin) {
-            nombreTecnicoLogueado = user.email.split('@')[0].toUpperCase();
-            document.getElementById("lblUsuarioActivo").innerHTML = nombreTecnicoLogueado;
-
-            document.querySelectorAll(".admin-only").forEach(el => el.classList.remove('show-admin', 'show-admin-flex', 'show-admin-grid'));
-            zonaActual = tecnicosLurin.includes(nombreTecnicoLogueado) ? "Lurin" : "Norte";
-        } else {
+        if(isAdmin) {
             nombreTecnicoLogueado = "ADMIN";
             document.getElementById("lblUsuarioActivo").innerHTML = `👑 ADMINISTRADOR`;
-
+            
             document.getElementById("contenedorSelectorZona").classList.add('show-admin-flex');
             document.getElementById("contenedorBotonesAccion").classList.add('show-admin-flex');
-            document.getElementById("panelGraficosAdmin").classList.add('show-admin-grid');
             document.getElementById("filtroTecnicoContainer").classList.add('show-admin-flex');
-
+            
+            const panelGraficos = document.getElementById("panelGraficosAdmin");
+            panelGraficos.classList.add('show-admin-grid');
+            panelGraficos.style.gridTemplateColumns = "1fr 2fr 1fr";
+            if(document.getElementById("cardGraficoTecnicos")) {
+                document.getElementById("cardGraficoTecnicos").style.display = "flex";
+            }
+            
+            if(document.getElementById("tituloKpi")) {
+                document.getElementById("tituloKpi").innerText = "TOTALES";
+                document.getElementById("lblKpiTotal").innerText = "Total";
+                document.getElementById("lblKpiAtendidos").innerText = "Atendidos";
+                document.getElementById("lblKpiPendientes").innerText = "Pendientes";
+            }
+            
             zonaActual = document.getElementById("selectorZona").value;
+            
+        } else if (isVentas) {
+            nombreTecnicoLogueado = "VENTAS";
+            document.getElementById("lblUsuarioActivo").innerHTML = `💼 VENTAS`;
+            document.getElementById("contenedorBotonesAccion").classList.add('show-admin-flex');
+            
+            document.querySelector(".btn-exportar").style.display = "none";
+            document.querySelectorAll(".btn-cyan").forEach(b => b.style.display = "none");
+            
+            const panelGraficos = document.getElementById("panelGraficosAdmin");
+            panelGraficos.classList.add('show-admin-grid');
+            panelGraficos.style.gridTemplateColumns = "1fr 1fr"; 
+            if(document.getElementById("cardGraficoTecnicos")) {
+                document.getElementById("cardGraficoTecnicos").style.display = "none"; 
+            }
+            
+            if(document.getElementById("tituloKpi")) {
+                document.getElementById("tituloKpi").innerText = "REPORTE DE VENTAS";
+                document.getElementById("lblKpiTotal").innerText = "Total Ventas";
+                document.getElementById("lblKpiAtendidos").innerText = "Instaladas";
+                document.getElementById("lblKpiPendientes").innerText = "Por Instalar";
+            }
+            
+            zonaActual = "Norte";
+            
+        } else {
+            nombreTecnicoLogueado = user.email.split('@')[0].toUpperCase();
+            document.getElementById("lblUsuarioActivo").innerHTML = `🛠️ ${nombreTecnicoLogueado}`;
+            document.querySelectorAll(".admin-only").forEach(el => el.classList.remove('show-admin', 'show-admin-flex', 'show-admin-grid'));
+            zonaActual = tecnicosLurin.includes(nombreTecnicoLogueado) ? "Lurin" : "Norte";
         }
 
-        // Inicializar calendario premium después de cargar datos
-        setTimeout(() => {
-            if (typeof window.renderizarCalendario === 'function') {
-                window.renderizarCalendario();
-            }
-        }, 800);
-
+        setTimeout(() => { if (typeof window.renderizarCalendario === 'function') window.renderizarCalendario(); }, 800);
         actualizarFiltroTecnicos();
         cargarTrabajosEnVivo();
     } else {
@@ -188,7 +222,6 @@ function cargarTrabajosEnVivo() {
         snapshot.forEach((doc) => { dbTrabajos.push({ id: doc.id, ...doc.data() }); });
         actualizarOpcionesFechas();
         renderizarTabla();
-        // Actualizar calendario premium después de cambios en datos
         if (typeof window.renderizarCalendario === 'function') {
             window.renderizarCalendario();
         }
@@ -271,13 +304,56 @@ window.abrirModal = () => {
     if(isAdmin) zonaActual = document.getElementById("selectorZona").value;
 
     document.getElementById('formTrabajoId').value = "";
+    document.getElementById('modalTitulo').innerText = "Registro de Tarea";
     document.querySelectorAll("#modalAgregar input[type=text]:not(.multi-select-display), #modalAgregar input[type=number], #modalAgregar textarea").forEach(i => i.value = "");
     document.getElementById('formFecha').value = new Date().toISOString().split('T')[0];
     document.getElementById('searchResult').innerText = "";
 
     actualizarSelectTecnicosModal();
     window.seleccionarTipoTarea('alta');
+    
+    if (isVentas) {
+        document.getElementById('tabAveria').style.display = 'none';
+        document.getElementById('tabBaja').style.display = 'none';
+    } else {
+        document.getElementById('tabAveria').style.display = 'block';
+        document.getElementById('tabBaja').style.display = 'block';
+    }
+
     document.getElementById('modalAgregar').style.display = 'flex';
+};
+
+window.editarTrabajo = (id) => {
+    let t = dbTrabajos.find(x => x.id === id);
+    if(!t) return;
+    
+    window.abrirModal();
+    document.getElementById('modalTitulo').innerText = "✏️ Editar Tarea";
+    document.getElementById('formTrabajoId').value = t.id;
+    window.seleccionarTipoTarea(t.tipoTarea || 'alta');
+    
+    document.getElementById('formFecha').value = t.fecha || "";
+    document.getElementById('formHoraInicio').value = t.horaInicio || "";
+    document.getElementById('formHoraFin').value = t.horaFin || "";
+    document.getElementById('formNombre').value = t.cliente || "";
+    document.getElementById('formDni').value = t.dni || "";
+    document.getElementById('formTelefono').value = t.tel || "";
+    document.getElementById('formDireccion').value = t.dir || "";
+    document.getElementById('formMapa').value = t.mapa || "";
+
+    if (t.tipoTarea === 'alta') {
+        document.getElementById('formPlanAlta').value = t.detalle || "";
+        document.getElementById('formCajaAlta').value = t.caja || "";
+        document.getElementById('formPuertoAlta').value = t.puerto || "";
+        document.getElementById('formObsAlta').value = t.notas || "";
+    } else if (t.tipoTarea === 'averia') {
+        document.getElementById('formProblemaAveria').value = t.detalle || "";
+        document.getElementById('formNotasAveria').value = t.notas || "";
+        document.getElementById('formInfoRedAveria').value = t.infoRed || "";
+    } else if (t.tipoTarea === 'baja') {
+        document.getElementById('formMotivoBaja').value = t.notas || "";
+        document.getElementById('formEquiposBaja').value = t.equipos || "";
+    }
 };
 
 window.guardarTrabajo = async () => {
@@ -346,8 +422,12 @@ window.renderizarTabla = () => {
             let asig = t.tecnicos || ["Sin Asignar"];
             if (typeof asig === 'string') asig = [asig];
 
-            if (!isAdmin && !asig.includes(nombreTecnicoLogueado) && !asig.includes("Todos")) return;
+            if (isVentas && t.tipoTarea !== 'alta') return;
+
+            if (!isAdmin && !isVentas && !asig.includes(nombreTecnicoLogueado) && !asig.includes("Todos")) return;
+            
             if (isAdmin && document.getElementById("filtroTecnico").value !== "todos" && !asig.includes(document.getElementById("filtroTecnico").value)) return;
+            
             if (filtroFecha !== "todas" && t.fecha !== filtroFecha) return;
 
             let estActual = String(t.estado || "pendiente").toLowerCase();
@@ -361,8 +441,11 @@ window.renderizarTabla = () => {
             let esSin = (estActual === "no_atendido");
             let esCamino = (estActual === "en_camino");
 
-            let iconEst = esAten ? "ep-aten" : (esSin ? "ep-noat" : (esCamino ? "ep-cami" : "ep-pend"));
             let textEst = esAten ? "ATENDIDO" : (esSin ? "NO ATENDIDO" : (esCamino ? "EN CAMINO" : "PENDIENTE"));
+            
+            let iconEst = "⏳"; 
+            if(esAten) iconEst = "✅"; else if(esSin) iconEst = "❌"; else if(esCamino) iconEst = "🚶";
+            let colorEstadoTxt = esAten ? "#10b981" : (esSin ? "#ef4444" : (esCamino ? "#3b82f6" : "#f59e0b"));
 
             let colorBadge = t.tipoTarea === 'alta' ? 'alta' : (t.tipoTarea === 'averia' ? 'averia' : 'baja');
             let nombreTipo = t.tipoTarea === 'alta' ? '🚀 ALTA' : (t.tipoTarea === 'averia' ? '🛠️ AVERÍA' : '🛑 BAJA');
@@ -391,18 +474,27 @@ window.renderizarTabla = () => {
 
             let tr = document.createElement("tr");
             tr.innerHTML = `
-                <td><span class="estado-punto ${iconEst}"></span><span style="font-size:11px; font-weight:900; color:var(--text-muted);">${textEst}</span></td>
+                <td><span class="estado-punto ${esAten ? 'ep-aten' : (esSin ? 'ep-noat' : (esCamino ? 'ep-cami' : 'ep-pend'))}"></span><span style="font-size:11px; font-weight:900; color:${colorEstadoTxt};">${textEst}</span></td>
                 <td>${infoCli}</td>
                 <td>${dirH}</td>
                 <td>
-                    <div class="acciones-wrapper">
-                        <button type="button" class="btn-estado-principal" onclick="cambiarEstado('${t.id}', '${estActual}')">⟳ ESTADO</button>
+                    <div class="btn-acciones-grid">
+                        ${!isVentas ? `<button type="button" class="btn-action-ui btn-ui-estado" onclick="cambiarEstado('${t.id}', '${estActual}')">${iconEst} ${textEst.charAt(0) + textEst.slice(1).toLowerCase()}</button>` : ''}
+                        
                         <div class="btn-grid-row">
-                            ${t.mapa ? `<a href="${t.mapa}" target="_blank" class="btn-accion" style="color:var(--neon-pink)">📍 Map</a>` : ''}
-                            ${numLimpio.length > 5 ? `<a href="${linkWsp}" target="_blank" class="btn-accion" style="color:var(--wsp-green)">💬 Wsp</a>` : ''}
-                            <button type="button" class="btn-accion" onclick="copiarDatos(this)">📋 Info</button>
+                            ${t.mapa ? `<a href="${t.mapa}" target="_blank" class="btn-action-ui btn-ui-mapa">📍 Mapa</a>` : `<button type="button" class="btn-action-ui btn-ui-mapa" style="opacity:0.3; cursor:not-allowed">📍 Mapa</button>`}
+                            ${t.tipoTarea === 'alta' ? `<button type="button" class="btn-action-ui btn-ui-nap">📦 Caja NAP</button>` : ''}
                         </div>
-                        ${isAdmin ? `<div class="btn-grid-row"><button type="button" class="btn-accion" style="color:var(--neon-red)" onclick="preguntarEliminar('${t.id}')">🗑️ Eliminar</button></div>` : ''}
+                        
+                        ${numLimpio.length > 5 ? `<a href="${linkWsp}" target="_blank" class="btn-action-ui btn-ui-wsp">💬 WhatsApp</a>` : ''}
+                        
+                        <button type="button" class="btn-action-ui btn-ui-copiar" onclick="copiarDatos(this)">📋 Copiar Datos</button>
+                        
+                        ${isAdmin ? `
+                            <button type="button" class="btn-action-ui btn-ui-editar" onclick="editarTrabajo('${t.id}')">✏️ Editar</button>
+                            <button type="button" class="btn-action-ui btn-ui-eliminar" onclick="preguntarEliminar('${t.id}')">🗑️ Eliminar</button>
+                        ` : ''}
+                        
                         <textarea style="display:none;" class="texto-secreto">${txtCop}</textarea>
                     </div>
                 </td>
@@ -417,7 +509,7 @@ window.renderizarTabla = () => {
 };
 
 function actualizarGraficosGerenciales(trabajosFiltrados) {
-    if(!isAdmin) return;
+    if(!isAdmin && !isVentas) return;
 
     setTimeout(() => {
         try {
@@ -442,29 +534,30 @@ function actualizarGraficosGerenciales(trabajosFiltrados) {
             document.getElementById('kpiPendientes').innerText = pend;
             document.getElementById('kpiNoAtendidos').innerText = noAten;
 
-            // Actualizar el calendario premium (ya se llama desde varios sitios, pero aquí también por seguridad)
             if (typeof window.renderizarCalendario === 'function') {
                 window.renderizarCalendario();
             }
 
-            const isDark = document.documentElement.getAttribute("data-theme") !== "light";
-            const textColor = isDark ? '#8b9bb4' : '#64748b';
-            const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+            if (isAdmin) {
+                const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+                const textColor = isDark ? '#8b9bb4' : '#64748b';
+                const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
 
-            const canvasT = document.getElementById('graficoTecnicos');
-            if(canvasT) {
-                const ctxT = canvasT.getContext('2d');
-                if (chartTecnicos) chartTecnicos.destroy();
+                const canvasT = document.getElementById('graficoTecnicos');
+                if(canvasT) {
+                    const ctxT = canvasT.getContext('2d');
+                    if (chartTecnicos) chartTecnicos.destroy();
 
-                let gradient = ctxT.createLinearGradient(0, 0, 0, 400);
-                gradient.addColorStop(0, '#00e5ff');
-                gradient.addColorStop(1, '#d500f9');
+                    let gradient = ctxT.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, '#00e5ff');
+                    gradient.addColorStop(1, '#d500f9');
 
-                chartTecnicos = new Chart(ctxT, {
-                    type: 'bar',
-                    data: { labels: Object.keys(cTech), datasets: [{ data: Object.values(cTech), backgroundColor: gradient, borderRadius: 6, barThickness: 40 }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid:{color: gridColor}, ticks: { stepSize: 1, color: textColor } }, x: { grid:{display:false}, ticks: { color: textColor, font:{size:10} } } } }
-                });
+                    chartTecnicos = new Chart(ctxT, {
+                        type: 'bar',
+                        data: { labels: Object.keys(cTech), datasets: [{ data: Object.values(cTech), backgroundColor: gradient, borderRadius: 6, barThickness: 40 }] },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid:{color: gridColor}, ticks: { stepSize: 1, color: textColor } }, x: { grid:{display:false}, ticks: { color: textColor, font:{size:10} } } } }
+                    });
+                }
             }
         } catch(e) {
             console.error("Error dibujando los gráficos:", e);

@@ -653,3 +653,29 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
     background: var(--panel-border);
     border-radius: 10px;
 }
+/* =========================================
+   NUEVOS BOTONES DE ACCIÓN (ESTILO APP)
+========================================= */
+.btn-acciones-grid { 
+    display: flex; flex-direction: column; gap: 6px; 
+    width: 100%; max-width: 220px; margin: 0 auto; 
+}
+.btn-action-ui {
+    width: 100%; padding: 8px; border-radius: 6px; font-size: 13px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    border: none; transition: transform 0.1s, filter 0.2s; text-decoration: none; box-sizing: border-box;
+}
+.btn-action-ui:active { transform: scale(0.97); }
+.btn-action-ui:hover { filter: brightness(1.1); }
+
+/* Colores calcados de la imagen */
+.btn-ui-estado { background: #f59e0b; color: white; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3); }
+.btn-ui-mapa { background: #3b82f6; color: white; flex: 1; }
+.btn-ui-nap { background: #8b5cf6; color: white; flex: 1; }
+.btn-ui-wsp { background: #22c55e; color: white; }
+.btn-ui-copiar { background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--panel-border); }
+.btn-ui-editar { background: transparent; color: #f97316; border: 1px solid #f97316; }
+.btn-ui-eliminar { background: transparent; color: #ef4444; border: 1px solid #ef4444; }
+
+/* Ajuste del botón copiar para el modo claro */
+[data-theme="light"] .btn-ui-copiar { background: #f8fafc; border-color: #cbd5e1; color: #334155; }

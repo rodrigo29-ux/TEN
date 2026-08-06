@@ -16,6 +16,8 @@
     
     <!-- CSS -->
     <link rel="stylesheet" href="estilo.css">
+    <link rel="icon" type="image/png" href="logo.ico">
+
 </head>
 <body>
 
@@ -103,20 +105,20 @@
                 <div class="cal-week-strip" id="calWeekStrip"></div>
             </div>
 
-            <!-- CARGA DE TÉCNICOS (SE MANTIENE) -->
-            <div class="stat-card">
+            <!-- CARGA DE TÉCNICOS (AHORA TIENE ID) -->
+            <div class="stat-card" id="cardGraficoTecnicos">
                 <h3>CARGA DE TÉCNICOS</h3>
                 <div class="chart-container"><canvas id="graficoTecnicos"></canvas></div>
             </div>
 
-            <!-- TOTALES / KPIS (SE MANTIENE) -->
-            <div class="stat-card">
-                <h3>TOTALES</h3>
+            <!-- TOTALES / KPIS (AHORA TIENEN IDS) -->
+            <div class="stat-card" id="cardKpis">
+                <h3 id="tituloKpi">TOTALES</h3>
                 <div class="kpi-grid">
-                    <div class="kpi-box total"><span class="kpi-num" id="kpiTotal">0</span><span class="kpi-label">Total</span></div>
-                    <div class="kpi-box success"><span class="kpi-num" id="kpiAtendidos">0</span><span class="kpi-label">Atendidos</span></div>
-                    <div class="kpi-box danger"><span class="kpi-num" id="kpiNoAtendidos">0</span><span class="kpi-label">No Atendidos</span></div>
-                    <div class="kpi-box warning"><span class="kpi-num" id="kpiPendientes">0</span><span class="kpi-label">Pendientes</span></div>
+                    <div class="kpi-box total"><span class="kpi-num" id="kpiTotal">0</span><span class="kpi-label" id="lblKpiTotal">Total</span></div>
+                    <div class="kpi-box success"><span class="kpi-num" id="kpiAtendidos">0</span><span class="kpi-label" id="lblKpiAtendidos">Atendidos</span></div>
+                    <div class="kpi-box danger"><span class="kpi-num" id="kpiNoAtendidos">0</span><span class="kpi-label" id="lblKpiNoAtendidos">No Atendidos</span></div>
+                    <div class="kpi-box warning"><span class="kpi-num" id="kpiPendientes">0</span><span class="kpi-label" id="lblKpiPendientes">Pendientes</span></div>
                 </div>
             </div>
         </div>
