@@ -465,7 +465,7 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
         <div class="botones-principales" id="contenedorBotonesAccion" style="display:none;">
             <button type="button" class="btn-agregar-flotante" onclick="abrirModal()">+ Nuevo Trabajo</button>
             
-            <button type="button" class="btn-cyan admin-carlos-only" id="btnMapaCoberturaGeneral" onclick="abrirModalCoberturaGeneral()">🗺️ Mapa Cobertura</button>
+            <button type="button" class="btn-cyan show-admin-flex" id="btnMapaCoberturaGeneral" onclick="abrirModalCoberturaGeneral()">🗺️ Mapa Cobertura</button>
 
             <!-- EXCLUSIVOS DE ADMIN: Excel y BD (clase admin-only) -->
             <button type="button" class="btn-exportar admin-only" onclick="exportarAExcel()" id="btnExportarAdmin">📊 Exportar Excel</button>
@@ -824,12 +824,12 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
                 <strong style="color: var(--neon-cyan); font-size: 14px; display: block;" id="cobNombreCliente">Juan Perez</strong>
                 <span style="color: var(--text-muted); font-size: 13px;" id="cobDirCliente">Mz A Lt 1</span>
             </div>
-            <a href="#" id="cobLinkMapa" target="_blank" class="btn-guardar" style="width: auto; padding: 8px 15px; background: #3b82f6; text-decoration: none; font-size: 12px;">📍 Ver GPS del Cliente</a>
+            <a href="#" id="cobLinkMapa" target="_blank" class="btn-guardar" style="width: auto; padding: 8px 15px; background: #3b82f6; text-decoration: none; font-size: 12px;">📍 Abrir en Google Maps Externo</a>
         </div>
 
         <!-- Iframe de Google My Maps (Cobertura) CON PIN CLÁSICO -->
         <div style="position: relative; flex: 1; min-height: 400px; border-radius: 8px; overflow: hidden; border: 1px solid var(--panel-border);">
-            <iframe id="iframeCobertura" src="https://www.google.com/maps/d/embed?mid=1EKIxuTIGSM9GJ8YTbP_HCxhh-l5DOFw&ehbc=2E312F" width="100%" height="100%" style="border:0; position: absolute; top: 0; left: 0;"></iframe>
+            <iframe id="iframeCobertura" src="" width="100%" height="100%" style="border:0; position: absolute; top: 0; left: 0;"></iframe>
             
             <!-- Pin Flotante Clásico -->
             <div id="mapCenterPin" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); pointer-events: none; display: none; z-index: 10; text-align: center;">
@@ -927,30 +927,56 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
 <div id="toast">Mensaje</div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, updateDoc, doc, deleteDoc, onSnapshot, query, where, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+// ============================================================ //
+// APP - TEN NOC                                                //
+// ============================================================ //
 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import {
+    getAuth,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged,
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    updateDoc,
+    doc,
+    deleteDoc,
+    onSnapshot,
+    query,
+    where,
+    getDocs,
+    writeBatch,
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+// ============================================================ //
+// CONFIGURACIÓN FIREBASE                                       //
+// ============================================================ //
 const firebaseConfig = {
-  apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
-  authDomain: "ten-soporte.firebaseapp.com",
-  projectId: "ten-soporte",
-  storageBucket: "ten-soporte.firebasestorage.app",
-  messagingSenderId: "498950424371",
-  appId: "1:498950424371:web:fce299a98cf8e57f822046"
+    apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+    authDomain: "ten-soporte.firebaseapp.com",
+    projectId: "ten-soporte",
+    storageBucket: "ten-soporte.firebasestorage.app",
+    messagingSenderId: "498950424371",
+    appId: "1:498950424371:web:fce299a98cf8e57f822046",
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'ten-noc-app';
+const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
 
-const coleccionTrabajos = collection(db, 'artifacts', appId, 'public', 'data', 'trabajos_v4');
-const coleccionClientes = collection(db, 'artifacts', appId, 'public', 'data', 'clientes_base');
+const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4");
+const coleccionClientes = collection(db, "artifacts", appId, "public", "data", "clientes_base");
 
+// ============================================================ //
+// ESTADO GLOBAL                                                //
+// ============================================================ //
 let dbTrabajos = [];
 
-// ROLES DEL SISTEMA
 let isAdmin = false;
 let isWilton = false;
 let isCarlos = false;
@@ -970,13 +996,25 @@ let idTrabajoAEliminar = null;
 let idTrabajoCierreSLA = null;
 let estadoObjetivoSLA = null;
 
-// Variable Validación Mapa Carlos
+// Variables Validación Mapa
 let ventaAValidarId = null;
 let idVentaARechazarRapido = null;
 
+// Variables Calendario
 let semanaOffset = 0;
 let diaSeleccionado = null;
 
+// Variables Mapa Dinámico
+const MAPA_NOC = "https://www.google.com/maps/d/embed?mid=1EKIxuTIGSM9GJ8YTbP_HCxhh-l5DOFw&ehbc=2E312F";
+const MAPA_VENTAS = "https://www.google.com/maps/d/embed?mid=1fMA7B2CSQKbdMlNO6lxVvh9pF_JnY-s&ehbc=2E312F"; 
+
+function obtenerUrlMapa() {
+    return (isAdmin || isWilton) ? MAPA_NOC : MAPA_VENTAS;
+}
+
+// ============================================================ //
+// TEMA                                                         //
+// ============================================================ //
 const savedTheme = localStorage.getItem("temaTen") || "dark";
 document.documentElement.setAttribute("data-theme", savedTheme);
 
@@ -988,105 +1026,102 @@ window.toggleTema = () => {
     if (isAdmin || isWilton || isCarlos || isVendedor) renderizarTabla();
 };
 
-window.cerrarModal = () => { document.getElementById("modalAgregar").style.display = "none"; document.getElementById('techDropdown').classList.remove('show'); };
-window.cerrarModalEliminar = () => { document.getElementById("modalEliminar").style.display = "none"; idTrabajoAEliminar = null; };
-window.cerrarModalCierre = () => { document.getElementById("modalCierre").style.display = "none"; document.getElementById('txtNotaCierre').value = ""; idTrabajoCierreSLA = null; };
-window.cerrarModalCobertura = () => { document.getElementById("modalCobertura").style.display = "none"; ventaAValidarId = null; window.cancelarRechazo(); };
-window.cerrarModalRechazoRapido = () => { document.getElementById('modalRechazoRapido').style.display = 'none'; idVentaARechazarRapido = null; };
-
-
-document.addEventListener('keydown', (e) => {
-    if (e.key === "Escape") { window.cerrarModal(); window.cerrarModalEliminar(); window.cerrarModalCierre(); window.cerrarModalCobertura(); window.cerrarModalRechazoRapido(); }
-});
-
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) { window.cerrarModal(); window.cerrarModalEliminar(); window.cerrarModalCierre(); window.cerrarModalCobertura(); window.cerrarModalRechazoRapido(); if (document.getElementById('modalCalendario').style.display === 'flex') window.cerrarModalCalendario(); }
+// ============================================================ //
+// AUTH                                                         //
+// ============================================================ //
+window.iniciarSesion = () => {
+    const email = document.getElementById("txtEmail").value.trim();
+    const pass = document.getElementById("txtPassword").value;
+    signInWithEmailAndPassword(auth, email, pass).catch(() => {
+        document.getElementById("login-error").style.display = "block";
     });
-});
-
-window.toggleTechDropdown = (e) => { if(e) e.stopPropagation(); document.getElementById('techDropdown').classList.toggle('show'); };
-document.addEventListener('click', (e) => { let dropdown = document.getElementById('techDropdown'); let container = document.getElementById('techSelectContainer'); if (dropdown && dropdown.classList.contains('show') && container && !container.contains(e.target)) dropdown.classList.remove('show'); });
-window.toggleCheckbox = (el) => { let chk = el.querySelector('input'); chk.checked = !chk.checked; let chks = document.querySelectorAll('#techDropdown input:checked'); document.getElementById('techDisplay').innerText = chks.length === 0 ? "Sin Asignar" : Array.from(chks).map(c=>c.value).join(', '); };
-
-window.seleccionarTipoTarea = (tipo) => {
-    document.getElementById('formTipoTareaValue').value = tipo;
-    document.querySelectorAll('.tab-btn').forEach(b => { 
-        b.classList.remove('active-alta', 'active-averia', 'active-baja'); 
-        if(b.id === 'tabAveria') { b.style.color = '#8b9bb4'; b.style.borderColor = 'var(--panel-border)'; } 
-    });
-    let tabActiva = document.getElementById('tab' + tipo.charAt(0).toUpperCase() + tipo.slice(1));
-    tabActiva.classList.add('active-' + tipo);
-    if(tipo === 'averia') { tabActiva.style.color = '#2979ff'; tabActiva.style.borderColor = '#2979ff'; }
-    
-    // MOSTRAR BUSCADOR EN TODAS LAS PESTAÑAS (INCLUYENDO ALTA) PARA AUTOCOMPLETAR
-    document.getElementById('cajaBuscador').style.display = 'block';
-    
-    document.querySelector('.grupo-alta').style.display = tipo === 'alta' ? 'contents' : 'none';
-    document.querySelector('.grupo-averia').style.display = tipo === 'averia' ? 'block' : 'none';
-    document.querySelector('.grupo-baja').style.display = tipo === 'baja' ? 'block' : 'none';
 };
 
+window.cerrarSesion = () => {
+    signOut(auth);
+};
+
+window.cambiarZona = (z) => {
+    zonaActual = z;
+    actualizarFiltroTecnicos();
+    renderizarTabla();
+};
+
+// ============================================================ //
+// ON AUTH STATE CHANGED                                        //
+// ============================================================ //
 onAuthStateChanged(auth, (user) => {
     if (user) {
         document.getElementById("login-view").style.display = "none";
         document.getElementById("dashboard-view").style.display = "block";
         document.getElementById("contenedorBotonesAccion").style.display = "flex";
-        
+
         const email = user.email.toLowerCase();
-        isAdmin = (email === "admin@ten.com");
-        isWilton = (email === "wilton@ten.com");
-        isCarlos = (email === "carlos@ten.com");
+        isAdmin = email === "admin@ten.com";
+        isWilton = email === "wilton@ten.com";
+        
+        // Lista actualizada de Coordinadores de Ventas permitidos
+        const coordinadoresVentas = ["carlos@ten.com", "jrodriguez@ten.com", "mventocilla@ten.com"];
+        isCarlos = coordinadoresVentas.includes(email);
+        
         isVendedor = email.includes("ventas");
 
-        // RESET UI PARA PREVENIR BUGS DE PERSISTENCIA
-        document.querySelectorAll(".admin-only, .admin-wilton-only, .admin-carlos-only").forEach(el => {
-            el.classList.remove('show-admin', 'show-admin-flex', 'show-admin-grid');
+        // Resetear clases de roles
+        document.querySelectorAll(".admin-only, .admin-wilton-only, .admin-carlos-only").forEach((el) => {
+            el.classList.remove("show-admin", "show-admin-flex", "show-admin-grid");
         });
 
         if (isAdmin) {
             nombreTecnicoLogueado = "ADMIN";
             document.getElementById("lblUsuarioActivo").innerHTML = `👑 ADMINISTRADOR`;
-            document.getElementById("contenedorSelectorZona").classList.add('show-admin-flex');
-            document.querySelectorAll(".admin-only, .admin-wilton-only, .admin-carlos-only").forEach(el => el.classList.add('show-admin-flex'));
+            document.getElementById("contenedorSelectorZona").classList.add("show-admin-flex");
+            document.querySelectorAll(".admin-only, .admin-wilton-only, .admin-carlos-only").forEach((el) =>
+                el.classList.add("show-admin-flex")
+            );
             configurarGraficosBase("TOTALES", "Total", "Atendidos", "Pendientes");
             zonaActual = document.getElementById("selectorZona").value;
-            
         } else if (isWilton) {
             nombreTecnicoLogueado = "WILTON";
             document.getElementById("lblUsuarioActivo").innerHTML = `🛠️ WILTON SOPORTE`;
-            document.getElementById("contenedorSelectorZona").classList.add('show-admin-flex');
-            document.querySelectorAll(".admin-wilton-only").forEach(el => el.classList.add('show-admin-flex'));
+            document.getElementById("contenedorSelectorZona").classList.add("show-admin-flex");
+            document.querySelectorAll(".admin-wilton-only").forEach((el) => el.classList.add("show-admin-flex"));
             configurarGraficosBase("TOTALES", "Total", "Atendidos", "Pendientes");
             zonaActual = document.getElementById("selectorZona").value;
-            
         } else if (isCarlos || isVendedor) {
-            nombreTecnicoLogueado = isCarlos ? "CARLOS" : email.split('@')[0].toUpperCase();
-            document.getElementById("lblUsuarioActivo").innerHTML = isCarlos ? `📋 COORD. VENTAS` : `💼 ${nombreTecnicoLogueado}`;
+            // Extrae el nombre bonito (ej: de "jcabrera.ventas" saca solo "JCABRERA")
+            let nombreLimpio = email.split("@")[0].split(".")[0].toUpperCase();
+            nombreTecnicoLogueado = isCarlos ? nombreLimpio : nombreLimpio;
             
-            // Habilitamos el botón superior de "Mapa Cobertura" para Carlos Y para Vendedores
-            document.querySelectorAll(".admin-carlos-only").forEach(el => el.classList.add('show-admin-flex'));
-            
+            document.getElementById("lblUsuarioActivo").innerHTML = isCarlos ? `📋 COORD. ${nombreLimpio}` : `💼 ${nombreLimpio}`;
+
+            document.querySelectorAll(".admin-carlos-only").forEach((el) => el.classList.add("show-admin-flex"));
+
             const panelGraficos = document.getElementById("panelGraficosAdmin");
-            panelGraficos.classList.add('show-admin-grid');
-            
-            // Ocultamos el calendario general de los vendedores y Carlos
-            if(document.getElementById("cardCalendarioNoc")) document.getElementById("cardCalendarioNoc").style.display = "none"; 
-            if(document.getElementById("cardGraficoTecnicos")) document.getElementById("cardGraficoTecnicos").style.display = "none"; 
-            
+            panelGraficos.classList.add("show-admin-grid");
+
+            if (document.getElementById("cardCalendarioNoc")) document.getElementById("cardCalendarioNoc").style.display = "none";
+            if (document.getElementById("cardGraficoTecnicos")) document.getElementById("cardGraficoTecnicos").style.display = "none";
+
             configurarGraficosBase("REPORTE DE VENTAS", "Total Registradas", "Instaladas", "Por Instalar");
-            zonaActual = "Norte"; 
+            zonaActual = "Norte";
         } else {
-            nombreTecnicoLogueado = email.split('@')[0].toUpperCase();
+            nombreTecnicoLogueado = email.split("@")[0].toUpperCase();
             document.getElementById("lblUsuarioActivo").innerHTML = `🛠️ ${nombreTecnicoLogueado}`;
             zonaActual = tecnicosLurin.includes(nombreTecnicoLogueado) ? "Lurin" : "Norte";
         }
 
-        setTimeout(() => { if (typeof window.renderizarCalendario === 'function') window.renderizarCalendario(); }, 800);
+        // Asignar el mapa correspondiente al iframe según el rol
+        const iframeMapa = document.getElementById("iframeCobertura");
+        if (iframeMapa) iframeMapa.src = obtenerUrlMapa();
+
+        setTimeout(() => {
+            if (typeof window.renderizarCalendario === "function") window.renderizarCalendario();
+        }, 800);
+
         actualizarFiltroTecnicos();
         cargarTrabajosEnVivo();
     } else {
-        if(unsubscribeTrabajos) unsubscribeTrabajos();
+        if (unsubscribeTrabajos) unsubscribeTrabajos();
         dbTrabajos = [];
         document.getElementById("login-view").style.display = "flex";
         document.getElementById("dashboard-view").style.display = "none";
@@ -1094,18 +1129,22 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
+// ============================================================ //
+// CONFIGURAR GRÁFICOS BASE                                    //
+// ============================================================ //
 function configurarGraficosBase(titulo, lTotal, lSuccess, lWarning) {
     const panelGraficos = document.getElementById("panelGraficosAdmin");
-    panelGraficos.classList.add('show-admin-grid');
-    if(isAdmin || isWilton) {
+    panelGraficos.classList.add("show-admin-grid");
+
+    if (isAdmin || isWilton) {
         panelGraficos.style.gridTemplateColumns = "1fr 2fr 1fr";
-        if(document.getElementById("cardGraficoTecnicos")) document.getElementById("cardGraficoTecnicos").style.display = "flex";
-        if(document.getElementById("cardCalendarioNoc")) document.getElementById("cardCalendarioNoc").style.display = "block";
+        if (document.getElementById("cardGraficoTecnicos")) document.getElementById("cardGraficoTecnicos").style.display = "flex";
+        if (document.getElementById("cardCalendarioNoc")) document.getElementById("cardCalendarioNoc").style.display = "block";
     } else {
-        // En ventas apilamos todo porque el calendario desaparece
-        panelGraficos.style.gridTemplateColumns = "1fr"; 
+        panelGraficos.style.gridTemplateColumns = "1fr";
     }
-    if(document.getElementById("tituloKpi")) {
+
+    if (document.getElementById("tituloKpi")) {
         document.getElementById("tituloKpi").innerText = titulo;
         document.getElementById("lblKpiTotal").innerText = lTotal;
         document.getElementById("lblKpiAtendidos").innerText = lSuccess;
@@ -1113,42 +1152,59 @@ function configurarGraficosBase(titulo, lTotal, lSuccess, lWarning) {
     }
 }
 
-window.iniciarSesion = () => { const email = document.getElementById("txtEmail").value.trim(); const pass = document.getElementById("txtPassword").value; signInWithEmailAndPassword(auth, email, pass).catch(() => { document.getElementById("login-error").style.display = "block"; }); };
-window.cerrarSesion = () => { signOut(auth); };
-window.cambiarZona = (z) => { zonaActual = z; actualizarFiltroTecnicos(); renderizarTabla(); };
-
+// ============================================================ //
+// FILTROS TÉCNICOS                                            //
+// ============================================================ //
 function actualizarFiltroTecnicos() {
     let lista = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
     let html = `<option value="todos">Todos</option>`;
-    lista.forEach(t => { html += `<option value="${t}">${t}</option>`; });
+    lista.forEach((t) => {
+        html += `<option value="${t}">${t}</option>`;
+    });
     document.getElementById("filtroTecnico").innerHTML = html;
 }
 
 function actualizarSelectTecnicosModal() {
     let lista = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
     let html = ``;
-    lista.forEach(t => { html += `<div class="multi-option" onclick="window.toggleCheckbox(this)"><input type="checkbox" value="${t}"><label>${t}</label></div>`; });
+    lista.forEach((t) => {
+        html += `<div class="multi-option" onclick="window.toggleCheckbox(this)"><input type="checkbox" value="${t}"><label>${t}</label></div>`;
+    });
     document.getElementById("techDropdown").innerHTML = html;
     document.getElementById("techDisplay").innerText = "Sin Asignar";
 }
 
+// ============================================================ //
+// CARGAR TRABAJOS EN VIVO                                     //
+// ============================================================ //
 function cargarTrabajosEnVivo() {
-    if(unsubscribeTrabajos) unsubscribeTrabajos();
+    if (unsubscribeTrabajos) unsubscribeTrabajos();
+
     unsubscribeTrabajos = onSnapshot(coleccionTrabajos, (snapshot) => {
         dbTrabajos = [];
-        snapshot.forEach((doc) => { dbTrabajos.push({ id: doc.id, ...doc.data() }); });
+        snapshot.forEach((doc) => {
+            dbTrabajos.push({ id: doc.id, ...doc.data() });
+        });
         actualizarOpcionesFechas();
         renderizarTabla();
-        if (typeof window.renderizarCalendario === 'function') window.renderizarCalendario();
+        if (typeof window.renderizarCalendario === "function") window.renderizarCalendario();
     });
 }
 
-// BÚSQUEDA DUAL (ID o DNI)
+// ============================================================ //
+// BÚSQUEDA DUAL (ID o DNI)                                    //
+// ============================================================ //
 window.buscarCliente = async () => {
-    const queryVal = document.getElementById('formIdCliente').value.trim();
-    const msg = document.getElementById('searchResult');
-    if(!queryVal) return msg.innerText = "Escribe un ID o DNI primero";
-    msg.innerText = "Buscando..."; msg.style.color = "var(--text-muted)";
+    const queryVal = document.getElementById("formIdCliente").value.trim();
+    const msg = document.getElementById("searchResult");
+
+    if (!queryVal) {
+        msg.innerText = "Escribe un ID o DNI primero";
+        return;
+    }
+
+    msg.innerText = "Buscando...";
+    msg.style.color = "var(--text-muted)";
 
     try {
         let docSnap = await getDocs(query(coleccionClientes, where("id_cliente", "==", queryVal)));
@@ -1156,267 +1212,297 @@ window.buscarCliente = async () => {
 
         if (!docSnap.empty) {
             const data = docSnap.docs[0].data();
-            document.getElementById('formNombre').value = data.nombre;
-            document.getElementById('formDni').value = data.dni;
-            
-            let tels = data.telefonos ? data.telefonos.split(' / ') : [];
-            document.getElementById('formTelefonoPrincipal').value = tels[0] || "";
-            document.getElementById('formTelefonoSecundario').value = tels.slice(1).join(' / ') || "";
-            
-            document.getElementById('formDireccion').value = data.zona ? `${data.zona} - ${data.direccion}` : data.direccion;
-            document.getElementById('formMapa').value = data.ubicacion;
-            document.getElementById('formInfoRedAveria').value = `Plan: ${data.plan} | TV: ${data.info_tv}`;
-            msg.innerText = "✅ Cliente Encontrado y Autocompletado"; msg.style.color = "var(--neon-green)";
+
+            document.getElementById("formNombre").value = data.nombre;
+            document.getElementById("formDni").value = data.dni;
+
+            let tels = data.telefonos ? data.telefonos.split(" / ") : [];
+            document.getElementById("formTelefonoPrincipal").value = tels[0] || "";
+            document.getElementById("formTelefonoSecundario").value = tels.slice(1).join(" / ") || "";
+
+            document.getElementById("formDireccion").value = data.zona ? `${data.zona} - ${data.direccion}` : data.direccion;
+            document.getElementById("formMapa").value = data.ubicacion;
+            document.getElementById("formInfoRedAveria").value = `Plan: ${data.plan} | TV: ${data.info_tv}`;
+
+            msg.innerText = "✅ Cliente Encontrado y Autocompletado";
+            msg.style.color = "var(--neon-green)";
         } else {
-            msg.innerText = "❌ Cliente no encontrado en la base de datos."; msg.style.color = "var(--neon-red)";
+            msg.innerText = "❌ Cliente no encontrado en la base de datos.";
+            msg.style.color = "var(--neon-red)";
         }
     } catch (err) {
-        msg.innerText = "⚠️ Error en la búsqueda."; msg.style.color = "var(--neon-yellow)";
+        msg.innerText = "⚠️ Error en la búsqueda.";
+        msg.style.color = "var(--neon-yellow)";
         console.error(err);
     }
 };
 
+// ============================================================ //
+// CALCULAR PRECIO TOTAL                                       //
+// ============================================================ //
 window.calcularPrecioTotal = () => {
-    let planVal = document.getElementById('formPlanVenta').value;
-    let precioBase = parseInt(planVal.split('|')[0]); 
-    let tipoServicio = document.getElementById('formTipoServicio').value;
+    let planVal = document.getElementById("formPlanVenta").value;
+    let precioBase = parseInt(planVal.split("|")[0]);
+    let tipoServicio = document.getElementById("formTipoServicio").value;
     let precioFinal = precioBase;
 
-    // Lógica: Si es con cable y el plan es 50, 55 o 69, sumamos 20.
-    if (tipoServicio === 'Internet + Cable' && (precioBase === 50 || precioBase === 55 || precioBase === 69)) {
+    if (tipoServicio === "Internet + Cable" && (precioBase === 50 || precioBase === 55 || precioBase === 69)) {
         precioFinal += 20;
     }
 
-    document.getElementById('formPrecioTotal').innerText = `S/ ${precioFinal}`;
+    document.getElementById("formPrecioTotal").innerText = `S/ ${precioFinal}`;
 };
 
+// ============================================================ //
+// ABRIR MODAL                                                  //
+// ============================================================ //
 window.abrirModal = () => {
-    if(isAdmin || isWilton) zonaActual = document.getElementById("selectorZona").value;
+    if (isAdmin || isWilton) zonaActual = document.getElementById("selectorZona").value;
 
-    document.getElementById('formTrabajoId').value = "";
-    document.getElementById('formEstadoActual').value = "";
-    document.getElementById('modalTitulo').innerText = "Registro de Tarea";
-    document.querySelectorAll("#modalAgregar input[type=text]:not(.multi-select-display), #modalAgregar input[type=number], #modalAgregar input[type=email], #modalAgregar textarea").forEach(i => i.value = "");
-    document.getElementById('formFecha').value = new Date().toISOString().split('T')[0];
-    document.getElementById('searchResult').innerText = "";
+    document.getElementById("formTrabajoId").value = "";
+    document.getElementById("formEstadoActual").value = "";
+    document.getElementById("modalTitulo").innerText = "Registro de Tarea";
 
-    // Reset Dropdowns
-    document.getElementById('formTipoDoc').value = "DNI";
-    document.getElementById('formSedeVenta').value = "Norte";
-    document.getElementById('formTipoServicio').value = "Internet Solo";
-    document.getElementById('formPlanVenta').value = "50|PLAN S/. 50 BASICO 2";
-    document.getElementById('formPeriodo').value = "Quincenal";
-    document.getElementById('formComprobante').value = "Boleta";
-    document.querySelectorAll('.chk-extra').forEach(c => c.checked = false);
-    window.calcularPrecioTotal(); 
+    document.querySelectorAll(
+        "#modalAgregar input[type=text]:not(.multi-select-display), #modalAgregar input[type=number], #modalAgregar input[type=email], #modalAgregar textarea"
+    ).forEach((i) => (i.value = ""));
 
+    document.getElementById("formFecha").value = new Date().toISOString().split("T")[0];
+    document.getElementById("searchResult").innerText = "";
+
+    document.getElementById("formTipoDoc").value = "DNI";
+    document.getElementById("formSedeVenta").value = "Norte";
+    document.getElementById("formTipoServicio").value = "Internet Solo";
+    document.getElementById("formPlanVenta").value = "50|PLAN S/. 50 BASICO 2";
+    document.getElementById("formPeriodo").value = "Quincenal";
+    document.getElementById("formComprobante").value = "Boleta";
+    document.querySelectorAll(".chk-extra").forEach((c) => (c.checked = false));
+
+    window.calcularPrecioTotal();
     actualizarSelectTecnicosModal();
-    window.seleccionarTipoTarea('alta');
-    
-    // VISIBILIDAD DE TÉCNICOS Y PESTAÑAS (Roles)
+    window.seleccionarTipoTarea("alta");
+
     if (isVendedor || isCarlos) {
-        document.getElementById('grupoAsignacionTecnico').style.display = 'none'; 
-        document.getElementById('tabAveria').style.display = 'none'; 
-        document.getElementById('tabBaja').style.display = 'none';
-        document.getElementById('grupoSedeVenta').style.display = 'block'; 
+        document.getElementById("grupoAsignacionTecnico").style.display = "none";
+        document.getElementById("tabAveria").style.display = "none";
+        document.getElementById("tabBaja").style.display = "none";
+        document.getElementById("grupoSedeVenta").style.display = "block";
     } else {
-        document.getElementById('grupoAsignacionTecnico').style.display = 'block';
-        document.getElementById('tabAveria').style.display = 'block';
-        document.getElementById('tabBaja').style.display = 'block';
-        document.getElementById('grupoSedeVenta').style.display = 'none'; 
+        document.getElementById("grupoAsignacionTecnico").style.display = "block";
+        document.getElementById("tabAveria").style.display = "block";
+        document.getElementById("tabBaja").style.display = "block";
+        document.getElementById("grupoSedeVenta").style.display = "none";
     }
 
-    document.getElementById('modalAgregar').style.display = 'flex';
+    document.getElementById("modalAgregar").style.display = "flex";
 };
 
+// ============================================================ //
+// EDITAR TRABAJO                                               //
+// ============================================================ //
 window.editarTrabajo = (id) => {
-    let t = dbTrabajos.find(x => x.id === id);
-    if(!t) return;
-    
-    window.abrirModal();
-    document.getElementById('modalTitulo').innerText = "✏️ Editar Tarea";
-    document.getElementById('formTrabajoId').value = t.id;
-    document.getElementById('formEstadoActual').value = t.estado || "";
-    window.seleccionarTipoTarea(t.tipoTarea || 'alta');
-    
-    if ((isWilton || isAdmin) && t.estado === 'aprobada_wilton') {
-        document.getElementById('formFecha').value = new Date().toISOString().split('T')[0];
-    } else {
-        document.getElementById('formFecha').value = t.fecha || new Date().toISOString().split('T')[0];
-    }
-    
-    document.getElementById('formHoraInicio').value = t.horaInicio || "";
-    document.getElementById('formHoraFin').value = t.horaFin || "";
-    
-    document.getElementById('formTipoDoc').value = t.tipoDoc || "DNI";
-    document.getElementById('formNombre').value = t.cliente || "";
-    document.getElementById('formDni').value = t.dni || "";
-    document.getElementById('formCorreo').value = t.correo || "";
-    
-    document.getElementById('formSedeVenta').value = t.zona === "Lurin" ? "Lurin" : "Norte";
+    let t = dbTrabajos.find((x) => x.id === id);
+    if (!t) return;
 
-    let telsArray = (t.tel || "").split(' / ');
-    document.getElementById('formTelefonoPrincipal').value = telsArray[0] || "";
-    document.getElementById('formTelefonoSecundario').value = telsArray.slice(1).join(' / ') || "";
-    
-    document.getElementById('formDireccion').value = t.dir || "";
-    document.getElementById('formReferencia').value = t.referencia || "";
-    document.getElementById('formMapa').value = t.mapa || "";
-    document.getElementById('formCajaAlta').value = t.caja || "";
-    document.getElementById('formPuertoAlta').value = t.puerto || "";
+    window.abrirModal();
+
+    document.getElementById("modalTitulo").innerText = "✏️ Editar Tarea";
+    document.getElementById("formTrabajoId").value = t.id;
+    document.getElementById("formEstadoActual").value = t.estado || "";
+    window.seleccionarTipoTarea(t.tipoTarea || "alta");
+
+    if ((isWilton || isAdmin) && t.estado === "aprobada_wilton") {
+        document.getElementById("formFecha").value = new Date().toISOString().split("T")[0];
+    } else {
+        document.getElementById("formFecha").value = t.fecha || new Date().toISOString().split("T")[0];
+    }
+
+    document.getElementById("formHoraInicio").value = t.horaInicio || "";
+    document.getElementById("formHoraFin").value = t.horaFin || "";
+
+    document.getElementById("formTipoDoc").value = t.tipoDoc || "DNI";
+    document.getElementById("formNombre").value = t.cliente || "";
+    document.getElementById("formDni").value = t.dni || "";
+    document.getElementById("formCorreo").value = t.correo || "";
+    document.getElementById("formSedeVenta").value = t.zona === "Lurin" ? "Lurin" : "Norte";
+
+    let telsArray = (t.tel || "").split(" / ");
+    document.getElementById("formTelefonoPrincipal").value = telsArray[0] || "";
+    document.getElementById("formTelefonoSecundario").value = telsArray.slice(1).join(" / ") || "";
+
+    document.getElementById("formDireccion").value = t.dir || "";
+    document.getElementById("formReferencia").value = t.referencia || "";
+    document.getElementById("formMapa").value = t.mapa || "";
+    document.getElementById("formCajaAlta").value = t.caja || "";
+    document.getElementById("formPuertoAlta").value = t.puerto || "";
 
     if (t.tecnicos && Array.isArray(t.tecnicos)) {
-        document.querySelectorAll('#techDropdown input').forEach(chk => {
+        document.querySelectorAll("#techDropdown input").forEach((chk) => {
             if (t.tecnicos.includes(chk.value)) chk.checked = true;
         });
-        let chks = document.querySelectorAll('#techDropdown input:checked');
-        document.getElementById('techDisplay').innerText = chks.length === 0 ? "Sin Asignar" : Array.from(chks).map(c=>c.value).join(', ');
+        let chks = document.querySelectorAll("#techDropdown input:checked");
+        document.getElementById("techDisplay").innerText = chks.length === 0 ? "Sin Asignar" : Array.from(chks).map((c) => c.value).join(", ");
     }
 
-    if (t.tipoTarea === 'alta') {
-        document.getElementById('formTipoServicio').value = t.tipoServicio || "Internet Solo";
-        document.getElementById('formPlanVenta').value = t.rawServ || "50|PLAN S/. 50 BASICO 2";
-        document.getElementById('formPeriodo').value = t.periodo || "Quincenal";
-        document.getElementById('formComprobante').value = t.comprobante || "Boleta";
-        
-        document.querySelectorAll('.chk-extra').forEach(c => c.checked = false);
-        if (t.rawExtras && Array.isArray(t.rawExtras)) { 
-            t.rawExtras.forEach(val => { let chk = document.querySelector(`.chk-extra[value="${val}"]`); if(chk) chk.checked = true; }); 
+    if (t.tipoTarea === "alta") {
+        document.getElementById("formTipoServicio").value = t.tipoServicio || "Internet Solo";
+        document.getElementById("formPlanVenta").value = t.rawServ || "50|PLAN S/. 50 BASICO 2";
+        document.getElementById("formPeriodo").value = t.periodo || "Quincenal";
+        document.getElementById("formComprobante").value = t.comprobante || "Boleta";
+
+        document.querySelectorAll(".chk-extra").forEach((c) => (c.checked = false));
+        if (t.rawExtras && Array.isArray(t.rawExtras)) {
+            t.rawExtras.forEach((val) => {
+                let chk = document.querySelector(`.chk-extra[value="${val}"]`);
+                if (chk) chk.checked = true;
+            });
         }
-        document.getElementById('formObsAlta').value = t.notasBase || t.notas || ""; 
-        window.calcularPrecioTotal(); 
-    } else if (t.tipoTarea === 'averia') {
-        document.getElementById('formProblemaAveria').value = t.detalle || "";
-        document.getElementById('formNotasAveria').value = t.notas || "";
-        document.getElementById('formInfoRedAveria').value = t.infoRed || "";
-    } else if (t.tipoTarea === 'baja') {
-        document.getElementById('formMotivoBaja').value = t.notas || "";
-        document.getElementById('formEquiposBaja').value = t.equipos || "";
+
+        document.getElementById("formObsAlta").value = t.notasBase || t.notas || "";
+        window.calcularPrecioTotal();
+    } else if (t.tipoTarea === "averia") {
+        document.getElementById("formProblemaAveria").value = t.detalle || "";
+        document.getElementById("formNotasAveria").value = t.notas || "";
+        document.getElementById("formInfoRedAveria").value = t.infoRed || "";
+    } else if (t.tipoTarea === "baja") {
+        document.getElementById("formMotivoBaja").value = t.notas || "";
+        document.getElementById("formEquiposBaja").value = t.equipos || "";
     }
 };
 
+// ============================================================ //
+// GUARDAR TRABAJO                                              //
+// ============================================================ //
 window.guardarTrabajo = async () => {
-    let techSelec = Array.from(document.querySelectorAll('#techDropdown input:checked')).map(c => c.value);
-    if(techSelec.length === 0) techSelec = ["Sin Asignar"];
+    let techSelec = Array.from(document.querySelectorAll("#techDropdown input:checked")).map((c) => c.value);
+    if (techSelec.length === 0) techSelec = ["Sin Asignar"];
 
-    let telPrin = document.getElementById('formTelefonoPrincipal').value.trim();
-    let telSec = document.getElementById('formTelefonoSecundario').value.trim();
-    let telFinal = telPrin; if(telSec) telFinal += " / " + telSec;
+    let telPrin = document.getElementById("formTelefonoPrincipal").value.trim();
+    let telSec = document.getElementById("formTelefonoSecundario").value.trim();
+    let telFinal = telPrin;
+    if (telSec) telFinal += " / " + telSec;
 
-    let tipo = document.getElementById('formTipoTareaValue').value;
-    
-    // Logica de Zona: Si es vendedor guarda lo del selector de Sede, si no, usa zonaActual
-    let zonaAGuardar = (isVendedor || isCarlos) ? (document.getElementById('formSedeVenta').value === "Los Olivos" ? "Norte" : document.getElementById('formSedeVenta').value) : zonaActual;
+    let tipo = document.getElementById("formTipoTareaValue").value;
+
+    let zonaAGuardar = isVendedor || isCarlos ?
+        (document.getElementById("formSedeVenta").value === "Los Olivos" ? "Norte" : document.getElementById("formSedeVenta").value) :
+        zonaActual;
 
     let data = {
         tipoTarea: tipo,
-        fecha: document.getElementById('formFecha').value,
-        horaInicio: document.getElementById('formHoraInicio').value,
-        horaFin: document.getElementById('formHoraFin').value,
+        fecha: document.getElementById("formFecha").value,
+        horaInicio: document.getElementById("formHoraInicio").value,
+        horaFin: document.getElementById("formHoraFin").value,
         tecnicos: techSelec,
-        tipoDoc: document.getElementById('formTipoDoc').value,
-        cliente: document.getElementById('formNombre').value || "Desconocido",
-        dni: document.getElementById('formDni').value,
-        correo: document.getElementById('formCorreo').value,
+        tipoDoc: document.getElementById("formTipoDoc").value,
+        cliente: document.getElementById("formNombre").value || "Desconocido",
+        dni: document.getElementById("formDni").value,
+        correo: document.getElementById("formCorreo").value,
         tel: telFinal,
-        dir: document.getElementById('formDireccion').value,
-        referencia: document.getElementById('formReferencia').value,
-        mapa: document.getElementById('formMapa').value,
+        dir: document.getElementById("formDireccion").value,
+        referencia: document.getElementById("formReferencia").value,
+        mapa: document.getElementById("formMapa").value,
         zona: zonaAGuardar,
-        caja: document.getElementById('formCajaAlta').value,
-        puerto: document.getElementById('formPuertoAlta').value
+        caja: document.getElementById("formCajaAlta").value,
+        puerto: document.getElementById("formPuertoAlta").value,
     };
 
-    if (tipo === 'alta') {
-        const planCompleto = document.getElementById('formPlanVenta').value; 
-        const parts = planCompleto.split('|');
+    if (tipo === "alta") {
+        const planCompleto = document.getElementById("formPlanVenta").value;
+        const parts = planCompleto.split("|");
         const precioVal = parts[0];
         const nombrePlan = parts[1];
-        
-        const tipoServicio = document.getElementById('formTipoServicio').value;
+        const tipoServicio = document.getElementById("formTipoServicio").value;
+        const precio = document.getElementById("formPrecioTotal").innerText;
+        const extrasArray = Array.from(document.querySelectorAll(".chk-extra:checked")).map((c) => c.value);
+        const extrasStr = extrasArray.join(", ");
 
-        const precio = document.getElementById('formPrecioTotal').innerText;
-        const extrasArray = Array.from(document.querySelectorAll('.chk-extra:checked')).map(c => c.value);
-        const extrasStr = extrasArray.join(', ');
-
-        data.rawServ = planCompleto; 
-        data.rawExtras = extrasArray; 
+        data.rawServ = planCompleto;
+        data.rawExtras = extrasArray;
         data.precio = precio;
-        
-        data.tipoServicio = tipoServicio; 
-        data.periodo = document.getElementById('formPeriodo').value;
-        data.comprobante = document.getElementById('formComprobante').value;
+        data.tipoServicio = tipoServicio;
+        data.periodo = document.getElementById("formPeriodo").value;
+        data.comprobante = document.getElementById("formComprobante").value;
 
         let extraDetalle = "";
-        if (tipoServicio === 'Internet + Cable') extraDetalle = " (+ CABLE)";
-        else if (tipoServicio !== 'Internet Solo') extraDetalle = ` (${tipoServicio})`;
+        if (tipoServicio === "Internet + Cable") extraDetalle = " (+ CABLE)";
+        else if (tipoServicio !== "Internet Solo") extraDetalle = ` (${tipoServicio})`;
 
-        data.detalle = nombrePlan + extraDetalle; 
-        
-        let obsBase = document.getElementById('formObsAlta').value;
-        data.notasBase = obsBase; 
-        let extraTxt = extrasStr ? `📦 Equipos: ${extrasStr} | ` : '';
+        data.detalle = nombrePlan + extraDetalle;
+
+        let obsBase = document.getElementById("formObsAlta").value;
+        data.notasBase = obsBase;
+        let extraTxt = extrasStr ? `📦 Equipos: ${extrasStr} | ` : "";
         data.notas = `💰 Cobrar: ${precio} | ${extraTxt}${obsBase}`;
-    } else if (tipo === 'averia') {
-        data.idCliente = document.getElementById('formIdCliente').value;
-        data.detalle = document.getElementById('formProblemaAveria').value;
-        data.notas = document.getElementById('formNotasAveria').value;
-        data.infoRed = document.getElementById('formInfoRedAveria').value;
-    } else if (tipo === 'baja') {
-        data.idCliente = document.getElementById('formIdCliente').value;
+    } else if (tipo === "averia") {
+        data.idCliente = document.getElementById("formIdCliente").value;
+        data.detalle = document.getElementById("formProblemaAveria").value;
+        data.notas = document.getElementById("formNotasAveria").value;
+        data.infoRed = document.getElementById("formInfoRedAveria").value;
+    } else if (tipo === "baja") {
+        data.idCliente = document.getElementById("formIdCliente").value;
         data.detalle = "Retiro de Equipos";
-        data.notas = document.getElementById('formMotivoBaja').value;
-        data.equipos = document.getElementById('formEquiposBaja').value;
+        data.notas = document.getElementById("formMotivoBaja").value;
+        data.equipos = document.getElementById("formEquiposBaja").value;
     }
 
-    let idTrabajo = document.getElementById('formTrabajoId').value;
-    let estadoPrevio = document.getElementById('formEstadoActual').value;
+    let idTrabajo = document.getElementById("formTrabajoId").value;
+    let estadoPrevio = document.getElementById("formEstadoActual").value;
+
+    if (!idTrabajo) data.vendedor = nombreTecnicoLogueado;
 
     if (!idTrabajo) {
-        data.vendedor = nombreTecnicoLogueado; 
-    }
-
-    if(!idTrabajo) {
         if (isVendedor || isCarlos) {
             data.estado = "por_aprobar_carlos";
-            data.tecnicos = ["Sin Asignar"]; 
+            data.tecnicos = ["Sin Asignar"];
         } else {
             data.estado = "pendiente";
         }
     } else {
-        if ((isWilton || isAdmin) && estadoPrevio === 'aprobada_wilton' && techSelec[0] !== "Sin Asignar") {
+        if ((isWilton || isAdmin) && estadoPrevio === "aprobada_wilton" && techSelec[0] !== "Sin Asignar") {
             data.estado = "pendiente";
         }
     }
 
     try {
-        if (idTrabajo) await updateDoc(doc(coleccionTrabajos, idTrabajo), data);
-        else await addDoc(coleccionTrabajos, data);
-        window.cerrarModal(); mostrarToast("Tarea guardada exitosamente");
-    } catch (e) { mostrarToast("Error al guardar"); console.error(e); }
+        if (idTrabajo) {
+            await updateDoc(doc(coleccionTrabajos, idTrabajo), data);
+        } else {
+            await addDoc(coleccionTrabajos, data);
+        }
+        window.cerrarModal();
+        mostrarToast("Tarea guardada exitosamente");
+    } catch (e) {
+        mostrarToast("Error al guardar");
+        console.error(e);
+    }
 };
 
+// ============================================================ //
+// MODAL COBERTURA / MAPA                                       //
+// ============================================================ //
 window.abrirModalCoberturaGeneral = () => {
     document.getElementById("infoClienteCobertura").style.display = "none";
     document.getElementById("botonesCoberturaValidacion").style.display = "none";
     document.getElementById("cajaRechazo").style.display = "none";
-    document.getElementById("mapCenterPin").style.display = "none"; // Ocultamos el pin por defecto
+    document.getElementById("mapCenterPin").style.display = "none";
     document.getElementById("modalCobertura").style.display = "flex";
 };
 
 window.abrirValidacionCobertura = (id) => {
-    let t = dbTrabajos.find(x => x.id === id);
-    if(!t) return;
-    
+    let t = dbTrabajos.find((x) => x.id === id);
+    if (!t) return;
+
     ventaAValidarId = id;
-    
+
     document.getElementById("cobNombreCliente").innerText = t.cliente;
-    document.getElementById("cobDirCliente").innerText = t.dir + (t.referencia ? ` (${t.referencia})` : '');
-    
+    document.getElementById("cobDirCliente").innerText = t.dir + (t.referencia ? ` (${t.referencia})` : "");
+
     const linkBtn = document.getElementById("cobLinkMapa");
-    if(t.mapa) {
+    if (t.mapa) {
         linkBtn.href = t.mapa;
         linkBtn.style.display = "inline-block";
+        linkBtn.innerText = "📍 Abrir en Google Maps Externo";
     } else {
         linkBtn.style.display = "none";
     }
@@ -1425,41 +1511,63 @@ window.abrirValidacionCobertura = (id) => {
     document.getElementById("botonesCoberturaValidacion").style.display = "flex";
     document.getElementById("cajaRechazo").style.display = "none";
     document.getElementById("modalCobertura").style.display = "flex";
+
+    // Auto-centrar mapa para Carlos
+    document.getElementById("txtBuscarMapa").value = t.mapa || "";
+    if (t.mapa) window.buscarEnMapa();
 };
 
-window.iniciarRechazo = () => {
-    document.getElementById("botonesCoberturaValidacion").style.display = "none";
-    document.getElementById("cajaRechazo").style.display = "block";
-    document.getElementById("txtMotivoRechazo").value = "";
-    document.getElementById("txtMotivoRechazo").focus();
-};
+window.verMapaCliente = async (id) => {
+    let t = dbTrabajos.find(x => x.id === id);
+    if (!t) return;
+    
+    document.getElementById("cobNombreCliente").innerText = t.cliente;
+    document.getElementById("cobDirCliente").innerText = t.dir + (t.referencia ? ` (${t.referencia})` : '');
+    
+    const linkBtn = document.getElementById("cobLinkMapa");
+    if (t.mapa) {
+        linkBtn.href = t.mapa;
+        linkBtn.style.display = "inline-block";
+        linkBtn.innerText = "📍 Abrir en Google Maps Externo";
+    } else {
+        linkBtn.style.display = "none";
+    }
 
-window.cancelarRechazo = () => {
-    if (ventaAValidarId) {
-        document.getElementById("cajaRechazo").style.display = "none";
-        document.getElementById("botonesCoberturaValidacion").style.display = "flex";
+    // Mostrar panel pero ocultar botones de aprobación (Solo visor)
+    document.getElementById("infoClienteCobertura").style.display = "flex";
+    document.getElementById("botonesCoberturaValidacion").style.display = "none"; 
+    document.getElementById("cajaRechazo").style.display = "none";
+    document.getElementById("modalCobertura").style.display = "flex";
+
+    // Auto-centrar en la ubicación
+    document.getElementById("txtBuscarMapa").value = t.mapa || "";
+    if (t.mapa) {
+        await window.buscarEnMapa();
     }
 };
 
+// ============================================================ //
+// BUSCAR EN MAPA                                               //
+// ============================================================ //
 window.buscarEnMapa = async () => {
     const input = document.getElementById("txtBuscarMapa").value.trim();
+
     if (!input) {
         mostrarToast("⚠️ Ingresa coordenadas, dirección o un link largo.");
         return;
     }
 
     const iframe = document.getElementById("iframeCobertura");
-    const baseUrl = "https://www.google.com/maps/d/embed?mid=1EKIxuTIGSM9GJ8YTbP_HCxhh-l5DOFw&ehbc=2E312F";
-    
+    const baseUrl = obtenerUrlMapa();
+
     mostrarToast("🔍 Buscando ubicación...");
 
     try {
         let lat, lon;
 
-        // 1. Regex para Coordenadas directas (Ej: -11.987, -77.123)
+        // Coordenadas directas
         const coordMatch = input.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
-        
-        // 2. Regex para Link largo de Maps (Ej: ...@ -11.987,-77.123,15z...)
+        // Link de Maps
         const linkMatch = input.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
 
         if (coordMatch) {
@@ -1472,7 +1580,7 @@ window.buscarEnMapa = async () => {
             mostrarToast("❌ Los links cortos de Google bloquean la extracción. Pega la dirección en texto o coordenadas.");
             return;
         } else {
-            // 3. Geocodificación por texto de dirección (API OpenStreetMap - Gratuita)
+            // Geocodificación por texto
             const query = encodeURIComponent(input + ", Lima, Peru");
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
             const data = await response.json();
@@ -1486,22 +1594,23 @@ window.buscarEnMapa = async () => {
             }
         }
 
-        // Aplicar coordenadas al iframe y forzar zoom
         iframe.src = `${baseUrl}&ll=${lat},${lon}&z=17`;
-        document.getElementById("mapCenterPin").style.display = "block"; // Mostramos el Pin Mágico
+        document.getElementById("mapCenterPin").style.display = "block";
         mostrarToast("✅ Mapa centrado en la ubicación indicada.");
-
     } catch (error) {
         console.error(error);
         mostrarToast("⚠️ Error de red al buscar la ubicación.");
     }
 };
 
+// ============================================================ //
+// CENTRAR EN MI UBICACIÓN                                     //
+// ============================================================ //
 window.centrarEnMiUbicacion = () => {
     const btnIcon = document.getElementById("iconoUbicacion");
     const iframe = document.getElementById("iframeCobertura");
-    const baseUrl = "https://www.google.com/maps/d/embed?mid=1EKIxuTIGSM9GJ8YTbP_HCxhh-l5DOFw&ehbc=2E312F";
-    
+    const baseUrl = obtenerUrlMapa();
+
     if (!navigator.geolocation) {
         mostrarToast("Tu navegador no soporta geolocalización 😔");
         return;
@@ -1514,80 +1623,116 @@ window.centrarEnMiUbicacion = () => {
         (position) => {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
-            // Recargamos el iframe añadiendo latitud, longitud (ll) y zoom (z)
             iframe.src = `${baseUrl}&ll=${lat},${lon}&z=17`;
             btnIcon.innerText = "📍";
-            document.getElementById("mapCenterPin").style.display = "block"; // Mostramos el Pin Mágico
+            document.getElementById("mapCenterPin").style.display = "block";
             mostrarToast("Mapa centrado en tu ubicación ✅");
         },
         (error) => {
             btnIcon.innerText = "📍";
             mostrarToast("Error al obtener ubicación. Activa tu GPS.");
             console.error(error);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
 };
 
+// ============================================================ //
+// APROBACIÓN / RECHAZO DE VENTA                               //
+// ============================================================ //
 window.confirmarAprobacionVenta = async () => {
-    if(!ventaAValidarId) return;
+    if (!ventaAValidarId) return;
+
     try {
         await updateDoc(doc(coleccionTrabajos, ventaAValidarId), { estado: "aprobada_wilton" });
         mostrarToast("✅ Cobertura Aprobada. Enviada a Soporte.");
         window.cerrarModalCobertura();
-    } catch (e) { mostrarToast("Error al aprobar"); }
+    } catch (e) {
+        mostrarToast("Error al aprobar");
+    }
 };
 
 window.confirmarRechazoVenta = async () => {
-    if(!ventaAValidarId) return;
+    if (!ventaAValidarId) return;
+
     const motivo = document.getElementById("txtMotivoRechazo").value.trim();
-    if(!motivo) {
+
+    if (!motivo) {
         mostrarToast("❌ Debes ingresar el motivo de rechazo.");
         return;
     }
+
     try {
-        await updateDoc(doc(coleccionTrabajos, ventaAValidarId), { 
+        await updateDoc(doc(coleccionTrabajos, ventaAValidarId), {
             estado: "rechazada",
-            notas: `[RECHAZADA] Motivo: ${motivo}` 
+            notas: `[RECHAZADA] Motivo: ${motivo}`,
         });
         mostrarToast("🚫 Venta Rechazada por falta de cobertura.");
         window.cerrarModalCobertura();
-    } catch (e) { mostrarToast("Error al rechazar"); }
+    } catch (e) {
+        mostrarToast("Error al rechazar");
+    }
+};
+
+window.iniciarRechazo = () => {
+    document.getElementById("botonesCoberturaValidacion").style.display = "none";
+    document.getElementById("cajaRechazo").style.display = "block";
+    document.getElementById("txtMotivoRechazo").value = "";
+    document.getElementById("txtMotivoRechazo").focus();
+};
+
+window.cancelarRechazo = () => {
+    if (ventaAValidarId || document.getElementById("infoClienteCobertura").style.display === "flex") {
+        document.getElementById("cajaRechazo").style.display = "none";
+        // Solo restauramos botones de validación si no estamos en "Modo Visor"
+        if(ventaAValidarId) {
+            document.getElementById("botonesCoberturaValidacion").style.display = "flex";
+        }
+    }
 };
 
 window.aprobarDirecto = async (id) => {
     try {
         await updateDoc(doc(coleccionTrabajos, id), { estado: "aprobada_wilton" });
         mostrarToast("✅ Venta Aprobada y enviada a Soporte.");
-    } catch (e) { mostrarToast("Error al aprobar"); console.error(e); }
+    } catch (e) {
+        mostrarToast("Error al aprobar");
+        console.error(e);
+    }
 };
 
 window.rechazarDirecto = (id) => {
     idVentaARechazarRapido = id;
-    document.getElementById('txtMotivoRechazoRapido').value = "";
-    document.getElementById('modalRechazoRapido').style.display = 'flex';
-    document.getElementById('txtMotivoRechazoRapido').focus();
+    document.getElementById("txtMotivoRechazoRapido").value = "";
+    document.getElementById("modalRechazoRapido").style.display = "flex";
+    document.getElementById("txtMotivoRechazoRapido").focus();
 };
 
 window.confirmarRechazoRapido = async () => {
-    if(!idVentaARechazarRapido) return;
-    let motivo = document.getElementById('txtMotivoRechazoRapido').value.trim();
-    
-    if(!motivo) {
+    if (!idVentaARechazarRapido) return;
+
+    let motivo = document.getElementById("txtMotivoRechazoRapido").value.trim();
+
+    if (!motivo) {
         mostrarToast("❌ Debes ingresar un motivo de rechazo.");
         return;
     }
-    
+
     try {
         await updateDoc(doc(coleccionTrabajos, idVentaARechazarRapido), {
             estado: "rechazada",
-            notas: `[RECHAZADA] Motivo: ${motivo}`
+            notas: `[RECHAZADA] Motivo: ${motivo}`,
         });
         mostrarToast("🚫 Venta Rechazada.");
         window.cerrarModalRechazoRapido();
-    } catch(e) { mostrarToast("Error al rechazar"); console.error(e); }
+    } catch (e) {
+        mostrarToast("Error al rechazar");
+        console.error(e);
+    }
 };
 
+// ============================================================ //
+// RENDERIZAR TABLA                                             //
+// ============================================================ //
 window.renderizarTabla = () => {
     const tbody = document.getElementById("tablaTrabajos");
     const filtroFecha = document.getElementById("filtroFecha").value;
@@ -1597,128 +1742,151 @@ window.renderizarTabla = () => {
     tbody.innerHTML = "";
     let pGrafico = [];
 
-    // Vendedores y Carlos ven de todas las zonas (o la que guardaron), Wilton/Admin filtran por Selector
     let listData = [...dbTrabajos];
+
     if (isAdmin || isWilton) {
-        listData = listData.filter(t => (t.zona || "Norte") === zonaActual);
+        listData = listData.filter((t) => (t.zona || "Norte") === zonaActual);
     }
 
-    let tOrdenado = listData.sort((a,b) => {
-        let res = (b.fecha||"").localeCompare(a.fecha||"");
+    let tOrdenado = listData.sort((a, b) => {
+        let res = (b.fecha || "").localeCompare(a.fecha || "");
         if (res === 0) return (a.horaInicio || "23:59").localeCompare(b.horaInicio || "23:59");
         return res;
     });
 
-    tOrdenado.forEach(t => {
+    tOrdenado.forEach((t) => {
         try {
             let asig = t.tecnicos || ["Sin Asignar"];
-            if (typeof asig === 'string') asig = [asig];
+            if (typeof asig === "string") asig = [asig];
+
             let estActual = String(t.estado || "pendiente").toLowerCase();
 
-            // RESTRICCIÓN: Ventas y Carlos SOLO ven Instalaciones (Altas)
-            if ((isVendedor || isCarlos) && t.tipoTarea !== 'alta') return;
-            
-            // NUEVO FILTRO: Si es vendedor, SOLO ve sus propias ventas registradas
+            if ((isVendedor || isCarlos) && t.tipoTarea !== "alta") return;
             if (isVendedor && t.vendedor !== nombreTecnicoLogueado) return;
 
-            // Filtros de visibilidad por rol
-            let esAprobacion = (estActual === 'por_aprobar_carlos' || estActual === 'aprobada_wilton' || estActual === 'rechazada');
+            let esAprobacion = estActual === "por_aprobar_carlos" || estActual === "aprobada_wilton" || estActual === "rechazada";
             if (!isAdmin && !isWilton && !isCarlos && !isVendedor && esAprobacion) return;
 
-            // Filtros del panel
             if (!isAdmin && !isWilton && !isCarlos && !isVendedor && !asig.includes(nombreTecnicoLogueado) && !asig.includes("Todos")) return;
+
             if ((isAdmin || isWilton) && document.getElementById("filtroTecnico").value !== "todos" && !asig.includes(document.getElementById("filtroTecnico").value)) return;
+
             if (filtroFecha !== "todas" && t.fecha !== filtroFecha) return;
             if (filtroEstado !== "todos" && estActual !== filtroEstado) return;
+
             if (txtBuscar && !`${t.cliente} ${t.dni} ${t.dir} ${t.detalle}`.toLowerCase().includes(txtBuscar)) return;
 
             pGrafico.push(t);
 
             // Formato Visual de Estados
-            let textEst = estActual.toUpperCase().replace(/_/g, ' ');
-            let iconEst = "⏳"; let colorEstadoTxt = "#f59e0b"; let clasePunto = "ep-pend";
+            let textEst = estActual.toUpperCase().replace(/_/g, " ");
+            let iconEst = "⏳";
+            let colorEstadoTxt = "#f59e0b";
+            let clasePunto = "ep-pend";
 
-            if (estActual === "atendido") { textEst="ATENDIDO"; iconEst="✅"; colorEstadoTxt="#10b981"; clasePunto="ep-aten"; }
-            else if (estActual === "no_atendido") { textEst="NO ATENDIDO"; iconEst="❌"; colorEstadoTxt="#ef4444"; clasePunto="ep-noat"; }
-            else if (estActual === "en_camino") { textEst="EN CAMINO"; iconEst="🚶"; colorEstadoTxt="#3b82f6"; clasePunto="ep-cami"; }
-            else if (estActual === "por_aprobar_carlos") { textEst="POR APROBAR"; iconEst="🟡"; colorEstadoTxt="var(--neon-purple)"; clasePunto="ep-aprobar"; }
-            else if (estActual === "aprobada_wilton") { textEst="VENTA APROBADA"; iconEst="🔵"; colorEstadoTxt="var(--neon-cyan)"; clasePunto="ep-aprobada"; }
-            else if (estActual === "rechazada") { textEst="RECHAZADA"; iconEst="🚫"; colorEstadoTxt="var(--neon-red)"; clasePunto="ep-rechazada"; }
+            if (estActual === "atendido") { textEst = "ATENDIDO";
+                iconEst = "✅";
+                colorEstadoTxt = "#10b981";
+                clasePunto = "ep-aten"; } else if (estActual === "no_atendido") { textEst = "NO ATENDIDO";
+                iconEst = "❌";
+                colorEstadoTxt = "#ef4444";
+                clasePunto = "ep-noat"; } else if (estActual === "en_camino") { textEst = "EN CAMINO";
+                iconEst = "🚶";
+                colorEstadoTxt = "#3b82f6";
+                clasePunto = "ep-cami"; } else if (estActual === "por_aprobar_carlos") { textEst = "POR APROBAR";
+                iconEst = "🟡";
+                colorEstadoTxt = "var(--neon-purple)";
+                clasePunto = "ep-aprobar"; } else if (estActual === "aprobada_wilton") { textEst = "VENTA APROBADA";
+                iconEst = "🔵";
+                colorEstadoTxt = "var(--neon-cyan)";
+                clasePunto = "ep-aprobada"; } else if (estActual === "rechazada") { textEst = "RECHAZADA";
+                iconEst = "🚫";
+                colorEstadoTxt = "var(--neon-red)";
+                clasePunto = "ep-rechazada"; }
 
-            let colorBadge = t.tipoTarea === 'alta' ? 'alta' : (t.tipoTarea === 'averia' ? 'averia' : 'baja');
-            let nombreTipo = t.tipoTarea === 'alta' ? '🚀 ALTA' : (t.tipoTarea === 'averia' ? '🛠️ AVERÍA' : '🛑 BAJA');
+            let colorBadge = t.tipoTarea === "alta" ? "alta" : t.tipoTarea === "averia" ? "averia" : "baja";
+            let nombreTipo = t.tipoTarea === "alta" ? "🚀 ALTA" : t.tipoTarea === "averia" ? "🛠️ AVERÍA" : "🛑 BAJA";
 
-            let docLabel = t.tipoDoc || 'DNI';
+            let docLabel = t.tipoDoc || "DNI";
+
             let infoCli = `<span class="cliente-nombre">${t.cliente}</span>
-                           <span class="cliente-info"><span class="lbl-info">${docLabel}:</span> ${t.dni||'-'}</span>
-                           <span class="cliente-info"><span class="lbl-info">TEL:</span> ${t.tel||'-'}</span>
-                           ${t.correo ? `<span class="cliente-info"><span class="lbl-info">EMAIL:</span> ${t.correo}</span>` : ''}
-                           ${t.vendedor ? `<span class="cliente-info" style="margin-top:8px;"><span class="lbl-info" style="color:var(--neon-pink)">VENDEDOR:</span> <b style="color:var(--text-main); background:var(--neon-pink); padding:2px 6px; border-radius:4px; font-size:11px;">${t.vendedor}</b></span>` : ''}`;
+                       <span class="cliente-info"><span class="lbl-info">${docLabel}:</span> ${t.dni || "-"}</span>
+                       <span class="cliente-info"><span class="lbl-info">TEL:</span> ${t.tel || "-"}</span>
+                       ${t.correo ? `<span class="cliente-info"><span class="lbl-info">EMAIL:</span> ${t.correo}</span>` : ""}
+                       ${t.vendedor ? `<span class="cliente-info" style="margin-top:8px;"><span class="lbl-info" style="color:var(--neon-pink)">VENDEDOR:</span> <b style="color:var(--text-main); background:var(--neon-pink); padding:2px 6px; border-radius:4px; font-size:11px;">${t.vendedor}</b></span>` : ""}`;
 
             let extrasHtml = "";
-            if(t.tipoTarea === 'alta') {
-                if(t.caja || t.puerto) extrasHtml += `<br><span class="cliente-info" style="color:var(--neon-purple)"><span class="lbl-info">CAJA:</span> ${t.caja||'--'} | <span class="lbl-info">P:</span> ${t.puerto||'--'}</span>`;
-                if(t.periodo || t.comprobante) extrasHtml += `<span class="cliente-info" style="color:var(--text-muted)"><span class="lbl-info">PAGO:</span> ${t.periodo||''} | ${t.comprobante||''}</span>`;
+            if (t.caja || t.puerto) {
+                extrasHtml += `<br><span class="cliente-info" style="color:var(--neon-purple)"><span class="lbl-info">CAJA NAP:</span> ${t.caja || "--"} | <span class="lbl-info">PUERTO:</span> ${t.puerto || "--"}</span>`;
             }
-            if(t.tipoTarea === 'averia' && t.infoRed) extrasHtml = `<br><span class="cliente-info" style="color:var(--neon-cyan)"><span class="lbl-info">RED:</span> ${t.infoRed}</span>`;
-            if(t.tipoTarea === 'baja' && t.equipos) extrasHtml = `<br><span class="cliente-info" style="color:var(--neon-red)"><span class="lbl-info">RECOGER:</span> ${t.equipos}</span>`;
+
+            if (t.tipoTarea === "alta") {
+                if (t.periodo || t.comprobante) extrasHtml += `<span class="cliente-info" style="color:var(--text-muted)"><span class="lbl-info">PAGO:</span> ${t.periodo || ""} | ${t.comprobante || ""}</span>`;
+            } else if (t.tipoTarea === "averia" && t.infoRed) {
+                extrasHtml += `<br><span class="cliente-info" style="color:var(--neon-cyan)"><span class="lbl-info">RED:</span> ${t.infoRed}</span>`;
+            } else if (t.tipoTarea === "baja" && t.equipos) {
+                extrasHtml += `<br><span class="cliente-info" style="color:var(--neon-red)"><span class="lbl-info">RECOGER:</span> ${t.equipos}</span>`;
+            }
 
             let slaHtml = "";
             if (t.tsInicio) {
-                let hrInicio = new Date(t.tsInicio).toLocaleTimeString('es-PE', {hour: '2-digit', minute:'2-digit'});
-                let hrFin = t.tsFin ? new Date(t.tsFin).toLocaleTimeString('es-PE', {hour: '2-digit', minute:'2-digit'}) : '--:--';
-                let duracion = (t.tsInicio && t.tsFin) ? `(${Math.floor(Math.floor((t.tsFin - t.tsInicio) / 60000) / 60)}h ${Math.floor((t.tsFin - t.tsInicio) / 60000) % 60}m)` : "(En curso...)";
-                slaHtml = `<div style="background: rgba(0,229,255,0.05); border: 1px dashed var(--neon-cyan); padding: 8px; border-radius: 6px; margin-top: 8px;"><span class="cliente-info" style="margin-bottom:0; color:var(--neon-cyan)"><span class="lbl-info">⏱️ SLA:</span> Inicio: ${hrInicio} | Fin: ${hrFin} <b style="color:var(--text-main)">${duracion}</b></span>${t.notaCierre ? `<span class="cliente-info" style="margin-top:4px; margin-bottom:0; color:var(--neon-green)"><span class="lbl-info">📝 NOTA TEC:</span> ${t.notaCierre}</span>` : ''}</div>`;
+                let hrInicio = new Date(t.tsInicio).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+                let hrFin = t.tsFin ? new Date(t.tsFin).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" }) : "--:--";
+                let duracion = t.tsInicio && t.tsFin ? `(${Math.floor(Math.floor((t.tsFin - t.tsInicio) / 60000) / 60)}h ${Math.floor((t.tsFin - t.tsInicio) / 60000) % 60}m)` : "(En curso...)";
+
+                slaHtml = `<div style="background: rgba(0,229,255,0.05); border: 1px dashed var(--neon-cyan); padding: 8px; border-radius: 6px; margin-top: 8px;">
+                    <span class="cliente-info" style="margin-bottom:0; color:var(--neon-cyan)"><span class="lbl-info">⏱️ SLA:</span> Inicio: ${hrInicio} | Fin: ${hrFin} <b style="color:var(--text-main)">${duracion}</b></span>
+                    ${t.notaCierre ? `<span class="cliente-info" style="margin-top:4px; margin-bottom:0; color:var(--neon-green)"><span class="lbl-info">📝 NOTA TEC:</span> ${t.notaCierre}</span>` : ""}
+                </div>`;
             }
 
-            let refHtml = t.referencia ? `<span class="cliente-info"><span class="lbl-info" style="color:var(--brand-orange)">REF:</span> ${t.referencia}</span>` : '';
-            
-            // Si está rechazada, resaltar la nota
-            let notaEstilo = estActual === 'rechazada' ? 'color: var(--neon-red); font-weight: bold; background: rgba(239, 68, 68, 0.1); padding: 4px; border-radius: 4px;' : 'color: var(--btn-pendiente);';
+            let refHtml = t.referencia ? `<span class="cliente-info"><span class="lbl-info" style="color:var(--brand-orange)">REF:</span> ${t.referencia}</span>` : "";
+
+            let notaEstilo = estActual === "rechazada" ? "color: var(--neon-red); font-weight: bold; background: rgba(239, 68, 68, 0.1); padding: 4px; border-radius: 4px;" : "color: var(--btn-pendiente);";
 
             let dirH = `<span class="badge-tipo ${colorBadge}">${nombreTipo} - ${t.detalle}</span>
-                        <span class="cliente-info" style="margin-top:6px;"><span class="lbl-info">DIR:</span> ${t.dir}</span>
-                        ${refHtml}
-                        <span class="cliente-info"><span class="lbl-info">FECHA:</span> ${formatoFecha(t.fecha)} | ${t.horaInicio||'--:--'} a ${t.horaFin||'--:--'}</span>
-                        <span class="cliente-info"><span class="lbl-info">TEC:</span> <span style="color:var(--btn-en-camino); font-weight:800">${asig.join(", ")}</span></span>
-                        ${extrasHtml}
-                        ${t.notas ? `<span class="cliente-info" style="${notaEstilo} margin-top:5px;"><span class="lbl-info">NOTA:</span> ${t.notas}</span>` : ''}
-                        ${slaHtml}`;
+                    <span class="cliente-info" style="margin-top:6px;"><span class="lbl-info">DIR:</span> ${t.dir}</span>
+                    ${refHtml}
+                    <span class="cliente-info"><span class="lbl-info">FECHA:</span> ${formatoFecha(t.fecha)} | ${t.horaInicio || "--:--"} a ${t.horaFin || "--:--"}</span>
+                    <span class="cliente-info"><span class="lbl-info">TEC:</span> <span style="color:var(--btn-en-camino); font-weight:800">${asig.join(", ")}</span></span>
+                    ${extrasHtml}
+                    ${t.notas ? `<span class="cliente-info" style="${notaEstilo} margin-top:5px;"><span class="lbl-info">NOTA:</span> ${t.notas}</span>` : ""}
+                    ${slaHtml}`;
 
-            let numTelSeguro = String(t.tel || '');
-            let numLimpio = numTelSeguro.replace(/\D/g, '');
-            let linkWsp = numLimpio.length > 5 ? `https://wa.me/51${numLimpio}` : '#';
+            let numTelSeguro = String(t.tel || "");
+            let numLimpio = numTelSeguro.replace(/\D/g, "");
+            let linkWsp = numLimpio.length > 5 ? `https://wa.me/51${numLimpio}` : "#";
             let txtCop = `*FECHA:* ${formatoFecha(t.fecha)}\n*CLIENTE:* ${t.cliente}\n*DIR:* ${t.dir}\n*TAREA:* ${t.detalle}`;
 
             let botonesHtml = ``;
 
-            if (isCarlos && estActual === 'por_aprobar_carlos') {
+            if (isCarlos && estActual === "por_aprobar_carlos") {
                 botonesHtml += `<div class="btn-grid-row">
-                    <button type="button" class="btn-action-ui" style="background: var(--neon-cyan); color: #000; flex: 1;" onclick="aprobarDirecto('${t.id}')">👍 Aprobar</button>
-                    <button type="button" class="btn-action-ui" style="background: transparent; border: 1px solid var(--neon-red); color: var(--neon-red); flex: 1;" onclick="rechazarDirecto('${t.id}')">❌ Rechazar</button>
-                </div>`;
+                            <button type="button" class="btn-action-ui" style="background: var(--neon-cyan); color: #000; flex: 1;" onclick="aprobarDirecto('${t.id}')">👍 Aprobar</button>
+                            <button type="button" class="btn-action-ui" style="background: transparent; border: 1px solid var(--neon-red); color: var(--neon-red); flex: 1;" onclick="rechazarDirecto('${t.id}')">❌ Rechazar</button>
+                        </div>`;
             }
 
-            if ((isWilton || isAdmin) && estActual === 'aprobada_wilton') {
+            if ((isWilton || isAdmin) && estActual === "aprobada_wilton") {
                 botonesHtml += `<div class="btn-grid-row"><button type="button" class="btn-action-ui btn-ui-wilton" onclick="editarTrabajo('${t.id}')">📅 Programar Técnico</button></div>`;
             }
 
             if (!isVendedor && !isCarlos && !isWilton && !isAdmin && !esAprobacion) {
                 botonesHtml += `<div class="btn-grid-row"><button type="button" class="btn-action-ui btn-ui-estado" onclick="cambiarEstado('${t.id}', '${estActual}')">${iconEst} ${textEst.charAt(0) + textEst.slice(1).toLowerCase()}</button></div>`;
             }
-            
+
             botonesHtml += `<div class="btn-grid-row">
-                                ${t.mapa ? `<a href="${t.mapa}" target="_blank" class="btn-action-ui btn-ui-mapa">📍 Mapa</a>` : `<button type="button" class="btn-action-ui btn-ui-mapa" disabled>📍 Mapa</button>`}
-                                ${t.tipoTarea === 'alta' ? `<button type="button" class="btn-action-ui btn-ui-nap">📦 Caja NAP</button>` : `<button type="button" class="btn-action-ui btn-ui-nap" style="visibility:hidden;">📦 Caja NAP</button>`}
-                            </div>`;
-            
+                        ${t.mapa ? `<button type="button" class="btn-action-ui btn-ui-mapa" onclick="verMapaCliente('${t.id}')">📍 Mapa</button>` : `<button type="button" class="btn-action-ui btn-ui-mapa" disabled>📍 Mapa</button>`}
+                        ${t.tipoTarea === "alta" ? `<button type="button" class="btn-action-ui btn-ui-nap">📦 Caja NAP</button>` : `<button type="button" class="btn-action-ui btn-ui-nap" style="visibility:hidden;">📦 Caja NAP</button>`}
+                    </div>`;
+
             if (numLimpio.length > 5) botonesHtml += `<div class="btn-grid-row"><a href="${linkWsp}" target="_blank" class="btn-action-ui btn-ui-wsp">💬 WhatsApp</a></div>`;
-            
+
             botonesHtml += `<div class="btn-grid-row">
-                                <button type="button" class="btn-action-ui btn-ui-copiar" onclick="copiarDatos(this)">📋 Copiar Datos</button>
-                                ${(isAdmin || isWilton || isCarlos) ? `<button type="button" class="btn-action-ui btn-ui-editar" onclick="editarTrabajo('${t.id}')">✏️ Editar</button>` : ''}
-                            </div>`;
-            
+                        <button type="button" class="btn-action-ui btn-ui-copiar" onclick="copiarDatos(this)">📋 Copiar Datos</button>
+                        ${(isAdmin || isWilton || isCarlos || isVendedor) ? `<button type="button" class="btn-action-ui btn-ui-editar" onclick="editarTrabajo('${t.id}')">✏️ Editar</button>` : ""}
+                    </div>`;
+
             if (isAdmin) {
                 botonesHtml += `<div class="btn-grid-row"><button type="button" class="btn-action-ui btn-ui-eliminar" onclick="preguntarEliminar('${t.id}')">🗑️ Eliminar</button></div>`;
             }
@@ -1731,145 +1899,601 @@ window.renderizarTabla = () => {
                 <td><div class="btn-acciones-grid">${botonesHtml}<textarea style="display:none;" class="texto-secreto">${txtCop}</textarea></div></td>
             `;
             tbody.appendChild(tr);
-        } catch (err) { console.error("Error fila", err); }
+        } catch (err) {
+            console.error("Error fila", err);
+        }
     });
 
     actualizarGraficosGerenciales(pGrafico);
 };
 
+// ============================================================ //
+// CAMBIAR ESTADO                                               //
+// ============================================================ //
 window.cambiarEstado = async (id, estadoActual) => {
     let nE = "pendiente";
-    if(estadoActual === "pendiente") nE = "en_camino";
+
+    if (estadoActual === "pendiente") nE = "en_camino";
     else if (estadoActual === "en_camino") nE = "atendido";
     else if (estadoActual === "atendido") nE = "no_atendido";
 
     let dataUpdate = { estado: nE };
 
     if (nE === "en_camino") {
-        dataUpdate.tsInicio = Date.now(); 
+        dataUpdate.tsInicio = Date.now();
         await updateDoc(doc(coleccionTrabajos, id), dataUpdate);
         mostrarToast("Técnico en camino. Tiempo iniciado ⏱️");
     } else if (nE === "atendido" || nE === "no_atendido") {
-        idTrabajoCierreSLA = id; estadoObjetivoSLA = nE;
-        document.getElementById('lblEstadoCierre').innerText = nE.replace('_', ' ').toUpperCase();
-        document.getElementById('lblEstadoCierre').style.color = nE === 'atendido' ? 'var(--neon-green)' : 'var(--neon-red)';
-        document.getElementById('modalCierre').style.display = 'flex';
+        idTrabajoCierreSLA = id;
+        estadoObjetivoSLA = nE;
+        document.getElementById("lblEstadoCierre").innerText = nE.replace("_", " ").toUpperCase();
+        document.getElementById("lblEstadoCierre").style.color = nE === "atendido" ? "var(--neon-green)" : "var(--neon-red)";
+        document.getElementById("modalCierre").style.display = "flex";
     } else {
-        dataUpdate.tsInicio = null; dataUpdate.tsFin = null; dataUpdate.notaCierre = null;
+        dataUpdate.tsInicio = null;
+        dataUpdate.tsFin = null;
+        dataUpdate.notaCierre = null;
         await updateDoc(doc(coleccionTrabajos, id), dataUpdate);
         mostrarToast("Estado reseteado a Pendiente.");
     }
 };
 
+// ============================================================ //
+// EJECUTAR CIERRE SLA                                         //
+// ============================================================ //
 window.ejecutarCierreSLA = async () => {
-    if(!idTrabajoCierreSLA) return;
-    const nota = document.getElementById('txtNotaCierre').value.trim();
-    if(!nota) { mostrarToast("❌ Debes ingresar una nota de cierre técnica."); return; }
+    if (!idTrabajoCierreSLA) return;
+
+    const nota = document.getElementById("txtNotaCierre").value.trim();
+
+    if (!nota) {
+        mostrarToast("❌ Debes ingresar una nota de cierre técnica.");
+        return;
+    }
+
     try {
-        await updateDoc(doc(coleccionTrabajos, idTrabajoCierreSLA), { estado: estadoObjetivoSLA, tsFin: Date.now(), notaCierre: nota });
-        window.cerrarModalCierre(); mostrarToast("Trabajo cerrado correctamente ✅");
-    } catch (e) { mostrarToast("Error al cerrar tarea"); }
+        await updateDoc(doc(coleccionTrabajos, idTrabajoCierreSLA), {
+            estado: estadoObjetivoSLA,
+            tsFin: Date.now(),
+            notaCierre: nota,
+        });
+
+        window.cerrarModalCierre();
+        mostrarToast("Trabajo cerrado correctamente ✅");
+    } catch (e) {
+        mostrarToast("Error al cerrar tarea");
+    }
 };
 
+// ============================================================ //
+// GRÁFICOS GERENCIALES                                       //
+// ============================================================ //
 function actualizarGraficosGerenciales(trabajosFiltrados) {
-    if(!isAdmin && !isWilton && !isCarlos && !isVendedor) return;
+    if (!isAdmin && !isWilton && !isCarlos && !isVendedor) return;
+
     setTimeout(() => {
         try {
-            let pend = 0, aten = 0, noAten = 0; let cTech = {};
-            trabajosFiltrados.forEach(t => {
-                let est = String(t.estado || "pendiente").toLowerCase();
-                if (est === "atendido") aten++; else if (est === "no_atendido") noAten++; else pend++;
-                let asig = t.tecnicos || []; if(typeof asig === 'string') asig = [asig];
-                asig.forEach(tech => { if (tech !== "Sin Asignar" && tech !== "Todos") { cTech[tech] = (cTech[tech] || 0) + 1; } });
-            });
-            document.getElementById('kpiTotal').innerText = trabajosFiltrados.length;
-            document.getElementById('kpiAtendidos').innerText = aten;
-            document.getElementById('kpiPendientes').innerText = pend;
-            document.getElementById('kpiNoAtendidos').innerText = noAten;
+            let pend = 0,
+                aten = 0,
+                noAten = 0;
+            let cTech = {};
 
-            if (typeof window.renderizarCalendario === 'function') window.renderizarCalendario();
+            trabajosFiltrados.forEach((t) => {
+                let est = String(t.estado || "pendiente").toLowerCase();
+
+                if (est === "atendido") aten++;
+                else if (est === "no_atendido") noAten++;
+                else pend++;
+
+                let asig = t.tecnicos || [];
+                if (typeof asig === "string") asig = [asig];
+
+                asig.forEach((tech) => {
+                    if (tech !== "Sin Asignar" && tech !== "Todos") {
+                        cTech[tech] = (cTech[tech] || 0) + 1;
+                    }
+                });
+            });
+
+            document.getElementById("kpiTotal").innerText = trabajosFiltrados.length;
+            document.getElementById("kpiAtendidos").innerText = aten;
+            document.getElementById("kpiPendientes").innerText = pend;
+            document.getElementById("kpiNoAtendidos").innerText = noAten;
+
+            if (typeof window.renderizarCalendario === "function") window.renderizarCalendario();
+
             if (isAdmin || isWilton) {
                 const isDark = document.documentElement.getAttribute("data-theme") !== "light";
-                const textColor = isDark ? '#8b9bb4' : '#64748b'; const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-                const canvasT = document.getElementById('graficoTecnicos');
-                if(canvasT) {
-                    const ctxT = canvasT.getContext('2d'); if (chartTecnicos) chartTecnicos.destroy();
-                    let gradient = ctxT.createLinearGradient(0, 0, 0, 400); gradient.addColorStop(0, '#00e5ff'); gradient.addColorStop(1, '#d500f9');
-                    chartTecnicos = new Chart(ctxT, { type: 'bar', data: { labels: Object.keys(cTech), datasets: [{ data: Object.values(cTech), backgroundColor: gradient, borderRadius: 6, barThickness: 40 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid:{color: gridColor}, ticks: { stepSize: 1, color: textColor } }, x: { grid:{display:false}, ticks: { color: textColor, font:{size:10} } } } } });
+                const textColor = isDark ? "#8b9bb4" : "#64748b";
+                const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+
+                const canvasT = document.getElementById("graficoTecnicos");
+
+                if (canvasT) {
+                    const ctxT = canvasT.getContext("2d");
+
+                    if (chartTecnicos) chartTecnicos.destroy();
+
+                    let gradient = ctxT.createLinearGradient(0, 0, 0, 400);
+                    gradient.addColorStop(0, "#00e5ff");
+                    gradient.addColorStop(1, "#d500f9");
+
+                    chartTecnicos = new Chart(ctxT, {
+                        type: "bar",
+                        data: {
+                            labels: Object.keys(cTech),
+                            datasets: [{
+                                data: Object.values(cTech),
+                                backgroundColor: gradient,
+                                borderRadius: 6,
+                                barThickness: 40,
+                            }],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { grid: { color: gridColor }, ticks: { stepSize: 1, color: textColor } },
+                                x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } },
+                            },
+                        },
+                    });
                 }
             }
-        } catch(e) { console.error("Error gráficos:", e); }
+        } catch (e) {
+            console.error("Error gráficos:", e);
+        }
     }, 150);
 }
 
+// ============================================================ //
+// RENDERIZAR CALENDARIO                                       //
+// ============================================================ //
 window.renderizarCalendario = () => {
-    const weekStrip = document.getElementById("calWeekStrip"); const dayHeader = document.getElementById("calDayHeader"); const timelineMini = document.getElementById("calTimelineMini"); const lblSemana = document.getElementById("lblSemanaActual");
-    if (!weekStrip || !dayHeader || !timelineMini) return;
-    const hoy = new Date(); const lunesBase = new Date(hoy); lunesBase.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7)); lunesBase.setHours(0,0,0,0); lunesBase.setDate(lunesBase.getDate() + (semanaOffset * 7));
-    const domingo = new Date(lunesBase); domingo.setDate(lunesBase.getDate() + 6);
-    const opciones = { day: 'numeric', month: 'short' }; lblSemana.textContent = `${lunesBase.toLocaleDateString('es', opciones)} — ${domingo.toLocaleDateString('es', opciones)}`;
-    const hoyStr = hoy.toISOString().split('T')[0];
-    if (!diaSeleccionado || diaSeleccionado < lunesBase.toISOString().split('T')[0] || diaSeleccionado > domingo.toISOString().split('T')[0]) { diaSeleccionado = (hoy >= lunesBase && hoy <= domingo) ? hoyStr : lunesBase.toISOString().split('T')[0]; }
+    const weekStrip = document.getElementById("calWeekStrip");
+    const dayHeader = document.getElementById("calDayHeader");
+    const timelineMini = document.getElementById("calTimelineMini");
+    const lblSemana = document.getElementById("lblSemanaActual");
 
-    const diasSemana = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']; let htmlStrip = '';
-    for (let i = 0; i < 7; i++) {
-        const dia = new Date(lunesBase); dia.setDate(lunesBase.getDate() + i); const diaStr = dia.toISOString().split('T')[0]; const diaNum = dia.getDate();
-        const trabajosDia = dbTrabajos.filter(t => (t.zona || "Norte") === zonaActual && t.fecha === diaStr && t.estado !== 'por_aprobar_carlos' && t.estado !== 'aprobada_wilton' && t.estado !== 'rechazada');
-        const isActive = diaStr === diaSeleccionado; const isToday = diaStr === hoyStr;
-        htmlStrip += `<div class="cal-week-day ${isActive ? 'active' : ''} ${isToday ? 'today' : ''}" onclick="seleccionarDia('${diaStr}')"><div class="cal-week-dayname">${diasSemana[i]}</div><div class="cal-week-daynum">${diaNum}</div>${trabajosDia.length > 0 ? `<div class="cal-week-daycount">${trabajosDia.length}</div>` : ''}</div>`;
+    if (!weekStrip || !dayHeader || !timelineMini) return;
+
+    const hoy = new Date();
+    const lunesBase = new Date(hoy);
+    lunesBase.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
+    lunesBase.setHours(0, 0, 0, 0);
+    lunesBase.setDate(lunesBase.getDate() + semanaOffset * 7);
+
+    const domingo = new Date(lunesBase);
+    domingo.setDate(lunesBase.getDate() + 6);
+
+    const opciones = { day: "numeric", month: "short" };
+    lblSemana.textContent = `${lunesBase.toLocaleDateString("es", opciones)} — ${domingo.toLocaleDateString("es", opciones)}`;
+
+    const hoyStr = hoy.toISOString().split("T")[0];
+
+    if (!diaSeleccionado || diaSeleccionado < lunesBase.toISOString().split("T")[0] || diaSeleccionado > domingo.toISOString().split("T")[0]) {
+        diaSeleccionado = hoy >= lunesBase && hoy <= domingo ? hoyStr : lunesBase.toISOString().split("T")[0];
     }
+
+    const diasSemana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
+    let htmlStrip = "";
+
+    for (let i = 0; i < 7; i++) {
+        const dia = new Date(lunesBase);
+        dia.setDate(lunesBase.getDate() + i);
+        const diaStr = dia.toISOString().split("T")[0];
+        const diaNum = dia.getDate();
+
+        const trabajosDia = dbTrabajos.filter(
+            (t) =>
+            (t.zona || "Norte") === zonaActual &&
+            t.fecha === diaStr &&
+            t.estado !== "por_aprobar_carlos" &&
+            t.estado !== "aprobada_wilton" &&
+            t.estado !== "rechazada"
+        );
+
+        const isActive = diaStr === diaSeleccionado;
+        const isToday = diaStr === hoyStr;
+
+        htmlStrip += `<div class="cal-week-day ${isActive ? "active" : ""} ${isToday ? "today" : ""}" onclick="seleccionarDia('${diaStr}')">
+                    <div class="cal-week-dayname">${diasSemana[i]}</div>
+                    <div class="cal-week-daynum">${diaNum}</div>
+                    ${trabajosDia.length > 0 ? `<div class="cal-week-daycount">${trabajosDia.length}</div>` : ""}
+                </div>`;
+    }
+
     weekStrip.innerHTML = htmlStrip;
 
-    const fechaSel = new Date(diaSeleccionado + 'T00:00:00'); dayHeader.textContent = fechaSel.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'short' }).toUpperCase();
-    const trabajosSel = dbTrabajos.filter(t => (t.zona || "Norte") === zonaActual && t.fecha === diaSeleccionado && t.estado !== 'por_aprobar_carlos' && t.estado !== 'aprobada_wilton' && t.estado !== 'rechazada').sort((a, b) => (a.horaInicio || '23:59').localeCompare(b.horaInicio || '23:59'));
+    const fechaSel = new Date(diaSeleccionado + "T00:00:00");
+    dayHeader.textContent = fechaSel.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "short" }).toUpperCase();
 
-    if (trabajosSel.length === 0) { timelineMini.innerHTML = '<span style="color: var(--text-muted); font-size: 11px; opacity: 0.7;">📭 Sin trabajos programados</span>'; } 
-    else { let htmlPills = ''; trabajosSel.forEach(t => { htmlPills += `<div class="cal-event-pill ${t.tipoTarea || 'alta'}" onclick="filtrarPorCliente('${t.cliente.replace(/'/g, "\\'")}')" title="${t.cliente} | ${t.horaInicio || '--:--'} | ${t.tecnicos}"><span class="cal-event-dot"></span>${t.horaInicio || '--:--'} · ${t.cliente.split(' ')[0]}</div>`; }); timelineMini.innerHTML = htmlPills; }
+    const trabajosSel = dbTrabajos
+        .filter(
+            (t) =>
+            (t.zona || "Norte") === zonaActual &&
+            t.fecha === diaSeleccionado &&
+            t.estado !== "por_aprobar_carlos" &&
+            t.estado !== "aprobada_wilton" &&
+            t.estado !== "rechazada"
+        )
+        .sort((a, b) => (a.horaInicio || "23:59").localeCompare(b.horaInicio || "23:59"));
+
+    if (trabajosSel.length === 0) {
+        timelineMini.innerHTML = '<span style="color: var(--text-muted); font-size: 11px; opacity: 0.7;">📭 Sin trabajos programados</span>';
+    } else {
+        let htmlPills = "";
+        trabajosSel.forEach((t) => {
+            htmlPills += `<div class="cal-event-pill ${t.tipoTarea || "alta"}" onclick="filtrarPorCliente('${t.cliente.replace(/'/g, "\\'")}')" title="${t.cliente} | ${t.horaInicio || "--:--"} | ${t.tecnicos}">
+                        <span class="cal-event-dot"></span>${t.horaInicio || "--:--"} · ${t.cliente.split(" ")[0]}
+                    </div>`;
+        });
+        timelineMini.innerHTML = htmlPills;
+    }
 };
 
-window.navegarSemana = (offset) => { semanaOffset += offset; window.renderizarCalendario(); };
-window.irAHoy = () => { semanaOffset = 0; diaSeleccionado = new Date().toISOString().split('T')[0]; window.renderizarCalendario(); };
-window.seleccionarDia = (fechaStr) => { diaSeleccionado = fechaStr; window.renderizarCalendario(); };
-window.filtrarPorCliente = (nombre) => { const buscador = document.getElementById("buscador"); if (buscador) { buscador.value = nombre; renderizarTabla(); mostrarToast(`🔍 Filtrando: ${nombre}`); document.querySelector('table')?.scrollIntoView({ behavior: 'smooth' }); } };
+// ============================================================ //
+// NAVEGACIÓN CALENDARIO                                       //
+// ============================================================ //
+window.navegarSemana = (offset) => {
+    semanaOffset += offset;
+    window.renderizarCalendario();
+};
 
-const coloresTecnicos = [ '#2979ff', '#f50057', '#00e676', '#ffea00', '#d500f9', '#ff6d00', '#00e5ff', '#10b981' ];
-window.abrirModalCalendario = () => { document.getElementById('modalCalendario').style.display = 'flex'; let listaTecnicos = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin; let htmlFiltro = `<option value="todos">Todos los Técnicos</option>`; listaTecnicos.forEach(t => { htmlFiltro += `<option value="${t}">${t}</option>`; }); document.getElementById("filtroTecnicoCalendario").innerHTML = htmlFiltro; actualizarCalendarioGeneral(); };
-window.cerrarModalCalendario = () => { document.getElementById('modalCalendario').style.display = 'none'; };
+window.irAHoy = () => {
+    semanaOffset = 0;
+    diaSeleccionado = new Date().toISOString().split("T")[0];
+    window.renderizarCalendario();
+};
 
-window.actualizarCalendarioGeneral = () => {
-    const calendarEl = document.getElementById('calendarioGeneral'); const tecnicoFiltro = document.getElementById('filtroTecnicoCalendario')?.value || 'todos';
-    if (!calendarEl) return; if (window.calendarioInstancia) window.calendarioInstancia.destroy();
+window.seleccionarDia = (fechaStr) => {
+    diaSeleccionado = fechaStr;
+    window.renderizarCalendario();
+};
 
-    let eventos = []; const coloresAsignados = {}; let idxColor = 0;
-    dbTrabajos.forEach(t => {
-        if ((t.zona || "Norte") !== zonaActual || t.estado === 'por_aprobar_carlos' || t.estado === 'aprobada_wilton' || t.estado === 'rechazada') return;
-        let tecnicos = Array.isArray(t.tecnicos) ? t.tecnicos : [t.tecnicos || 'Sin Asignar'];
-        if (tecnicoFiltro !== 'todos' && !tecnicos.includes(tecnicoFiltro)) return;
-        const techPrincipal = tecnicos[0]; if (!coloresAsignados[techPrincipal]) { coloresAsignados[techPrincipal] = coloresTecnicos[idxColor % coloresTecnicos.length]; idxColor++; }
-        
-        let claseColor = 'cal-event-alta'; if (t.tipoTarea === 'averia') claseColor = 'cal-event-averia'; if (t.tipoTarea === 'baja') claseColor = 'cal-event-baja';
-        eventos.push({ id: t.id, title: `${t.horaInicio || ''} ${t.cliente}`, start: t.fecha + 'T' + (t.horaInicio || '08:00') + ':00', end: t.fecha + 'T' + (t.horaFin || '09:00') + ':00', backgroundColor: coloresAsignados[techPrincipal] + 'CC', borderColor: coloresAsignados[techPrincipal], textColor: '#ffffff', extendedProps: { detalle: t.detalle || '', estado: t.estado || 'pendiente', tecnicos: tecnicos.join(', '), notas: t.notas || '', claseTipo: claseColor } });
+window.filtrarPorCliente = (nombre) => {
+    const buscador = document.getElementById("buscador");
+
+    if (buscador) {
+        buscador.value = nombre;
+        renderizarTabla();
+        mostrarToast(`🔍 Filtrando: ${nombre}`);
+        document.querySelector("table")?.scrollIntoView({ behavior: "smooth" });
+    }
+};
+
+// ============================================================ //
+// CALENDARIO GENERAL (FULLCALENDAR)                           //
+// ============================================================ //
+const coloresTecnicos = ["#2979ff", "#f50057", "#00e676", "#ffea00", "#d500f9", "#ff6d00", "#00e5ff", "#10b981"];
+
+window.abrirModalCalendario = () => {
+    document.getElementById("modalCalendario").style.display = "flex";
+
+    let listaTecnicos = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
+    let htmlFiltro = `<option value="todos">Todos los Técnicos</option>`;
+
+    listaTecnicos.forEach((t) => {
+        htmlFiltro += `<option value="${t}">${t}</option>`;
     });
 
-    window.calendarioInstancia = new FullCalendar.Calendar(calendarEl, { initialView: 'timeGridWeek', locale: 'es', headerToolbar: { left: 'prev,next today', center: 'title', right: 'timeGridDay,timeGridWeek,dayGridMonth' }, slotMinTime: '06:00:00', slotMaxTime: '22:00:00', allDaySlot: false, events: eventos, eventClick: function(info) { const props = info.event.extendedProps; mostrarToast(`${info.event.title} | ${props.detalle} | Téc: ${props.tecnicos} | Estado: ${props.estado.toUpperCase()}`); }, eventDidMount: function(info) { const props = info.event.extendedProps; info.el.title = `${info.event.title}\nTécnicos: ${props.tecnicos}\nDetalle: ${props.detalle}\nNotas: ${props.notas}`; } });
+    document.getElementById("filtroTecnicoCalendario").innerHTML = htmlFiltro;
+    actualizarCalendarioGeneral();
+};
+
+window.cerrarModalCalendario = () => {
+    document.getElementById("modalCalendario").style.display = "none";
+};
+
+window.actualizarCalendarioGeneral = () => {
+    const calendarEl = document.getElementById("calendarioGeneral");
+    const tecnicoFiltro = document.getElementById("filtroTecnicoCalendario")?.value || "todos";
+
+    if (!calendarEl) return;
+    if (window.calendarioInstancia) window.calendarioInstancia.destroy();
+
+    let eventos = [];
+    const coloresAsignados = {};
+    let idxColor = 0;
+
+    dbTrabajos.forEach((t) => {
+        if ((t.zona || "Norte") !== zonaActual || t.estado === "por_aprobar_carlos" || t.estado === "aprobada_wilton" || t.estado === "rechazada") return;
+
+        let tecnicos = Array.isArray(t.tecnicos) ? t.tecnicos : [t.tecnicos || "Sin Asignar"];
+
+        if (tecnicoFiltro !== "todos" && !tecnicos.includes(tecnicoFiltro)) return;
+
+        const techPrincipal = tecnicos[0];
+
+        if (!coloresAsignados[techPrincipal]) {
+            coloresAsignados[techPrincipal] = coloresTecnicos[idxColor % coloresTecnicos.length];
+            idxColor++;
+        }
+
+        let claseColor = "cal-event-alta";
+        if (t.tipoTarea === "averia") claseColor = "cal-event-averia";
+        if (t.tipoTarea === "baja") claseColor = "cal-event-baja";
+
+        eventos.push({
+            id: t.id,
+            title: `${t.horaInicio || ""} ${t.cliente}`,
+            start: t.fecha + "T" + (t.horaInicio || "08:00") + ":00",
+            end: t.fecha + "T" + (t.horaFin || "09:00") + ":00",
+            backgroundColor: coloresAsignados[techPrincipal] + "CC",
+            borderColor: coloresAsignados[techPrincipal],
+            textColor: "#ffffff",
+            extendedProps: {
+                detalle: t.detalle || "",
+                estado: t.estado || "pendiente",
+                tecnicos: tecnicos.join(", "),
+                notas: t.notas || "",
+                claseTipo: claseColor,
+            },
+        });
+    });
+
+    window.calendarioInstancia = new FullCalendar.Calendar(calendarEl, {
+        initialView: "timeGridWeek",
+        locale: "es",
+        headerToolbar: {
+            left: "prev,next today",
+            center: "title",
+            right: "timeGridDay,timeGridWeek,dayGridMonth",
+        },
+        slotMinTime: "06:00:00",
+        slotMaxTime: "22:00:00",
+        allDaySlot: false,
+        events: eventos,
+        eventClick: function(info) {
+            const props = info.event.extendedProps;
+            mostrarToast(`${info.event.title} | ${props.detalle} | Téc: ${props.tecnicos} | Estado: ${props.estado.toUpperCase()}`);
+        },
+        eventDidMount: function(info) {
+            const props = info.event.extendedProps;
+            info.el.title = `${info.event.title}\nTécnicos: ${props.tecnicos}\nDetalle: ${props.detalle}\nNotas: ${props.notas}`;
+        },
+    });
+
     window.calendarioInstancia.render();
 };
 
+// ============================================================ //
+// UTILIDADES                                                   //
+// ============================================================ //
 function actualizarOpcionesFechas() {
-    const sel = document.getElementById("filtroFecha"); const tZona = dbTrabajos.filter(t => (t.zona || "Norte") === zonaActual);
-    const fechas = [...new Set(tZona.map(t => String(t.fecha)))].sort((a,b) => b.localeCompare(a));
-    let h = `<option value="todas">Todas las Fechas</option>`; fechas.forEach(f => { h += `<option value="${f}">${formatoFecha(f)}</option>`; });
-    let v = sel.value; sel.innerHTML = h; if(fechas.includes(v)) sel.value = v;
+    const sel = document.getElementById("filtroFecha");
+    const tZona = dbTrabajos.filter((t) => (t.zona || "Norte") === zonaActual);
+    const fechas = [...new Set(tZona.map((t) => String(t.fecha)))].sort((a, b) => b.localeCompare(a));
+
+    let h = `<option value="todas">Todas las Fechas</option>`;
+    fechas.forEach((f) => {
+        h += `<option value="${f}">${formatoFecha(f)}</option>`;
+    });
+
+    let v = sel.value;
+    sel.innerHTML = h;
+
+    if (fechas.includes(v)) sel.value = v;
 }
 
-window.procesarExcelClientes = async (event) => { /* Placeholder excel bd */ };
-window.exportarAExcel = () => { /* Placeholder excel export */ };
-window.preguntarEliminar = (id) => { idTrabajoAEliminar = id; document.getElementById('modalEliminar').style.display = 'flex'; };
-window.ejecutarEliminacion = async () => { if(idTrabajoAEliminar) { await deleteDoc(doc(coleccionTrabajos, idTrabajoAEliminar)); mostrarToast("Trabajo Eliminado"); window.cerrarModalEliminar(); } };
+function formatoFecha(fs) {
+    if (!fs) return "";
+    let p = String(fs).split("-");
+    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fs;
+}
 
-function formatoFecha(fs) { if(!fs) return ""; let p = String(fs).split("-"); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : fs; }
-function mostrarToast(msg) { const t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000); }
-window.copiarDatos = (btn) => { let txt = btn.closest("td").querySelector(".texto-secreto").value; navigator.clipboard ? navigator.clipboard.writeText(txt).then(()=>mostrarToast("Copiado")) : mostrarToast("Error al copiar"); };
+function mostrarToast(msg) {
+    const t = document.getElementById("toast");
+    t.innerText = msg;
+    t.className = "show";
+
+    setTimeout(() => {
+        t.className = t.className.replace("show", "");
+    }, 3000);
+}
+
+window.copiarDatos = (btn) => {
+    let txt = btn.closest("td").querySelector(".texto-secreto").value;
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(txt).then(() => mostrarToast("Copiado"));
+    } else {
+        mostrarToast("Error al copiar");
+    }
+};
+
+window.preguntarEliminar = (id) => {
+    idTrabajoAEliminar = id;
+    document.getElementById("modalEliminar").style.display = "flex";
+};
+
+window.ejecutarEliminacion = async () => {
+    if (idTrabajoAEliminar) {
+        await deleteDoc(doc(coleccionTrabajos, idTrabajoAEliminar));
+        mostrarToast("Trabajo Eliminado");
+        window.cerrarModalEliminar();
+    }
+};
+
+// ============================================================ //
+// PLACEHOLDERS                                                 //
+// ============================================================ //
+window.procesarExcelClientes = async (event) => {
+    // Implementar según necesidad
+};
+
+window.exportarAExcel = () => {
+    // Implementar según necesidad
+};
+
+// ============================================================ //
+// SELECTOR TIPO TAREA                                         //
+// ============================================================ //
+window.seleccionarTipoTarea = (tipo) => {
+    document.getElementById("formTipoTareaValue").value = tipo;
+
+    document.querySelectorAll(".tab-btn").forEach((b) => {
+        b.classList.remove("active-alta", "active-averia", "active-baja");
+        if (b.id === "tabAveria") {
+            b.style.color = "#8b9bb4";
+            b.style.borderColor = "var(--panel-border)";
+        }
+    });
+
+    let tabActiva = document.getElementById("tab" + tipo.charAt(0).toUpperCase() + tipo.slice(1));
+    tabActiva.classList.add("active-" + tipo);
+
+    if (tipo === "averia") {
+        tabActiva.style.color = "#2979ff";
+        tabActiva.style.borderColor = "#2979ff";
+    }
+
+    document.getElementById("cajaBuscador").style.display = "block";
+
+    document.querySelector(".grupo-alta").style.display = tipo === "alta" ? "contents" : "none";
+    document.querySelector(".grupo-averia").style.display = tipo === "averia" ? "block" : "none";
+    document.querySelector(".grupo-baja").style.display = tipo === "baja" ? "block" : "none";
+};
+
+// ============================================================ //
+// TOGGLE CHECKBOX MULTI SELECT                                //
+// ============================================================ //
+window.toggleCheckbox = (el) => {
+    let chk = el.querySelector("input");
+    chk.checked = !chk.checked;
+
+    let chks = document.querySelectorAll("#techDropdown input:checked");
+    document.getElementById("techDisplay").innerText = chks.length === 0 ? "Sin Asignar" : Array.from(chks).map((c) => c.value).join(", ");
+};
+
+window.toggleTechDropdown = (e) => {
+    if (e) e.stopPropagation();
+    document.getElementById("techDropdown").classList.toggle("show");
+};
+
+// ============================================================ //
+// CERRAR MODALES                                               //
+// ============================================================ //
+window.cerrarModal = () => {
+    document.getElementById("modalAgregar").style.display = "none";
+    document.getElementById("techDropdown").classList.remove("show");
+};
+
+window.cerrarModalEliminar = () => {
+    document.getElementById("modalEliminar").style.display = "none";
+    idTrabajoAEliminar = null;
+};
+
+window.cerrarModalCierre = () => {
+    document.getElementById("modalCierre").style.display = "none";
+    document.getElementById("txtNotaCierre").value = "";
+    idTrabajoCierreSLA = null;
+};
+
+window.cerrarModalCobertura = () => {
+    document.getElementById("modalCobertura").style.display = "none";
+    ventaAValidarId = null;
+    window.cancelarRechazo();
+};
+
+window.cerrarModalRechazoRapido = () => {
+    document.getElementById("modalRechazoRapido").style.display = "none";
+    idVentaARechazarRapido = null;
+};
+
+// ============================================================ //
+// CERRAR MODALES CON ESC                                     //
+// ============================================================ //
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+        window.cerrarModal();
+        window.cerrarModalEliminar();
+        window.cerrarModalCierre();
+        window.cerrarModalCobertura();
+        window.cerrarModalRechazoRapido();
+    }
+});
+
+// ============================================================ //
+// CERRAR MODALES CLICK FUERA                                  //
+// ============================================================ //
+document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+            window.cerrarModal();
+            window.cerrarModalEliminar();
+            window.cerrarModalCierre();
+            window.cerrarModalCobertura();
+            window.cerrarModalRechazoRapido();
+
+            if (document.getElementById("modalCalendario").style.display === "flex") {
+                window.cerrarModalCalendario();
+            }
+        }
+    });
+});
+
+// ============================================================ //
+// CERRAR DROPDOWN CLICK FUERA                                 //
+// ============================================================ //
+document.addEventListener("click", (e) => {
+    let dropdown = document.getElementById("techDropdown");
+    let container = document.getElementById("techSelectContainer");
+
+    if (dropdown && dropdown.classList.contains("show") && container && !container.contains(e.target)) {
+        dropdown.classList.remove("show");
+    }
+});
+
+// ============================================================ //
+// EXPORTAR FUNCIONES GLOBALES                                 //
+// ============================================================ //
+window.toggleTema = window.toggleTema;
+window.iniciarSesion = window.iniciarSesion;
+window.cerrarSesion = window.cerrarSesion;
+window.cambiarZona = window.cambiarZona;
+window.buscarCliente = window.buscarCliente;
+window.calcularPrecioTotal = window.calcularPrecioTotal;
+window.abrirModal = window.abrirModal;
+window.editarTrabajo = window.editarTrabajo;
+window.guardarTrabajo = window.guardarTrabajo;
+window.abrirModalCoberturaGeneral = window.abrirModalCoberturaGeneral;
+window.abrirValidacionCobertura = window.abrirValidacionCobertura;
+window.verMapaCliente = window.verMapaCliente;
+window.buscarEnMapa = window.buscarEnMapa;
+window.centrarEnMiUbicacion = window.centrarEnMiUbicacion;
+window.confirmarAprobacionVenta = window.confirmarAprobacionVenta;
+window.confirmarRechazoVenta = window.confirmarRechazoVenta;
+window.iniciarRechazo = window.iniciarRechazo;
+window.cancelarRechazo = window.cancelarRechazo;
+window.aprobarDirecto = window.aprobarDirecto;
+window.rechazarDirecto = window.rechazarDirecto;
+window.confirmarRechazoRapido = window.confirmarRechazoRapido;
+window.renderizarTabla = window.renderizarTabla;
+window.cambiarEstado = window.cambiarEstado;
+window.ejecutarCierreSLA = window.ejecutarCierreSLA;
+window.renderizarCalendario = window.renderizarCalendario;
+window.navegarSemana = window.navegarSemana;
+window.irAHoy = window.irAHoy;
+window.seleccionarDia = window.seleccionarDia;
+window.filtrarPorCliente = window.filtrarPorCliente;
+window.abrirModalCalendario = window.abrirModalCalendario;
+window.cerrarModalCalendario = window.cerrarModalCalendario;
+window.actualizarCalendarioGeneral = window.actualizarCalendarioGeneral;
+window.copiarDatos = window.copiarDatos;
+window.preguntarEliminar = window.preguntarEliminar;
+window.ejecutarEliminacion = window.ejecutarEliminacion;
+window.procesarExcelClientes = window.procesarExcelClientes;
+window.exportarAExcel = window.exportarAExcel;
+window.seleccionarTipoTarea = window.seleccionarTipoTarea;
+window.toggleCheckbox = window.toggleCheckbox;
+window.toggleTechDropdown = window.toggleTechDropdown;
+window.cerrarModal = window.cerrarModal;
+window.cerrarModalEliminar = window.cerrarModalEliminar;
+window.cerrarModalCierre = window.cerrarModalCierre;
+window.cerrarModalCobertura = window.cerrarModalCobertura;
+window.cerrarModalRechazoRapido = window.cerrarModalRechazoRapido;
 </script>
 </body>
 </html>
