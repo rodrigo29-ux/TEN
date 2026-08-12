@@ -16,402 +16,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     
-    <style>
-:root {
-    /* TEMA OSCURO NEÓN (Por Defecto) */
-    --bg-body: #0b0e14; 
-    --panel-bg: #151924; 
-    --panel-border: #232838;
-    --text-main: #f8fafc; 
-    --text-muted: #8b9bb4; 
-    
-    --input-bg: rgba(0,0,0,0.2);
-    --input-border: #232838;
-
-    --brand-orange: #ff6d00; 
-    --neon-cyan: #00e5ff;
-    --neon-pink: #f50057;
-    --neon-yellow: #ffea00;
-    --neon-purple: #d500f9;
-    --neon-green: #10B981;
-    --neon-red: #EF4444;
-    --neon-blue: #2979ff;
-
-    --btn-pendiente: #ffea00; 
-    --btn-realizado: #00e5ff; 
-    --btn-sin-atender: #ff1744; 
-    --btn-en-camino: #2979ff;
-    --wsp-green: #00e676; 
-}
-
-[data-theme="light"] {
-    --bg-body: #f1f5f9; 
-    --panel-bg: #ffffff; 
-    --panel-border: #cbd5e1;
-    --text-main: #1e293b; 
-    --text-muted: #64748b; 
-    
-    --input-bg: #ffffff;
-    --input-border: #94a3b8;
-
-    --btn-realizado: #10b981;
-    --btn-pendiente: #f59e0b;
-}
-
-body { 
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
-    background-color: var(--bg-body); 
-    color: var(--text-main); 
-    margin: 0; padding: 0; line-height: 1.5; 
-    transition: background-color 0.3s;
-}
-
-#login-view { 
-    display: flex; height: 100vh; width: 100vw; 
-    align-items: center; justify-content: center; 
-    background: url('fondo.png') center/cover no-repeat;
-    position: relative;
-}
-#login-view::before {
-    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(11, 14, 20, 0.85); backdrop-filter: blur(5px); z-index: 0;
-}
-
-.login-wrapper {
-    display: flex; align-items: stretch; background: var(--panel-bg);
-    border: 1px solid var(--panel-border); border-radius: 16px;
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); position: relative; z-index: 1;
-    overflow: hidden; max-width: 800px; width: 90%; min-height: 450px;
-}
-.login-illustration {
-    flex: 1; 
-    background: radial-gradient(circle at center, rgba(35,40,56,1) 0%, rgba(16,20,28,1) 100%); 
-    padding: 40px; display: flex; 
-    flex-direction: column; justify-content: center; align-items: center; 
-    border-right: 1px solid rgba(255,255,255,0.02);
-}
-
-.login-illustration img { 
-    width: 140px; height: 140px; 
-    object-fit: cover; 
-    border-radius: 50%;
-    border: 3px solid rgba(255, 109, 0, 0.8); 
-    box-shadow: 0 0 35px rgba(255, 109, 0, 0.35);
-    margin-bottom: 25px;
-    transition: transform 0.3s;
-}
-.login-illustration img:hover { transform: scale(1.05); }
-
-.login-illustration h2 { color: var(--text-main); margin: 0; font-weight: 900; font-size: 22px; text-transform: uppercase; letter-spacing: 1px;}
-.login-illustration p { color: var(--text-muted); font-size: 12px; font-weight: 600; text-align: center; margin-top: 5px;}
-
-.login-box { 
-    flex: 1; width: 100%; text-align: center; padding: 40px 30px; 
-    display: flex; flex-direction: column; justify-content: center;
-}
-
-.login-box img.logo-oficial { 
-    max-width: 120px; 
-    margin: 0 auto 15px auto; 
-    display: block; 
-    border-radius: 25px; 
-    box-shadow: 0 15px 30px rgba(0,0,0,0.4); 
-}
-.login-subtitle { font-size: 11px; font-weight: 800; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 30px; }
-
-.input-group { margin-bottom: 15px; position: relative; }
-.input-group input { 
-    width: 100%; padding: 14px 20px 14px 45px; 
-    background: var(--bg-body); border: 1px solid var(--panel-border); 
-    border-radius: 10px; box-sizing: border-box; font-size: 14px; 
-    font-weight: 600; color: var(--text-main); outline: none; transition: all 0.3s;
-}
-.input-group input:focus { border-color: var(--brand-orange); }
-.input-icon { position: absolute; left: 16px; top: 14px; font-size: 16px; color: var(--text-muted); }
-
-input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px var(--panel-bg) inset !important;
-    -webkit-text-fill-color: var(--text-main) !important;
-    transition: background-color 5000s ease-in-out 0s;
-}
-
-.login-box button { 
-    width: 100%; padding: 15px; margin-top: 10px;
-    background: linear-gradient(135deg, #ff9100 0%, #ff6d00 100%); 
-    color: white; border: none; 
-    border-radius: 10px; font-weight: 900; cursor: pointer; font-size: 15px; 
-    transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
-    box-shadow: 0 8px 20px rgba(255, 109, 0, 0.25);
-}
-.login-box button:hover { 
-    transform: translateY(-3px); 
-    box-shadow: 0 12px 25px rgba(255, 109, 0, 0.35); 
-}
-
-#dashboard-view { display: none; padding: 20px 15px 80px 15px; }
-.container { max-width: 1500px; margin: 0 auto; }
-
-.header-brand { 
-    background-color: var(--panel-bg); border: 1px solid var(--panel-border);
-    border-bottom: 4px solid var(--brand-orange); padding: 20px 30px; 
-    border-radius: 12px; margin-bottom: 25px; display: flex; 
-    justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
-}
-.header-titles { display: flex; align-items: center; gap: 20px; flex-wrap: wrap;}
-.header-titles h1 { margin: 0; font-size: 24px; font-weight: 900; text-transform: uppercase;}
-
-.zone-selector-container { 
-    background: var(--bg-body); padding: 8px 15px; border-radius: 8px; 
-    display: flex; align-items: center; gap: 10px; border: 1px solid var(--panel-border); 
-}
-.zone-selector-container label { font-size: 12px; font-weight: bold; color: var(--text-muted); text-transform: uppercase;}
-.zone-select { background: transparent; color: var(--text-main); border: none; font-weight: bold; font-size: 14px; outline: none; cursor: pointer; }
-.zone-select option { background-color: var(--panel-bg); color: var(--text-main); }
-
-.user-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;}
-.btn-theme-toggle { background: var(--bg-body); color: var(--text-main); border: 1px solid var(--panel-border); padding: 10px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; transition: all 0.2s;}
-.user-badge { background: rgba(255, 109, 0, 0.1); border: 1px solid rgba(255, 109, 0, 0.3); padding: 10px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; color: var(--brand-orange); text-transform: uppercase;}
-.btn-logout { background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 13px; }
-
-.botones-principales { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; justify-content: flex-start; }
-.btn-agregar-flotante, .btn-exportar, .btn-cyan, .btn-subir-bd { 
-    color: white; border: none; padding: 10px 16px; border-radius: 8px; 
-    font-size: 13px; font-weight: 700; cursor: pointer; display: flex; 
-    align-items: center; justify-content: center; gap: 8px; transition: filter 0.2s; width: auto; 
-}
-.btn-agregar-flotante { background: var(--btn-en-camino); }
-.btn-exportar { background: #10b981; }
-.btn-cyan { background: var(--neon-purple); color: white; }
-.btn-subir-bd { background: var(--neon-cyan); color: #000; }
-
-.admin-stats-grid { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 20px; margin-bottom: 25px; }
-.stat-card { 
-    background: var(--panel-bg); padding: 20px; border-radius: 12px; 
-    border: 1px solid var(--panel-border); display: flex; flex-direction: column; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-}
-.stat-card h3 { 
-    margin-top: 0; color: var(--text-muted); font-size: 11px; font-weight: 900; 
-    text-transform: uppercase; border-bottom: 1px solid var(--panel-border); 
-    padding-bottom: 12px; margin-bottom: 15px; letter-spacing: 1px; 
-}
-.chart-container { position: relative; height: 180px; width: 100%; display: flex; justify-content: center; flex: 1; }
-
-.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-content: center; height: 100%; }
-.kpi-box { 
-    background: var(--bg-body); border: 1px solid var(--panel-border); 
-    border-radius: 8px; padding: 15px; text-align: center; display: flex; 
-    flex-direction: column; justify-content: center; position: relative; overflow: hidden;
-}
-.kpi-box::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
-.kpi-box.total::before { background: var(--neon-purple); box-shadow: 0 0 10px var(--neon-purple);}
-.kpi-box.success::before { background: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan);}
-.kpi-box.danger::before { background: var(--neon-pink); box-shadow: 0 0 10px var(--neon-pink);}
-.kpi-box.warning::before { background: var(--neon-yellow); box-shadow: 0 0 10px var(--neon-yellow);}
-.kpi-num { font-size: 28px; font-weight: 900; color: var(--text-main); line-height: 1; }
-.kpi-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-top: 8px; letter-spacing: 0.5px;}
-
-.control-panel { 
-    background-color: var(--panel-bg); padding: 15px 20px; border-radius: 8px; 
-    border: 1px solid var(--panel-border); margin-bottom: 25px; 
-    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; 
-}
-.filtros-grupo { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; flex: 1; }
-.filtro-item { display: flex; align-items: center; background: var(--bg-body); border: 1px solid var(--panel-border); border-radius: 6px; overflow: hidden; flex: 1; min-width: 200px; }
-.filtro-item label { font-size: 11px; font-weight: 800; color: var(--text-muted); padding: 10px 15px; background: rgba(0,0,0,0.1); border-right: 1px solid var(--panel-border); white-space: nowrap;}
-.filtro-item select, .filtro-item input { background: transparent; border: none; color: var(--text-main); font-weight: 700; font-size: 14px; outline: none; width: 100%; padding: 10px 15px; }
-.filtro-item option { background-color: var(--panel-bg); color: var(--text-main); }
-
-table { width: 100%; border-collapse: collapse; background-color: var(--panel-bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--panel-border); }
-th, td { padding: 18px 20px; text-align: left; border-bottom: 1px solid var(--panel-border); vertical-align: top; }
-th { background-color: rgba(0,0,0,0.2); color: var(--text-muted); font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
-tr:hover td { background-color: rgba(255,255,255,0.02); }
-
-.cliente-nombre { font-weight: 900; color: var(--text-main); font-size: 17px; display: block; margin-bottom: 6px; }
-.cliente-info { color: var(--text-muted); font-size: 14px; display: block; margin-bottom: 4px; font-weight: 600; }
-.lbl-info { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-right: 6px; font-weight: 800; letter-spacing: 0.5px;}
-
-.badge-tipo { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 0.5px;}
-.badge-tipo.alta { background: rgba(16, 185, 129, 0.1); color: var(--neon-green); border: 1px solid rgba(16, 185, 129, 0.3); }
-.badge-tipo.averia { background: rgba(41, 121, 255, 0.1); color: var(--neon-blue); border: 1px solid rgba(41, 121, 255, 0.3); }
-.badge-tipo.baja { background: rgba(239, 68, 68, 0.1); color: var(--neon-red); border: 1px solid rgba(239, 68, 68, 0.3); }
-
-.estado-punto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
-.ep-pend { background-color: var(--btn-pendiente); box-shadow: 0 0 8px var(--btn-pendiente); }
-.ep-aten { background-color: var(--btn-realizado); box-shadow: 0 0 8px var(--btn-realizado); }
-.ep-noat { background-color: var(--btn-sin-atender); box-shadow: 0 0 8px var(--btn-sin-atender); }
-.ep-cami { background-color: var(--btn-en-camino); box-shadow: 0 0 8px var(--btn-en-camino); }
-.ep-aprobar { background-color: var(--neon-purple); box-shadow: 0 0 8px var(--neon-purple); }
-.ep-aprobada { background-color: var(--neon-cyan); box-shadow: 0 0 8px var(--neon-cyan); }
-.ep-rechazada { background-color: var(--neon-red); box-shadow: 0 0 8px var(--neon-red); }
-
-.btn-acciones-grid { 
-    display: flex; flex-direction: column; gap: 8px; 
-    width: 100%; max-width: 240px; margin: 0 auto; 
-}
-.btn-grid-row { display: flex; gap: 8px; width: 100%; }
-.btn-action-ui {
-    width: 100%; padding: 8px 6px; border-radius: 6px; font-size: 11px; font-weight: 700;
-    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-    border: none; transition: transform 0.1s, filter 0.2s; text-decoration: none; box-sizing: border-box; flex: 1;
-}
-.btn-action-ui:active { transform: scale(0.97); }
-.btn-action-ui:hover { filter: brightness(1.1); }
-.btn-action-ui[disabled] { opacity: 0.4; cursor: not-allowed; pointer-events: none; filter: grayscale(1); }
-
-.btn-ui-estado { background: #f59e0b; color: white; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3); }
-.btn-ui-mapa { background: #3b82f6; color: white; }
-.btn-ui-nap { background: #8b5cf6; color: white; }
-.btn-ui-wsp { background: #22c55e; color: white; }
-.btn-ui-copiar { background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--panel-border); }
-.btn-ui-editar { background: transparent; color: #f97316; border: 1px solid #f97316; }
-.btn-ui-eliminar { background: transparent; color: #ef4444; border: 1px solid #ef4444; }
-
-.btn-ui-carlos { background: var(--neon-purple); color: white; box-shadow: 0 4px 6px rgba(213, 0, 249, 0.3); }
-.btn-ui-wilton { background: var(--neon-cyan); color: #000; box-shadow: 0 4px 6px rgba(0, 229, 255, 0.3); }
-
-[data-theme="light"] .btn-ui-copiar { background: #f8fafc; border-color: #cbd5e1; color: #334155; }
-
-.modal-overlay { 
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: none; justify-content: center; align-items: center; z-index: 2000; padding: 15px; box-sizing: border-box; backdrop-filter: blur(5px);
-}
-.modal-content { 
-    background: var(--panel-bg); padding: 30px; border-radius: 12px; width: 100%; max-width: 650px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; border: 1px solid var(--panel-border); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); position: relative;
-}
-.btn-close-x { position: absolute; top: 15px; right: 15px; width: 30px; height: 30px; background: transparent; color: var(--text-muted); border: none; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10;}
-.btn-close-x:hover { color: var(--text-main); }
-
-.modal-tabs { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
-.tab-btn { flex: 1; padding: 15px 10px; border-radius: 8px; border: 1px solid var(--panel-border); background: var(--bg-body); color: var(--text-muted); font-size: 13px; font-weight: 900; cursor: pointer; transition: 0.2s; text-align: center; text-transform: uppercase; min-width: 120px;}
-.tab-btn.active-alta { background: rgba(16, 185, 129, 0.15); color: var(--neon-green); border-color: var(--neon-green); box-shadow: 0 0 15px rgba(16,185,129,0.2); }
-.tab-btn.active-averia { background: rgba(41, 121, 255, 0.15); color: var(--neon-blue); border-color: var(--neon-blue); box-shadow: 0 0 15px rgba(41, 121, 255, 0.2); }
-.tab-btn.active-baja { background: rgba(239, 68, 68, 0.15); color: var(--neon-red); border-color: var(--neon-red); box-shadow: 0 0 15px rgba(239,68,68,0.2); }
-
-.search-box { background: rgba(0, 229, 255, 0.05); padding: 20px; border-radius: 12px; border: 1px dashed var(--neon-cyan); margin-bottom: 25px; }
-
-.form-group { margin-bottom: 15px; width: 100%; }
-.form-group label { display: block; font-weight: 800; margin-bottom: 6px; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;}
-.form-control { padding: 12px 14px; border: 1px solid var(--input-border); border-radius: 6px; font-size: 14px; outline: none; background-color: var(--input-bg); color: var(--text-main); width: 100%; box-sizing: border-box; font-weight: 600; transition: 0.2s;}
-.form-control:focus { border-color: var(--brand-orange); }
-select.form-control option { background-color: var(--panel-bg); color: var(--text-main); }
-.horario-container { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-start; }
-.horario-container div { flex: 1; min-width: 120px; }
-
-.modal-buttons { display: flex; gap: 12px; margin-top: 25px; }
-.btn-guardar { background: var(--brand-orange); color: white; border: none; padding: 14px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: 900; font-size: 14px; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px;}
-.btn-guardar:hover { filter: brightness(1.1); }
-.btn-cancelar { background: transparent; color: var(--text-main); border: 1px solid var(--panel-border); padding: 14px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: 900; font-size: 14px; transition: 0.2s; text-transform: uppercase;}
-.btn-cancelar:hover { background: var(--bg-body); }
-
-.grupo-alta, .grupo-averia, .grupo-baja { display: none; }
-
-.multi-select-container { position: relative; width: 100%; user-select: none; }
-.multi-select-display { padding: 12px 16px; border: 1px solid var(--input-border); border-radius: 6px; font-size: 14px; background-color: var(--input-bg); color: var(--text-main); width: 100%; box-sizing: border-box; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
-.multi-select-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 6px; margin-top: 5px; z-index: 2001; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-.multi-select-dropdown.show { display: block; }
-.multi-option { padding: 10px 15px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--panel-border); cursor: pointer; margin: 0; }
-.multi-option:hover { background: var(--bg-body); }
-.multi-option input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--brand-orange); cursor: pointer; pointer-events: none;}
-.multi-option label { cursor: pointer; width: 100%; color: var(--text-main); font-size: 13px; pointer-events: none; margin: 0; font-weight: 600;}
-
-.price-display-container { background: rgba(16, 185, 129, 0.1); border: 1px dashed var(--neon-green); border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px; }
-.price-badge { font-size: 24px; font-weight: 900; color: var(--neon-green); margin-top: 2px; }
-.checkbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin-top: 5px; }
-.chk-label { display: flex; align-items: center; gap: 8px; background: var(--input-bg); border: 1px solid var(--panel-border); padding: 10px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; color: var(--text-main); cursor: pointer; transition: 0.2s; }
-.chk-label:hover { border-color: var(--brand-orange); }
-.chk-extra { accent-color: var(--brand-orange); width: 16px; height: 16px; cursor: pointer; margin:0;}
-
-#toast { visibility: hidden; min-width: 250px; background-color: var(--text-main); color: var(--bg-body); text-align: center; border-radius: 8px; padding: 16px 24px; position: fixed; z-index: 3000; left: 50%; bottom: 30px; transform: translateX(-50%); font-weight: 900; font-size: 13px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-#toast.show { visibility: visible; bottom: 50px; transition: 0.3s; }
-.loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--neon-cyan); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-.admin-only { display: none !important; }
-.admin-wilton-only { display: none !important; }
-.admin-carlos-only { display: none !important; }
-
-.show-admin { display: block !important; }
-.show-admin-flex { display: flex !important; }
-.show-admin-grid { display: grid !important; }
-
-.calendar-premium-card { overflow: hidden; background: linear-gradient(145deg, var(--panel-bg) 0%, var(--bg-body) 100%); }
-.calendar-premium-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
-.calendar-nav { display: flex; align-items: center; gap: 6px; }
-.cal-nav-btn { background: var(--bg-body); border: 1px solid var(--panel-border); color: var(--text-main); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-weight: bold; }
-.cal-nav-btn:hover { background: var(--brand-orange); border-color: var(--brand-orange); color: white; transform: scale(1.05); }
-.cal-today-btn { width: auto; padding: 0 12px; font-size: 11px; font-weight: 900; letter-spacing: 0.5px; background: rgba(255, 109, 0, 0.15); border-color: rgba(255, 109, 0, 0.3); color: var(--brand-orange); }
-.cal-semana-label { font-size: 11px; font-weight: 800; color: var(--text-muted); min-width: 100px; text-align: center; text-transform: uppercase; }
-.cal-day-quickview { background: var(--bg-body); border-radius: 10px; padding: 12px; margin-bottom: 15px; border: 1px solid var(--panel-border); min-height: 100px; transition: all 0.3s; }
-.cal-day-header { font-size: 13px; font-weight: 900; color: var(--neon-cyan); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
-.cal-timeline-mini { display: flex; flex-wrap: wrap; gap: 5px; min-height: 40px; }
-.cal-event-pill { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: 800; cursor: pointer; transition: all 0.2s; border-left: 3px solid; white-space: nowrap; animation: pillFadeIn 0.3s ease; }
-.cal-event-pill:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.3); filter: brightness(1.15); }
-.cal-event-pill.alta { background: rgba(16, 185, 129, 0.12); border-left-color: var(--neon-green); color: var(--neon-green); }
-.cal-event-pill.averia { background: rgba(41, 121, 255, 0.12); border-left-color: var(--neon-blue); color: var(--neon-blue); }
-.cal-event-pill.baja { background: rgba(239, 68, 68, 0.12); border-left-color: var(--neon-red); color: var(--neon-red); }
-.cal-event-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
-.cal-week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.cal-week-day { background: var(--bg-body); border-radius: 8px; padding: 8px 4px; text-align: center; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; position: relative; }
-.cal-week-day:hover { background: rgba(255, 109, 0, 0.08); border-color: rgba(255, 109, 0, 0.2); }
-.cal-week-day.active { background: rgba(255, 109, 0, 0.15); border-color: var(--brand-orange); box-shadow: 0 0 15px rgba(255, 109, 0, 0.2); }
-.cal-week-day.today { border-color: var(--neon-cyan); background: rgba(0, 229, 255, 0.05); }
-.cal-week-dayname { font-size: 9px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-.cal-week-daynum { font-size: 18px; font-weight: 900; color: var(--text-main); margin: 4px 0; }
-.cal-week-day.active .cal-week-daynum { color: var(--brand-orange); }
-.cal-week-daycount { font-size: 9px; font-weight: 700; color: var(--neon-cyan); background: rgba(0, 229, 255, 0.1); border-radius: 10px; padding: 1px 6px; display: inline-block; }
-
-.modal-fullscreen { max-width: 95vw !important; height: 95vh !important; display: flex; flex-direction: column; padding: 20px 30px !important; background: var(--panel-bg); border-radius: 16px; border: 1px solid var(--panel-border); box-shadow: 0 25px 60px rgba(0,0,0,0.5); }
-.fc-theme-standard td, .fc-theme-standard th, .fc-theme-standard .fc-scrollgrid { border-color: var(--panel-border) !important; }
-.fc .fc-col-header-cell-cushion, .fc .fc-daygrid-day-number { color: var(--text-main); font-weight: 800; text-transform: uppercase; }
-.fc .fc-toolbar-title { color: var(--text-main); font-size: 18px; font-weight: 900; text-transform: uppercase; }
-.fc .fc-button-primary { background-color: var(--panel-bg) !important; border: 1px solid var(--panel-border) !important; color: var(--text-muted) !important; font-weight: bold; text-transform: uppercase; transition: 0.2s; }
-.fc .fc-button-primary:not(:disabled):hover, .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: var(--brand-orange) !important; color: white !important; border-color: var(--brand-orange) !important; }
-.fc-event { cursor: pointer; border-radius: 6px; padding: 4px; border: none; font-size: 11px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 10px; }
-
-@media screen and (max-width: 900px) {
-    /* El !important obliga a que en celulares y tablets se apilen en 1 sola columna, ignorando el JS */
-    .admin-stats-grid { grid-template-columns: 1fr !important; gap: 15px; } 
-    .kpi-grid { grid-template-columns: 1fr 1fr; }
-}
-
-@media screen and (max-width: 768px) {
-    .login-illustration { display: none; }
-    .login-wrapper { max-width: 350px; min-height: auto; flex-direction: column; margin: 20px; }
-    .login-box { padding: 30px 20px; }
-    .login-box img.logo-oficial { max-width: 90px; border-radius: 20px; }
-    .input-group input { padding: 12px 15px 12px 40px; }
-    
-    .header-brand { flex-direction: column; padding: 15px; gap: 12px; align-items: center; text-align: center; }
-    .header-titles { justify-content: center; flex-direction: column; gap: 8px; width: 100%;}
-    .header-titles h1 { font-size: 18px; }
-    .user-info { justify-content: center; width: 100%; margin-top: 5px; flex-wrap: wrap; gap: 8px;}
-    
-    /* Apilamos los botones principales ordenadamente uno debajo del otro */
-    .botones-principales { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;}
-    .btn-agregar-flotante, .btn-exportar, .btn-cyan, .btn-subir-bd { width: 100%; min-width: auto; padding: 12px 10px; font-size: 13px; justify-content: center;}
-
-    table, thead, tbody, th, td, tr { display: block; }
-    thead tr { position: absolute; top: -9999px; left: -9999px; }
-    
-    /* Diseño Premium para las Tarjetas en Celular */
-    tr { margin-bottom: 20px; border: 1px solid var(--panel-border); border-radius: 12px; background: var(--panel-bg); padding: 18px; box-shadow: 0 8px 25px rgba(0,0,0,0.3);}
-    td { border: none; padding: 8px 0; width: 100% !important; box-sizing: border-box; }
-    
-    /* Separador punteado entre la info del cliente y los botones de acción */
-    td:last-child { border-bottom: none; border-top: 1px dashed var(--panel-border); margin-top: 12px; padding-top: 18px;}
-    
-    .filtros-grupo { flex-direction: column; width: 100%; align-items: stretch; gap: 10px; }
-    .filtro-item { width: 100%; margin-bottom: 0; }
-    .btn-acciones-grid { max-width: 100%; }
-    
-    /* Le damos aire a la etiqueta del tipo de trabajo (Alta, Avería, etc.) */
-    .badge-tipo { display: inline-flex; margin-top: 12px; margin-bottom: 12px; padding: 6px 10px; font-size: 11px;}
-}
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div id="login-view">
@@ -438,6 +43,10 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
             
             <button type="submit">INGRESAR AL SISTEMA</button>
             <p id="login-error" style="color: var(--btn-sin-atender); font-size: 13px; display: none; margin-top:15px; font-weight: bold;">Error: Verifica tus credenciales.</p>
+            
+            <div style="margin-top: 15px; text-align: center;">
+                <a href="#" onclick="window.recuperarContrasena();" style="color: var(--text-muted); font-size: 12px; text-decoration: none; font-weight: 700; transition: 0.2s;" onmouseover="this.style.color='var(--neon-cyan)'" onmouseout="this.style.color='var(--text-muted)'">¿Olvidaste o quieres cambiar tu contraseña?</a>
+            </div>
         </form>
     </div>
 </div>
@@ -463,18 +72,15 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
         </div>
 
         <div class="botones-principales" id="contenedorBotonesAccion" style="display:none;">
-            <button type="button" class="btn-agregar-flotante" onclick="abrirModal()">+ Nuevo Trabajo</button>
-            
-            <button type="button" class="btn-cyan show-admin-flex" id="btnMapaCoberturaGeneral" onclick="abrirModalCoberturaGeneral()">🗺️ Mapa Cobertura</button>
+            <button type="button" class="btn-agregar-flotante btn-ocultar-tecnico" onclick="abrirModal()">+ Nuevo Trabajo</button>
+            <button type="button" class="btn-cyan btn-ocultar-tecnico" id="btnMapaCoberturaGeneral" onclick="abrirModalCoberturaGeneral()">🗺️ Mapa Cobertura</button>
 
-            <!-- EXCLUSIVOS DE ADMIN: Excel y BD (clase admin-only) -->
             <button type="button" class="btn-exportar admin-only" onclick="exportarAExcel()" id="btnExportarAdmin">📊 Exportar Excel</button>
             <label class="btn-subir-bd admin-only" id="btnSubirBdAdmin">
                 📁 Subir BD Clientes
                 <input type="file" accept=".xlsx, .xls" style="display: none;" onchange="procesarExcelClientes(event)">
             </label>
             
-            <!-- ADMIN Y WILTON: Calendario General -->
             <button type="button" class="btn-cyan btn-calendario-header admin-wilton-only" onclick="abrirModalCalendario()" id="btnCalendarioAdmin">📅 Calendario General</button>
             
             <div id="loaderUpload" class="loader"></div>
@@ -560,6 +166,7 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
     </div>
 </div>
 
+<!-- ===== MODAL AGREGAR/EDITAR ===== -->
 <div class="modal-overlay" id="modalAgregar">
     <div class="modal-content" id="modalContentCaja" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModal()">×</button>
@@ -572,6 +179,7 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
             <button type="button" class="tab-btn active-alta" id="tabAlta" onclick="seleccionarTipoTarea('alta')">🚀 ALTA (Instalación)</button>
             <button type="button" class="tab-btn" id="tabAveria" onclick="seleccionarTipoTarea('averia')" style="color: #2979ff; border-color: #2979ff;">🛠️ AVERÍA</button>
             <button type="button" class="tab-btn" id="tabBaja" onclick="seleccionarTipoTarea('baja')">🛑 BAJA (Retiro)</button>
+            <button type="button" class="tab-btn" id="tabOtros" onclick="seleccionarTipoTarea('otros')" style="color: #8b9bb4; border-color: var(--panel-border);">⚙️ OTROS TRABAJOS</button>
         </div>
 
         <div class="search-box" id="cajaBuscador" style="display: none;">
@@ -583,7 +191,7 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
             <span id="searchResult" style="font-size: 11px; font-weight: 800; display: block; margin-top: 8px;"></span>
         </div>
 
-        <!-- BLOQUE OCULTO PARA VENDEDORES Y CARLOS (Solo lo ven Wilton y Admin) -->
+        <!-- BLOQUE OCULTO PARA VENDEDORES Y CARLOS -->
         <div id="grupoAsignacionTecnico">
             <div class="horario-container">
                 <div class="form-group">
@@ -612,72 +220,74 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
             <hr style="border: 0; border-top: 1px solid var(--panel-border); margin: 20px 0;">
         </div>
         
-        <div class="horario-container">
-            <div class="form-group" style="flex: 2;">
-                <label>Nombre del Cliente:</label>
-                <input type="text" id="formNombre" class="form-control" placeholder="Ej: Juan Perez">
+        <!-- CONTENEDOR COMÚN (Se oculta en Otros Trabajos) -->
+        <div id="camposClienteComunes">
+            <div class="horario-container">
+                <div class="form-group" style="flex: 2;">
+                    <label>Nombre del Cliente:</label>
+                    <input type="text" id="formNombre" class="form-control" placeholder="Ej: Juan Perez">
+                </div>
+                <div class="form-group" style="flex: 1;" id="grupoSedeVenta">
+                    <label style="color: var(--brand-orange);">Sede (Zona):</label>
+                    <select id="formSedeVenta" class="form-control" style="border-color: rgba(255,109,0,0.5);">
+                        <option value="Norte">Los Olivos</option>
+                        <option value="Lurin">Lurín</option>
+                    </select>
+                </div>
             </div>
-            <div class="form-group" style="flex: 1;" id="grupoSedeVenta">
-                <label style="color: var(--brand-orange);">Sede (Zona):</label>
-                <select id="formSedeVenta" class="form-control" style="border-color: rgba(255,109,0,0.5);">
-                    <option value="Norte">Los Olivos</option>
-                    <option value="Lurin">Lurín</option>
-                </select>
+            
+            <div class="horario-container">
+                <div class="form-group" style="flex: 1;">
+                    <label>Tipo de Documento:</label>
+                    <select id="formTipoDoc" class="form-control">
+                        <option value="DNI">DNI</option>
+                        <option value="RUC">RUC</option>
+                        <option value="C.E">C.E</option>
+                        <option value="Pasaporte">Pasaporte</option>
+                        <option value="CPP">CPP</option>
+                        <option value="PTP">PTP</option>
+                        <option value="C.I.E.">C.I.E.</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 2;">
+                    <label>N° de Documento:</label>
+                    <input type="text" id="formDni" class="form-control" placeholder="Ej: 71234567">
+                </div>
             </div>
-        </div>
-        
-        <div class="horario-container">
-            <div class="form-group" style="flex: 1;">
-                <label>Tipo de Documento:</label>
-                <select id="formTipoDoc" class="form-control">
-                    <option value="DNI">DNI</option>
-                    <option value="RUC">RUC</option>
-                    <option value="C.E">C.E</option>
-                    <option value="Pasaporte">Pasaporte</option>
-                    <option value="CPP">CPP</option>
-                    <option value="PTP">PTP</option>
-                    <option value="C.I.E.">C.I.E.</option>
-                    <option value="Otros">Otros</option>
-                </select>
-            </div>
-            <div class="form-group" style="flex: 2;">
-                <label>N° de Documento:</label>
-                <input type="text" id="formDni" class="form-control" placeholder="Ej: 71234567">
-            </div>
-        </div>
 
-        <div class="horario-container">
-            <div class="form-group">
-                <label>Teléfono Principal:</label>
-                <input type="text" id="formTelefonoPrincipal" class="form-control" placeholder="Ej: 987654321">
+            <div class="horario-container">
+                <div class="form-group">
+                    <label>Teléfono Principal:</label>
+                    <input type="text" id="formTelefonoPrincipal" class="form-control" placeholder="Ej: 987654321">
+                </div>
+                <div class="form-group">
+                    <label>Teléfono(s) Secundario(s):</label>
+                    <input type="text" id="formTelefonoSecundario" class="form-control" placeholder="Ej: 999888777 (Opcional)">
+                </div>
             </div>
-            <div class="form-group">
-                <label>Teléfono(s) Secundario(s):</label>
-                <input type="text" id="formTelefonoSecundario" class="form-control" placeholder="Ej: 999888777 (Opcional)">
-            </div>
-        </div>
 
-        <div class="form-group">
-            <label>Correo Electrónico:</label>
-            <input type="email" id="formCorreo" class="form-control" placeholder="Ej: cliente@correo.com (Opcional)">
-        </div>
-        
-        <div class="form-group">
-            <label>Dirección Exacta:</label>
-            <input type="text" id="formDireccion" class="form-control" placeholder="Ej: Mz A Lt 1">
-        </div>
-        <div class="form-group">
-            <label style="color: var(--brand-orange);">Referencia de Dirección:</label>
-            <input type="text" id="formReferencia" class="form-control" placeholder="Ej: Casa de 3 pisos amarilla, frente al parque" style="border-color: rgba(255,109,0,0.5);">
-        </div>
-        <div class="form-group">
-            <label>Link de Google Maps (Ubicación):</label>
-            <input type="text" id="formMapa" class="form-control" placeholder="https://maps.app.goo.gl/...">
+            <div class="form-group">
+                <label>Correo Electrónico:</label>
+                <input type="email" id="formCorreo" class="form-control" placeholder="Ej: cliente@correo.com (Opcional)">
+            </div>
+            
+            <div class="form-group">
+                <label>Dirección Exacta:</label>
+                <input type="text" id="formDireccion" class="form-control" placeholder="Ej: Mz A Lt 1">
+            </div>
+            <div class="form-group">
+                <label style="color: var(--brand-orange);">Referencia de Dirección:</label>
+                <input type="text" id="formReferencia" class="form-control" placeholder="Ej: Casa de 3 pisos amarilla, frente al parque" style="border-color: rgba(255,109,0,0.5);">
+            </div>
+            <div class="form-group">
+                <label>Link de Google Maps (Ubicación):</label>
+                <input type="text" id="formMapa" class="form-control" placeholder="https://maps.app.goo.gl/...">
+            </div>
         </div>
 
         <!-- MUNDO: ALTA -->
         <div class="grupo-alta" style="display: contents;">
-            <!-- NUEVO: Servicio, Plan y Precio en la misma fila -->
             <div class="horario-container" style="align-items: center; gap: 15px;">
                 <div class="form-group" style="flex: 1; margin-bottom: 0;">
                     <label style="color: var(--neon-cyan);">Servicio:</label>
@@ -749,6 +359,7 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
             
         </div>
 
+        <!-- MUNDO: AVERÍA -->
         <div class="grupo-averia" style="display: none;">
             <div class="form-group">
                 <label style="color: var(--neon-cyan);">Info de Red (Auto-Cargado):</label>
@@ -757,11 +368,12 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
             <div class="form-group">
                 <label>Tipo de Problema:</label>
                 <select id="formProblemaAveria" class="form-control">
-                    <option value="Luz Roja">Luz Roja (Corte de fibra)</option>
-                    <option value="Sin Internet">Sin Internet (Equipo ok)</option>
+                    <option value="Punto rojo">Punto rojo</option>
+                    <option value="Problemas con el IPTV">Problemas con el IPTV</option>
+                    <option value="Problemas con el cable">Problemas con el cable</option>
+                    <option value="Sin Internet">Sin Internet</option>
                     <option value="Internet Lento">Internet Lento</option>
-                    <option value="Problema TV / Cable">Problema TV / Cable</option>
-                    <option value="Mantenimiento">Mantenimiento General</option>
+                    <option value="Traspaso">Traspaso</option>
                 </select>
             </div>
             <div class="form-group">
@@ -770,6 +382,7 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
             </div>
         </div>
 
+        <!-- MUNDO: BAJA -->
         <div class="grupo-baja" style="display: none;">
             <div class="form-group">
                 <label>Motivo de Baja:</label>
@@ -781,15 +394,103 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
             </div>
         </div>
         
-        <!-- CAMPOS MOVIDOS: Ahora son generales para Alta, Avería y Baja -->
-        <div class="horario-container" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--panel-border);">
+        <!-- MUNDO: OTROS TRABAJOS (Mantenimiento y Seguimiento) -->
+        <div class="grupo-otros" style="display: none; border: 1px dashed var(--brand-orange); padding: 15px; border-radius: 8px; background: rgba(245, 158, 11, 0.05);">
             <div class="form-group">
-                <label>Caja NAP (Asignada/Detectada):</label>
-                <input type="text" id="formCajaAlta" class="form-control" placeholder="Ej: CAJA 01">
+                <label style="color: #f59e0b;">TIPO DE TRABAJO:</label>
+                <select id="formTipoOtros" class="form-control" onchange="window.cambiarSubtipoOtros()" style="border-color: rgba(245, 158, 11, 0.5); font-weight: 900;">
+                    <option value="Limpieza de caja">🧹 Limpieza de caja</option>
+                    <option value="Seguimiento de fibra">📡 Seguimiento de fibra</option>
+                </select>
+            </div>
+            
+            <!-- SUB-MÓDULO: LIMPIEZA DE CAJA (ACTUALIZADO) -->
+            <div id="seccionLimpiezaCaja">
+                <div class="horario-container" style="margin-top: 15px;">
+                    <div class="form-group">
+                        <label>Nombre/Número de Caja:</label>
+                        <input type="text" id="formCajaOtros" class="form-control" placeholder="Ej: CAJA 05 ASOC CHILLON">
+                    </div>
+                    <div class="form-group">
+                        <label>Link de la Caja (Ubicación Maps):</label>
+                        <input type="text" id="formLinkCajaOtros" class="form-control" placeholder="https://maps.app.goo.gl/...">
+                    </div>
+                </div>
+                
+                <!-- NUEVO CAMPO: SEÑAL DE CAJA (Integrado aquí) -->
+                <div class="form-group" style="margin-top: 10px;">
+                    <label style="color: var(--brand-orange);">📡 Potencia Actual en Caja NAP:</label>
+                    <input type="text" id="formSenalCajaOtros" class="form-control" placeholder="Ej: -18.0 dBm" style="border-color: rgba(245, 158, 11, 0.5);">
+                </div>
+
+                <div class="form-group" style="margin-top: 10px;">
+                    <label style="color: var(--neon-cyan);">CANTIDAD DE PUERTOS (Generador):</label>
+                    <select id="formCantPuertos" class="form-control" onchange="window.generarPuertos()">
+                        <option value="0">Ninguno / No aplica</option>
+                        <option value="8">8 Puertos</option>
+                        <option value="16">16 Puertos</option>
+                    </select>
+                </div>
+                <div id="puertosContainer" style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Los puertos se inyectan aquí con JS -->
+                </div>
+            </div>
+
+            <!-- SUB-MÓDULO: SEGUIMIENTO DE FIBRA -->
+            <div id="seccionSeguimientoFibra" style="display: none; margin-top: 15px; border-top: 1px dashed rgba(245, 158, 11, 0.3); padding-top: 15px;">
+                <label style="color: var(--neon-cyan); font-size: 11px; font-weight: 900; margin-bottom: 8px; display:block;">🔍 BUSCAR DATOS DEL CLIENTE</label>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="formBusquedaFibra" class="form-control" placeholder="ID o DNI..." style="border-color: var(--neon-cyan);">
+                    <button type="button" onclick="window.buscarClienteFibra()" class="btn-guardar" style="width: auto; background: var(--neon-cyan); color: #000; padding: 10px 20px;">Buscar</button>
+                </div>
+                <div class="horario-container">
+                    <div class="form-group" style="flex: 2;">
+                        <label>Cliente / Titular:</label>
+                        <input type="text" id="formClienteFibra" class="form-control" placeholder="Nombre completo">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>DNI / ID:</label>
+                        <input type="text" id="formDniFibra" class="form-control" placeholder="Documento">
+                    </div>
+                </div>
+                <div class="horario-container">
+                    <div class="form-group">
+                        <label>Plan / Pago Mensual:</label>
+                        <input type="text" id="formPlanFibra" class="form-control" placeholder="Ej: Plan 50 - S/50">
+                    </div>
+                    <div class="form-group">
+                        <label style="color: var(--neon-purple);">Equipos Adicionales:</label>
+                        <input type="text" id="formEquiposFibra" class="form-control" placeholder="Ej: 2 Mesh, 1 Deco">
+                    </div>
+                </div>
+                <div class="horario-container">
+                    <div class="form-group">
+                        <label>📍 Ubicación Inicio (Caja NAP):</label>
+                        <input type="text" id="formLinkInicioFibra" class="form-control" placeholder="Link de Google Maps">
+                    </div>
+                    <div class="form-group">
+                        <label>🏠 Ubicación Fin (Casa/Router):</label>
+                        <input type="text" id="formLinkFinFibra" class="form-control" placeholder="Link de Google Maps">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CAMPOS CAJA COMUNES (Para Alta, Avería, Baja) -->
+        <div id="camposCajaComunes" style="display: block;">
+            <div class="horario-container" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--panel-border);">
+                <div class="form-group">
+                    <label>Caja NAP (Asignada/Detectada):</label>
+                    <input type="text" id="formCajaAlta" class="form-control" placeholder="Ej: CAJA 01">
+                </div>
+                <div class="form-group">
+                    <label>Puerto (Asignado/Detectado):</label>
+                    <input type="number" id="formPuertoAlta" class="form-control" placeholder="Ej: 8">
+                </div>
             </div>
             <div class="form-group">
-                <label>Puerto (Asignado/Detectado):</label>
-                <input type="number" id="formPuertoAlta" class="form-control" placeholder="Ej: 8">
+                <label style="color: var(--neon-purple);">Link de la Caja NAP (Opcional):</label>
+                <input type="text" id="formLinkCaja" class="form-control" placeholder="Ej: https://maps.app.goo.gl/..." style="border-color: rgba(213, 0, 249, 0.4);">
             </div>
         </div>
         
@@ -800,25 +501,20 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
     </div>
 </div>
 
+<!-- ===== MODALES ADICIONALES ===== -->
 <div class="modal-overlay" id="modalCobertura">
     <div class="modal-content modal-fullscreen" style="display: flex; flex-direction: column;" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalCobertura()">×</button>
-        
         <div class="header-titles" style="margin-bottom: 15px; display: flex; justify-content: space-between; width: 100%; align-items: center; padding-right: 35px; box-sizing: border-box; flex-wrap: wrap; gap: 10px;">
             <h3 style="margin: 0; color: var(--text-main); font-size: 20px; font-weight: 900; text-transform: uppercase;">🗺️ Validar Cobertura</h3>
-            
-            <!-- BUSCADOR INTELIGENTE EN MAPA -->
             <div style="display: flex; gap: 8px; flex: 1; min-width: 280px; max-width: 500px;">
                 <input type="text" id="txtBuscarMapa" class="form-control" placeholder="Coordenadas, link o dirección..." style="border-color: var(--neon-cyan); background: rgba(0, 229, 255, 0.05); color: var(--text-main);">
                 <button type="button" class="btn-guardar" style="width: auto; padding: 8px 15px; background: var(--neon-cyan); color: #000; font-size: 12px; white-space: nowrap;" onclick="buscarEnMapa()">🔍 Buscar</button>
             </div>
-
             <button type="button" class="btn-guardar" style="width: auto; padding: 8px 15px; background: var(--brand-orange); color: #fff; font-size: 12px; display: flex; align-items: center; gap: 6px; white-space: nowrap;" onclick="centrarEnMiUbicacion()">
                 <span id="iconoUbicacion">📍</span> Mi Ubicación GPS
             </button>
         </div>
-        
-        <!-- Info del cliente inyectada dinámicamente -->
         <div id="infoClienteCobertura" style="margin-bottom: 15px; padding: 15px; background: rgba(0,229,255,0.05); border: 1px dashed var(--neon-cyan); border-radius: 8px; display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
             <div>
                 <strong style="color: var(--neon-cyan); font-size: 14px; display: block;" id="cobNombreCliente">Juan Perez</strong>
@@ -826,26 +522,17 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
             </div>
             <a href="#" id="cobLinkMapa" target="_blank" class="btn-guardar" style="width: auto; padding: 8px 15px; background: #3b82f6; text-decoration: none; font-size: 12px;">📍 Abrir en Google Maps Externo</a>
         </div>
-
-        <!-- Iframe de Google My Maps (Cobertura) CON PIN CLÁSICO -->
         <div style="position: relative; flex: 1; min-height: 400px; border-radius: 8px; overflow: hidden; border: 1px solid var(--panel-border);">
             <iframe id="iframeCobertura" src="" width="100%" height="100%" style="border:0; position: absolute; top: 0; left: 0;"></iframe>
-            
-            <!-- Pin Flotante Clásico -->
             <div id="mapCenterPin" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); pointer-events: none; display: none; z-index: 10; text-align: center;">
                 <div style="font-size: 38px; text-shadow: 0 5px 10px rgba(0,0,0,0.5); line-height: 1;">📍</div>
-                <!-- Punto de precisión en la punta del pin -->
                 <div style="width: 6px; height: 6px; background: var(--neon-red); border-radius: 50%; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); box-shadow: 0 0 10px var(--neon-red);"></div>
             </div>
         </div>
-        
-        <!-- Botones de Validación (Solo aparecen si se abrió desde una fila de tabla) -->
         <div class="modal-buttons" id="botonesCoberturaValidacion" style="display: none; margin-top: 20px;">
             <button type="button" class="btn-cancelar" style="color: var(--neon-red); border-color: var(--neon-red);" onclick="iniciarRechazo()">❌ Rechazar Venta</button>
             <button type="button" class="btn-guardar" style="background: var(--neon-cyan); color: #000;" onclick="confirmarAprobacionVenta()">👍 Confirmar Cobertura y Aprobar</button>
         </div>
-
-        <!-- Caja de Texto para el Motivo de Rechazo (Oculta por defecto) -->
         <div id="cajaRechazo" style="display:none; margin-top: 20px; padding: 20px; background: rgba(239, 68, 68, 0.1); border: 1px dashed var(--neon-red); border-radius: 8px;">
              <label style="color: var(--neon-red); font-weight: 900; font-size: 13px; display: block; margin-bottom: 8px;">MOTIVO DEL RECHAZO (Obligatorio):</label>
              <input type="text" id="txtMotivoRechazo" class="form-control" placeholder="Ej: No hay NAP cerca, cliente fuera de zona..." style="border-color: var(--neon-red);">
@@ -857,7 +544,6 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
     </div>
 </div>
 
-<!-- MODAL ELIMINAR -->
 <div class="modal-overlay" id="modalEliminar">
     <div class="modal-content" style="max-width: 400px; text-align: center;" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModalEliminar()">×</button>
@@ -870,18 +556,15 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
     </div>
 </div>
 
-<!-- MODAL DE CIERRE (SLA TÉCNICOS) -->
 <div class="modal-overlay" id="modalCierre">
     <div class="modal-content" style="max-width: 450px;" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModalCierre()">×</button>
         <h3 style="color: var(--neon-cyan); margin-top: 0; font-size: 18px; text-transform: uppercase;">Cierre de Tarea</h3>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Estás a punto de marcar el trabajo como <b id="lblEstadoCierre">ATENDIDO</b>. Por favor, ingresa una nota de cierre para la gerencia.</p>
-        
         <div class="form-group">
             <label style="color: var(--neon-cyan);">Nota de Cierre / Solución Técnica:</label>
             <textarea id="txtNotaCierre" class="form-control" rows="3" placeholder="Ej: Se cambió el conector rápido, la potencia quedó en -21dBm..."></textarea>
         </div>
-        
         <div class="modal-buttons" style="margin-top: 20px;">
             <button type="button" class="btn-cancelar" onclick="window.cerrarModalCierre()">Cancelar</button>
             <button type="button" class="btn-guardar" onclick="window.ejecutarCierreSLA()">Confirmar Cierre</button>
@@ -889,26 +572,22 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
     </div>
 </div>
 
-<!-- MODAL CALENDARIO GENERAL -->
 <div class="modal-overlay" id="modalCalendario">
     <div class="modal-content modal-fullscreen" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalCalendario()">×</button>
         <div class="header-titles" style="margin-bottom: 20px;">
             <h3 style="margin: 0; color: var(--text-main); font-size: 20px; font-weight: 900; text-transform: uppercase;">Monitor de Técnicos</h3>
         </div>
-        
         <div class="form-group" style="max-width: 300px; margin-bottom: 15px;">
             <label>Filtrar por Técnico:</label>
             <select id="filtroTecnicoCalendario" class="form-control" onchange="actualizarCalendarioGeneral()">
                 <option value="todos">Todos los Técnicos</option>
             </select>
         </div>
-
         <div id="calendarioGeneral" style="flex: 1; min-height: 600px; width: 100%; background: var(--bg-body); padding: 15px; border-radius: 8px; border: 1px solid var(--panel-border);"></div>
     </div>
 </div>
 
-<!-- MODAL DE RECHAZO RÁPIDO PARA CARLOS -->
 <div class="modal-overlay" id="modalRechazoRapido">
     <div class="modal-content" style="max-width: 400px; text-align: center;" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalRechazoRapido()">×</button>
@@ -924,1576 +603,41 @@ select.form-control option { background-color: var(--panel-bg); color: var(--tex
     </div>
 </div>
 
+<!-- ===== MODAL EXCLUSIVO PARA SEÑAL ÓPTICA ===== -->
+<div class="modal-overlay" id="modalSenal" style="display: none;">
+    <div class="modal-content" style="max-width: 350px; padding: 25px;">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModalSenal()">×</button>
+        <h3 style="margin-top: 0; color: var(--neon-cyan); font-size: 18px; font-weight: 900; text-align: center;">📡 REGISTRAR SEÑAL</h3>
+        
+        <input type="hidden" id="formSenalId">
+        
+        <!-- Router (Altas, Averías, Seguimiento) -->
+        <div id="camposModalSenalRouter" class="horario-container" style="display: none; flex-direction: column; gap: 15px; margin-top: 20px;">
+            <div class="form-group" style="width: 100%; margin: 0;">
+                <label>Potencia TX (Ida):</label>
+                <input type="text" id="modalFormTx" class="form-control" placeholder="Ej: 2.5 dBm" style="border-color: rgba(0, 229, 255, 0.5);">
+            </div>
+            <div class="form-group" style="width: 100%; margin: 0;">
+                <label>Potencia RX (Retorno):</label>
+                <input type="text" id="modalFormRx" class="form-control" placeholder="Ej: -22.5 dBm" style="border-color: rgba(0, 229, 255, 0.5);">
+            </div>
+        </div>
+
+        <!-- Caja (Limpieza de Caja) -->
+        <div id="camposModalSenalCaja" class="form-group" style="display: none; margin-top: 20px;">
+            <label style="color: var(--brand-orange);">Potencia en Caja NAP:</label>
+            <input type="text" id="modalFormSenalCaja" class="form-control" placeholder="Ej: -18.0 dBm" style="border-color: rgba(245, 158, 11, 0.5);">
+        </div>
+
+        <div class="modal-buttons" style="margin-top: 25px;">
+            <button type="button" class="btn-cancelar" onclick="window.cerrarModalSenal()">Cancelar</button>
+            <button type="button" class="btn-guardar" onclick="window.guardarModalSenal()">Guardar Señal</button>
+        </div>
+    </div>
+</div>
+
 <div id="toast">Mensaje</div>
 
-<script type="module">
-// ============================================================ //
-// APP - TEN NOC                                                //
-// ============================================================ //
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import {
-    getAuth,
-    signInWithEmailAndPassword,
-    signOut,
-    onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import {
-    getFirestore,
-    collection,
-    addDoc,
-    updateDoc,
-    doc,
-    deleteDoc,
-    onSnapshot,
-    query,
-    where,
-    getDocs,
-    writeBatch,
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-// ============================================================ //
-// CONFIGURACIÓN FIREBASE                                       //
-// ============================================================ //
-const firebaseConfig = {
-    apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
-    authDomain: "ten-soporte.firebaseapp.com",
-    projectId: "ten-soporte",
-    storageBucket: "ten-soporte.firebasestorage.app",
-    messagingSenderId: "498950424371",
-    appId: "1:498950424371:web:fce299a98cf8e57f822046",
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
-
-const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4");
-const coleccionClientes = collection(db, "artifacts", appId, "public", "data", "clientes_base");
-
-// ============================================================ //
-// ESTADO GLOBAL                                                //
-// ============================================================ //
-let dbTrabajos = [];
-
-let isAdmin = false;
-let isWilton = false;
-let isCarlos = false;
-let isVendedor = false;
-
-let nombreTecnicoLogueado = "";
-let zonaActual = "Norte";
-
-const tecnicosNorte = ["PATRICIO", "RENZO", "JUAN", "JESUS", "LOLI", "MARCELINO", "RICARDO", "CLEBER"];
-const tecnicosLurin = ["BILLS", "CIELO"];
-
-let chartTecnicos = null;
-let unsubscribeTrabajos = null;
-let idTrabajoAEliminar = null;
-
-// Variables SLA
-let idTrabajoCierreSLA = null;
-let estadoObjetivoSLA = null;
-
-// Variables Validación Mapa
-let ventaAValidarId = null;
-let idVentaARechazarRapido = null;
-
-// Variables Calendario
-let semanaOffset = 0;
-let diaSeleccionado = null;
-
-// Variables Mapa Dinámico
-const MAPA_NOC = "https://www.google.com/maps/d/embed?mid=1EKIxuTIGSM9GJ8YTbP_HCxhh-l5DOFw&ehbc=2E312F";
-const MAPA_VENTAS = "https://www.google.com/maps/d/embed?mid=1fMA7B2CSQKbdMlNO6lxVvh9pF_JnY-s&ehbc=2E312F"; 
-
-function obtenerUrlMapa() {
-    return (isAdmin || isWilton) ? MAPA_NOC : MAPA_VENTAS;
-}
-
-// ============================================================ //
-// TEMA                                                         //
-// ============================================================ //
-const savedTheme = localStorage.getItem("temaTen") || "dark";
-document.documentElement.setAttribute("data-theme", savedTheme);
-
-window.toggleTema = () => {
-    const currentTheme = document.documentElement.getAttribute("data-theme");
-    const newTheme = currentTheme === "light" ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", newTheme);
-    localStorage.setItem("temaTen", newTheme);
-    if (isAdmin || isWilton || isCarlos || isVendedor) renderizarTabla();
-};
-
-// ============================================================ //
-// AUTH                                                         //
-// ============================================================ //
-window.iniciarSesion = () => {
-    const email = document.getElementById("txtEmail").value.trim();
-    const pass = document.getElementById("txtPassword").value;
-    signInWithEmailAndPassword(auth, email, pass).catch(() => {
-        document.getElementById("login-error").style.display = "block";
-    });
-};
-
-window.cerrarSesion = () => {
-    signOut(auth);
-};
-
-window.cambiarZona = (z) => {
-    zonaActual = z;
-    actualizarFiltroTecnicos();
-    renderizarTabla();
-};
-
-// ============================================================ //
-// ON AUTH STATE CHANGED                                        //
-// ============================================================ //
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        document.getElementById("login-view").style.display = "none";
-        document.getElementById("dashboard-view").style.display = "block";
-        document.getElementById("contenedorBotonesAccion").style.display = "flex";
-
-        const email = user.email.toLowerCase();
-        isAdmin = email === "admin@ten.com";
-        isWilton = email === "wilton@ten.com";
-        
-        // Lista actualizada de Coordinadores de Ventas permitidos
-        const coordinadoresVentas = ["carlos@ten.com", "jrodriguez@ten.com", "mventocilla@ten.com"];
-        isCarlos = coordinadoresVentas.includes(email);
-        
-        isVendedor = email.includes("ventas");
-
-        // Resetear clases de roles
-        document.querySelectorAll(".admin-only, .admin-wilton-only, .admin-carlos-only").forEach((el) => {
-            el.classList.remove("show-admin", "show-admin-flex", "show-admin-grid");
-        });
-
-        if (isAdmin) {
-            nombreTecnicoLogueado = "ADMIN";
-            document.getElementById("lblUsuarioActivo").innerHTML = `👑 ADMINISTRADOR`;
-            document.getElementById("contenedorSelectorZona").classList.add("show-admin-flex");
-            document.querySelectorAll(".admin-only, .admin-wilton-only, .admin-carlos-only").forEach((el) =>
-                el.classList.add("show-admin-flex")
-            );
-            configurarGraficosBase("TOTALES", "Total", "Atendidos", "Pendientes");
-            zonaActual = document.getElementById("selectorZona").value;
-        } else if (isWilton) {
-            nombreTecnicoLogueado = "WILTON";
-            document.getElementById("lblUsuarioActivo").innerHTML = `🛠️ WILTON SOPORTE`;
-            document.getElementById("contenedorSelectorZona").classList.add("show-admin-flex");
-            document.querySelectorAll(".admin-wilton-only").forEach((el) => el.classList.add("show-admin-flex"));
-            configurarGraficosBase("TOTALES", "Total", "Atendidos", "Pendientes");
-            zonaActual = document.getElementById("selectorZona").value;
-        } else if (isCarlos || isVendedor) {
-            // Extrae el nombre bonito (ej: de "jcabrera.ventas" saca solo "JCABRERA")
-            let nombreLimpio = email.split("@")[0].split(".")[0].toUpperCase();
-            nombreTecnicoLogueado = isCarlos ? nombreLimpio : nombreLimpio;
-            
-            document.getElementById("lblUsuarioActivo").innerHTML = isCarlos ? `📋 COORD. ${nombreLimpio}` : `💼 ${nombreLimpio}`;
-
-            document.querySelectorAll(".admin-carlos-only").forEach((el) => el.classList.add("show-admin-flex"));
-
-            const panelGraficos = document.getElementById("panelGraficosAdmin");
-            panelGraficos.classList.add("show-admin-grid");
-
-            if (document.getElementById("cardCalendarioNoc")) document.getElementById("cardCalendarioNoc").style.display = "none";
-            if (document.getElementById("cardGraficoTecnicos")) document.getElementById("cardGraficoTecnicos").style.display = "none";
-
-            configurarGraficosBase("REPORTE DE VENTAS", "Total Registradas", "Instaladas", "Por Instalar");
-            zonaActual = "Norte";
-        } else {
-            nombreTecnicoLogueado = email.split("@")[0].toUpperCase();
-            document.getElementById("lblUsuarioActivo").innerHTML = `🛠️ ${nombreTecnicoLogueado}`;
-            zonaActual = tecnicosLurin.includes(nombreTecnicoLogueado) ? "Lurin" : "Norte";
-        }
-
-        // Asignar el mapa correspondiente al iframe según el rol
-        const iframeMapa = document.getElementById("iframeCobertura");
-        if (iframeMapa) iframeMapa.src = obtenerUrlMapa();
-
-        setTimeout(() => {
-            if (typeof window.renderizarCalendario === "function") window.renderizarCalendario();
-        }, 800);
-
-        actualizarFiltroTecnicos();
-        cargarTrabajosEnVivo();
-    } else {
-        if (unsubscribeTrabajos) unsubscribeTrabajos();
-        dbTrabajos = [];
-        document.getElementById("login-view").style.display = "flex";
-        document.getElementById("dashboard-view").style.display = "none";
-        document.getElementById("contenedorBotonesAccion").style.display = "none";
-    }
-});
-
-// ============================================================ //
-// CONFIGURAR GRÁFICOS BASE                                    //
-// ============================================================ //
-function configurarGraficosBase(titulo, lTotal, lSuccess, lWarning) {
-    const panelGraficos = document.getElementById("panelGraficosAdmin");
-    panelGraficos.classList.add("show-admin-grid");
-
-    if (isAdmin || isWilton) {
-        panelGraficos.style.gridTemplateColumns = "1fr 2fr 1fr";
-        if (document.getElementById("cardGraficoTecnicos")) document.getElementById("cardGraficoTecnicos").style.display = "flex";
-        if (document.getElementById("cardCalendarioNoc")) document.getElementById("cardCalendarioNoc").style.display = "block";
-    } else {
-        panelGraficos.style.gridTemplateColumns = "1fr";
-    }
-
-    if (document.getElementById("tituloKpi")) {
-        document.getElementById("tituloKpi").innerText = titulo;
-        document.getElementById("lblKpiTotal").innerText = lTotal;
-        document.getElementById("lblKpiAtendidos").innerText = lSuccess;
-        document.getElementById("lblKpiPendientes").innerText = lWarning;
-    }
-}
-
-// ============================================================ //
-// FILTROS TÉCNICOS                                            //
-// ============================================================ //
-function actualizarFiltroTecnicos() {
-    let lista = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
-    let html = `<option value="todos">Todos</option>`;
-    lista.forEach((t) => {
-        html += `<option value="${t}">${t}</option>`;
-    });
-    document.getElementById("filtroTecnico").innerHTML = html;
-}
-
-function actualizarSelectTecnicosModal() {
-    let lista = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
-    let html = ``;
-    lista.forEach((t) => {
-        html += `<div class="multi-option" onclick="window.toggleCheckbox(this)"><input type="checkbox" value="${t}"><label>${t}</label></div>`;
-    });
-    document.getElementById("techDropdown").innerHTML = html;
-    document.getElementById("techDisplay").innerText = "Sin Asignar";
-}
-
-// ============================================================ //
-// CARGAR TRABAJOS EN VIVO                                     //
-// ============================================================ //
-function cargarTrabajosEnVivo() {
-    if (unsubscribeTrabajos) unsubscribeTrabajos();
-
-    unsubscribeTrabajos = onSnapshot(coleccionTrabajos, (snapshot) => {
-        dbTrabajos = [];
-        snapshot.forEach((doc) => {
-            dbTrabajos.push({ id: doc.id, ...doc.data() });
-        });
-        actualizarOpcionesFechas();
-        renderizarTabla();
-        if (typeof window.renderizarCalendario === "function") window.renderizarCalendario();
-    });
-}
-
-// ============================================================ //
-// BÚSQUEDA DUAL (ID o DNI)                                    //
-// ============================================================ //
-window.buscarCliente = async () => {
-    const queryVal = document.getElementById("formIdCliente").value.trim();
-    const msg = document.getElementById("searchResult");
-
-    if (!queryVal) {
-        msg.innerText = "Escribe un ID o DNI primero";
-        return;
-    }
-
-    msg.innerText = "Buscando...";
-    msg.style.color = "var(--text-muted)";
-
-    try {
-        let docSnap = await getDocs(query(coleccionClientes, where("id_cliente", "==", queryVal)));
-        if (docSnap.empty) docSnap = await getDocs(query(coleccionClientes, where("dni", "==", queryVal)));
-
-        if (!docSnap.empty) {
-            const data = docSnap.docs[0].data();
-
-            document.getElementById("formNombre").value = data.nombre;
-            document.getElementById("formDni").value = data.dni;
-
-            let tels = data.telefonos ? data.telefonos.split(" / ") : [];
-            document.getElementById("formTelefonoPrincipal").value = tels[0] || "";
-            document.getElementById("formTelefonoSecundario").value = tels.slice(1).join(" / ") || "";
-
-            document.getElementById("formDireccion").value = data.zona ? `${data.zona} - ${data.direccion}` : data.direccion;
-            document.getElementById("formMapa").value = data.ubicacion;
-            document.getElementById("formInfoRedAveria").value = `Plan: ${data.plan} | TV: ${data.info_tv}`;
-
-            msg.innerText = "✅ Cliente Encontrado y Autocompletado";
-            msg.style.color = "var(--neon-green)";
-        } else {
-            msg.innerText = "❌ Cliente no encontrado en la base de datos.";
-            msg.style.color = "var(--neon-red)";
-        }
-    } catch (err) {
-        msg.innerText = "⚠️ Error en la búsqueda.";
-        msg.style.color = "var(--neon-yellow)";
-        console.error(err);
-    }
-};
-
-// ============================================================ //
-// CALCULAR PRECIO TOTAL                                       //
-// ============================================================ //
-window.calcularPrecioTotal = () => {
-    let planVal = document.getElementById("formPlanVenta").value;
-    let precioBase = parseInt(planVal.split("|")[0]);
-    let tipoServicio = document.getElementById("formTipoServicio").value;
-    let precioFinal = precioBase;
-
-    if (tipoServicio === "Internet + Cable" && (precioBase === 50 || precioBase === 55 || precioBase === 69)) {
-        precioFinal += 20;
-    }
-
-    document.getElementById("formPrecioTotal").innerText = `S/ ${precioFinal}`;
-};
-
-// ============================================================ //
-// ABRIR MODAL                                                  //
-// ============================================================ //
-window.abrirModal = () => {
-    if (isAdmin || isWilton) zonaActual = document.getElementById("selectorZona").value;
-
-    document.getElementById("formTrabajoId").value = "";
-    document.getElementById("formEstadoActual").value = "";
-    document.getElementById("modalTitulo").innerText = "Registro de Tarea";
-
-    document.querySelectorAll(
-        "#modalAgregar input[type=text]:not(.multi-select-display), #modalAgregar input[type=number], #modalAgregar input[type=email], #modalAgregar textarea"
-    ).forEach((i) => (i.value = ""));
-
-    document.getElementById("formFecha").value = new Date().toISOString().split("T")[0];
-    document.getElementById("searchResult").innerText = "";
-
-    document.getElementById("formTipoDoc").value = "DNI";
-    document.getElementById("formSedeVenta").value = "Norte";
-    document.getElementById("formTipoServicio").value = "Internet Solo";
-    document.getElementById("formPlanVenta").value = "50|PLAN S/. 50 BASICO 2";
-    document.getElementById("formPeriodo").value = "Quincenal";
-    document.getElementById("formComprobante").value = "Boleta";
-    document.querySelectorAll(".chk-extra").forEach((c) => (c.checked = false));
-
-    window.calcularPrecioTotal();
-    actualizarSelectTecnicosModal();
-    window.seleccionarTipoTarea("alta");
-
-    if (isVendedor || isCarlos) {
-        document.getElementById("grupoAsignacionTecnico").style.display = "none";
-        document.getElementById("tabAveria").style.display = "none";
-        document.getElementById("tabBaja").style.display = "none";
-        document.getElementById("grupoSedeVenta").style.display = "block";
-    } else {
-        document.getElementById("grupoAsignacionTecnico").style.display = "block";
-        document.getElementById("tabAveria").style.display = "block";
-        document.getElementById("tabBaja").style.display = "block";
-        document.getElementById("grupoSedeVenta").style.display = "none";
-    }
-
-    document.getElementById("modalAgregar").style.display = "flex";
-};
-
-// ============================================================ //
-// EDITAR TRABAJO                                               //
-// ============================================================ //
-window.editarTrabajo = (id) => {
-    let t = dbTrabajos.find((x) => x.id === id);
-    if (!t) return;
-
-    window.abrirModal();
-
-    document.getElementById("modalTitulo").innerText = "✏️ Editar Tarea";
-    document.getElementById("formTrabajoId").value = t.id;
-    document.getElementById("formEstadoActual").value = t.estado || "";
-    window.seleccionarTipoTarea(t.tipoTarea || "alta");
-
-    if ((isWilton || isAdmin) && t.estado === "aprobada_wilton") {
-        document.getElementById("formFecha").value = new Date().toISOString().split("T")[0];
-    } else {
-        document.getElementById("formFecha").value = t.fecha || new Date().toISOString().split("T")[0];
-    }
-
-    document.getElementById("formHoraInicio").value = t.horaInicio || "";
-    document.getElementById("formHoraFin").value = t.horaFin || "";
-
-    document.getElementById("formTipoDoc").value = t.tipoDoc || "DNI";
-    document.getElementById("formNombre").value = t.cliente || "";
-    document.getElementById("formDni").value = t.dni || "";
-    document.getElementById("formCorreo").value = t.correo || "";
-    document.getElementById("formSedeVenta").value = t.zona === "Lurin" ? "Lurin" : "Norte";
-
-    let telsArray = (t.tel || "").split(" / ");
-    document.getElementById("formTelefonoPrincipal").value = telsArray[0] || "";
-    document.getElementById("formTelefonoSecundario").value = telsArray.slice(1).join(" / ") || "";
-
-    document.getElementById("formDireccion").value = t.dir || "";
-    document.getElementById("formReferencia").value = t.referencia || "";
-    document.getElementById("formMapa").value = t.mapa || "";
-    document.getElementById("formCajaAlta").value = t.caja || "";
-    document.getElementById("formPuertoAlta").value = t.puerto || "";
-
-    if (t.tecnicos && Array.isArray(t.tecnicos)) {
-        document.querySelectorAll("#techDropdown input").forEach((chk) => {
-            if (t.tecnicos.includes(chk.value)) chk.checked = true;
-        });
-        let chks = document.querySelectorAll("#techDropdown input:checked");
-        document.getElementById("techDisplay").innerText = chks.length === 0 ? "Sin Asignar" : Array.from(chks).map((c) => c.value).join(", ");
-    }
-
-    if (t.tipoTarea === "alta") {
-        document.getElementById("formTipoServicio").value = t.tipoServicio || "Internet Solo";
-        document.getElementById("formPlanVenta").value = t.rawServ || "50|PLAN S/. 50 BASICO 2";
-        document.getElementById("formPeriodo").value = t.periodo || "Quincenal";
-        document.getElementById("formComprobante").value = t.comprobante || "Boleta";
-
-        document.querySelectorAll(".chk-extra").forEach((c) => (c.checked = false));
-        if (t.rawExtras && Array.isArray(t.rawExtras)) {
-            t.rawExtras.forEach((val) => {
-                let chk = document.querySelector(`.chk-extra[value="${val}"]`);
-                if (chk) chk.checked = true;
-            });
-        }
-
-        document.getElementById("formObsAlta").value = t.notasBase || t.notas || "";
-        window.calcularPrecioTotal();
-    } else if (t.tipoTarea === "averia") {
-        document.getElementById("formProblemaAveria").value = t.detalle || "";
-        document.getElementById("formNotasAveria").value = t.notas || "";
-        document.getElementById("formInfoRedAveria").value = t.infoRed || "";
-    } else if (t.tipoTarea === "baja") {
-        document.getElementById("formMotivoBaja").value = t.notas || "";
-        document.getElementById("formEquiposBaja").value = t.equipos || "";
-    }
-};
-
-// ============================================================ //
-// GUARDAR TRABAJO                                              //
-// ============================================================ //
-window.guardarTrabajo = async () => {
-    let techSelec = Array.from(document.querySelectorAll("#techDropdown input:checked")).map((c) => c.value);
-    if (techSelec.length === 0) techSelec = ["Sin Asignar"];
-
-    let telPrin = document.getElementById("formTelefonoPrincipal").value.trim();
-    let telSec = document.getElementById("formTelefonoSecundario").value.trim();
-    let telFinal = telPrin;
-    if (telSec) telFinal += " / " + telSec;
-
-    let tipo = document.getElementById("formTipoTareaValue").value;
-
-    let zonaAGuardar = isVendedor || isCarlos ?
-        (document.getElementById("formSedeVenta").value === "Los Olivos" ? "Norte" : document.getElementById("formSedeVenta").value) :
-        zonaActual;
-
-    let data = {
-        tipoTarea: tipo,
-        fecha: document.getElementById("formFecha").value,
-        horaInicio: document.getElementById("formHoraInicio").value,
-        horaFin: document.getElementById("formHoraFin").value,
-        tecnicos: techSelec,
-        tipoDoc: document.getElementById("formTipoDoc").value,
-        cliente: document.getElementById("formNombre").value || "Desconocido",
-        dni: document.getElementById("formDni").value,
-        correo: document.getElementById("formCorreo").value,
-        tel: telFinal,
-        dir: document.getElementById("formDireccion").value,
-        referencia: document.getElementById("formReferencia").value,
-        mapa: document.getElementById("formMapa").value,
-        zona: zonaAGuardar,
-        caja: document.getElementById("formCajaAlta").value,
-        puerto: document.getElementById("formPuertoAlta").value,
-    };
-
-    if (tipo === "alta") {
-        const planCompleto = document.getElementById("formPlanVenta").value;
-        const parts = planCompleto.split("|");
-        const precioVal = parts[0];
-        const nombrePlan = parts[1];
-        const tipoServicio = document.getElementById("formTipoServicio").value;
-        const precio = document.getElementById("formPrecioTotal").innerText;
-        const extrasArray = Array.from(document.querySelectorAll(".chk-extra:checked")).map((c) => c.value);
-        const extrasStr = extrasArray.join(", ");
-
-        data.rawServ = planCompleto;
-        data.rawExtras = extrasArray;
-        data.precio = precio;
-        data.tipoServicio = tipoServicio;
-        data.periodo = document.getElementById("formPeriodo").value;
-        data.comprobante = document.getElementById("formComprobante").value;
-
-        let extraDetalle = "";
-        if (tipoServicio === "Internet + Cable") extraDetalle = " (+ CABLE)";
-        else if (tipoServicio !== "Internet Solo") extraDetalle = ` (${tipoServicio})`;
-
-        data.detalle = nombrePlan + extraDetalle;
-
-        let obsBase = document.getElementById("formObsAlta").value;
-        data.notasBase = obsBase;
-        let extraTxt = extrasStr ? `📦 Equipos: ${extrasStr} | ` : "";
-        data.notas = `💰 Cobrar: ${precio} | ${extraTxt}${obsBase}`;
-    } else if (tipo === "averia") {
-        data.idCliente = document.getElementById("formIdCliente").value;
-        data.detalle = document.getElementById("formProblemaAveria").value;
-        data.notas = document.getElementById("formNotasAveria").value;
-        data.infoRed = document.getElementById("formInfoRedAveria").value;
-    } else if (tipo === "baja") {
-        data.idCliente = document.getElementById("formIdCliente").value;
-        data.detalle = "Retiro de Equipos";
-        data.notas = document.getElementById("formMotivoBaja").value;
-        data.equipos = document.getElementById("formEquiposBaja").value;
-    }
-
-    let idTrabajo = document.getElementById("formTrabajoId").value;
-    let estadoPrevio = document.getElementById("formEstadoActual").value;
-
-    if (!idTrabajo) data.vendedor = nombreTecnicoLogueado;
-
-    if (!idTrabajo) {
-        if (isVendedor || isCarlos) {
-            data.estado = "por_aprobar_carlos";
-            data.tecnicos = ["Sin Asignar"];
-        } else {
-            data.estado = "pendiente";
-        }
-    } else {
-        if ((isWilton || isAdmin) && estadoPrevio === "aprobada_wilton" && techSelec[0] !== "Sin Asignar") {
-            data.estado = "pendiente";
-        }
-    }
-
-    try {
-        if (idTrabajo) {
-            await updateDoc(doc(coleccionTrabajos, idTrabajo), data);
-        } else {
-            await addDoc(coleccionTrabajos, data);
-        }
-        window.cerrarModal();
-        mostrarToast("Tarea guardada exitosamente");
-    } catch (e) {
-        mostrarToast("Error al guardar");
-        console.error(e);
-    }
-};
-
-// ============================================================ //
-// MODAL COBERTURA / MAPA                                       //
-// ============================================================ //
-window.abrirModalCoberturaGeneral = () => {
-    document.getElementById("infoClienteCobertura").style.display = "none";
-    document.getElementById("botonesCoberturaValidacion").style.display = "none";
-    document.getElementById("cajaRechazo").style.display = "none";
-    document.getElementById("mapCenterPin").style.display = "none";
-    document.getElementById("modalCobertura").style.display = "flex";
-};
-
-window.abrirValidacionCobertura = (id) => {
-    let t = dbTrabajos.find((x) => x.id === id);
-    if (!t) return;
-
-    ventaAValidarId = id;
-
-    document.getElementById("cobNombreCliente").innerText = t.cliente;
-    document.getElementById("cobDirCliente").innerText = t.dir + (t.referencia ? ` (${t.referencia})` : "");
-
-    const linkBtn = document.getElementById("cobLinkMapa");
-    if (t.mapa) {
-        linkBtn.href = t.mapa;
-        linkBtn.style.display = "inline-block";
-        linkBtn.innerText = "📍 Abrir en Google Maps Externo";
-    } else {
-        linkBtn.style.display = "none";
-    }
-
-    document.getElementById("infoClienteCobertura").style.display = "flex";
-    document.getElementById("botonesCoberturaValidacion").style.display = "flex";
-    document.getElementById("cajaRechazo").style.display = "none";
-    document.getElementById("modalCobertura").style.display = "flex";
-
-    // Auto-centrar mapa para Carlos
-    document.getElementById("txtBuscarMapa").value = t.mapa || "";
-    if (t.mapa) window.buscarEnMapa();
-};
-
-window.verMapaCliente = async (id) => {
-    let t = dbTrabajos.find(x => x.id === id);
-    if (!t) return;
-    
-    document.getElementById("cobNombreCliente").innerText = t.cliente;
-    document.getElementById("cobDirCliente").innerText = t.dir + (t.referencia ? ` (${t.referencia})` : '');
-    
-    const linkBtn = document.getElementById("cobLinkMapa");
-    if (t.mapa) {
-        linkBtn.href = t.mapa;
-        linkBtn.style.display = "inline-block";
-        linkBtn.innerText = "📍 Abrir en Google Maps Externo";
-    } else {
-        linkBtn.style.display = "none";
-    }
-
-    // Mostrar panel pero ocultar botones de aprobación (Solo visor)
-    document.getElementById("infoClienteCobertura").style.display = "flex";
-    document.getElementById("botonesCoberturaValidacion").style.display = "none"; 
-    document.getElementById("cajaRechazo").style.display = "none";
-    document.getElementById("modalCobertura").style.display = "flex";
-
-    // Auto-centrar en la ubicación
-    document.getElementById("txtBuscarMapa").value = t.mapa || "";
-    if (t.mapa) {
-        await window.buscarEnMapa();
-    }
-};
-
-// ============================================================ //
-// BUSCAR EN MAPA                                               //
-// ============================================================ //
-window.buscarEnMapa = async () => {
-    const input = document.getElementById("txtBuscarMapa").value.trim();
-
-    if (!input) {
-        mostrarToast("⚠️ Ingresa coordenadas, dirección o un link largo.");
-        return;
-    }
-
-    const iframe = document.getElementById("iframeCobertura");
-    const baseUrl = obtenerUrlMapa();
-
-    mostrarToast("🔍 Buscando ubicación...");
-
-    try {
-        let lat, lon;
-
-        // Coordenadas directas
-        const coordMatch = input.match(/(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
-        // Link de Maps
-        const linkMatch = input.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-
-        if (coordMatch) {
-            lat = coordMatch[1];
-            lon = coordMatch[2];
-        } else if (linkMatch) {
-            lat = linkMatch[1];
-            lon = linkMatch[2];
-        } else if (input.includes("goo.gl/") || input.includes("maps.app")) {
-            mostrarToast("❌ Los links cortos de Google bloquean la extracción. Pega la dirección en texto o coordenadas.");
-            return;
-        } else {
-            // Geocodificación por texto
-            const query = encodeURIComponent(input + ", Lima, Peru");
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
-            const data = await response.json();
-
-            if (data && data.length > 0) {
-                lat = data[0].lat;
-                lon = data[0].lon;
-            } else {
-                mostrarToast("❌ No se encontró la dirección. Intenta con coordenadas numéricas.");
-                return;
-            }
-        }
-
-        iframe.src = `${baseUrl}&ll=${lat},${lon}&z=17`;
-        document.getElementById("mapCenterPin").style.display = "block";
-        mostrarToast("✅ Mapa centrado en la ubicación indicada.");
-    } catch (error) {
-        console.error(error);
-        mostrarToast("⚠️ Error de red al buscar la ubicación.");
-    }
-};
-
-// ============================================================ //
-// CENTRAR EN MI UBICACIÓN                                     //
-// ============================================================ //
-window.centrarEnMiUbicacion = () => {
-    const btnIcon = document.getElementById("iconoUbicacion");
-    const iframe = document.getElementById("iframeCobertura");
-    const baseUrl = obtenerUrlMapa();
-
-    if (!navigator.geolocation) {
-        mostrarToast("Tu navegador no soporta geolocalización 😔");
-        return;
-    }
-
-    btnIcon.innerText = "⏳";
-    mostrarToast("Buscando tu señal GPS...");
-
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            iframe.src = `${baseUrl}&ll=${lat},${lon}&z=17`;
-            btnIcon.innerText = "📍";
-            document.getElementById("mapCenterPin").style.display = "block";
-            mostrarToast("Mapa centrado en tu ubicación ✅");
-        },
-        (error) => {
-            btnIcon.innerText = "📍";
-            mostrarToast("Error al obtener ubicación. Activa tu GPS.");
-            console.error(error);
-        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-};
-
-// ============================================================ //
-// APROBACIÓN / RECHAZO DE VENTA                               //
-// ============================================================ //
-window.confirmarAprobacionVenta = async () => {
-    if (!ventaAValidarId) return;
-
-    try {
-        await updateDoc(doc(coleccionTrabajos, ventaAValidarId), { estado: "aprobada_wilton" });
-        mostrarToast("✅ Cobertura Aprobada. Enviada a Soporte.");
-        window.cerrarModalCobertura();
-    } catch (e) {
-        mostrarToast("Error al aprobar");
-    }
-};
-
-window.confirmarRechazoVenta = async () => {
-    if (!ventaAValidarId) return;
-
-    const motivo = document.getElementById("txtMotivoRechazo").value.trim();
-
-    if (!motivo) {
-        mostrarToast("❌ Debes ingresar el motivo de rechazo.");
-        return;
-    }
-
-    try {
-        await updateDoc(doc(coleccionTrabajos, ventaAValidarId), {
-            estado: "rechazada",
-            notas: `[RECHAZADA] Motivo: ${motivo}`,
-        });
-        mostrarToast("🚫 Venta Rechazada por falta de cobertura.");
-        window.cerrarModalCobertura();
-    } catch (e) {
-        mostrarToast("Error al rechazar");
-    }
-};
-
-window.iniciarRechazo = () => {
-    document.getElementById("botonesCoberturaValidacion").style.display = "none";
-    document.getElementById("cajaRechazo").style.display = "block";
-    document.getElementById("txtMotivoRechazo").value = "";
-    document.getElementById("txtMotivoRechazo").focus();
-};
-
-window.cancelarRechazo = () => {
-    if (ventaAValidarId || document.getElementById("infoClienteCobertura").style.display === "flex") {
-        document.getElementById("cajaRechazo").style.display = "none";
-        // Solo restauramos botones de validación si no estamos en "Modo Visor"
-        if(ventaAValidarId) {
-            document.getElementById("botonesCoberturaValidacion").style.display = "flex";
-        }
-    }
-};
-
-window.aprobarDirecto = async (id) => {
-    try {
-        await updateDoc(doc(coleccionTrabajos, id), { estado: "aprobada_wilton" });
-        mostrarToast("✅ Venta Aprobada y enviada a Soporte.");
-    } catch (e) {
-        mostrarToast("Error al aprobar");
-        console.error(e);
-    }
-};
-
-window.rechazarDirecto = (id) => {
-    idVentaARechazarRapido = id;
-    document.getElementById("txtMotivoRechazoRapido").value = "";
-    document.getElementById("modalRechazoRapido").style.display = "flex";
-    document.getElementById("txtMotivoRechazoRapido").focus();
-};
-
-window.confirmarRechazoRapido = async () => {
-    if (!idVentaARechazarRapido) return;
-
-    let motivo = document.getElementById("txtMotivoRechazoRapido").value.trim();
-
-    if (!motivo) {
-        mostrarToast("❌ Debes ingresar un motivo de rechazo.");
-        return;
-    }
-
-    try {
-        await updateDoc(doc(coleccionTrabajos, idVentaARechazarRapido), {
-            estado: "rechazada",
-            notas: `[RECHAZADA] Motivo: ${motivo}`,
-        });
-        mostrarToast("🚫 Venta Rechazada.");
-        window.cerrarModalRechazoRapido();
-    } catch (e) {
-        mostrarToast("Error al rechazar");
-        console.error(e);
-    }
-};
-
-// ============================================================ //
-// RENDERIZAR TABLA                                             //
-// ============================================================ //
-window.renderizarTabla = () => {
-    const tbody = document.getElementById("tablaTrabajos");
-    const filtroFecha = document.getElementById("filtroFecha").value;
-    const filtroEstado = document.getElementById("filtroEstado").value;
-    const txtBuscar = document.getElementById("buscador").value.toLowerCase();
-
-    tbody.innerHTML = "";
-    let pGrafico = [];
-
-    let listData = [...dbTrabajos];
-
-    if (isAdmin || isWilton) {
-        listData = listData.filter((t) => (t.zona || "Norte") === zonaActual);
-    }
-
-    let tOrdenado = listData.sort((a, b) => {
-        let res = (b.fecha || "").localeCompare(a.fecha || "");
-        if (res === 0) return (a.horaInicio || "23:59").localeCompare(b.horaInicio || "23:59");
-        return res;
-    });
-
-    tOrdenado.forEach((t) => {
-        try {
-            let asig = t.tecnicos || ["Sin Asignar"];
-            if (typeof asig === "string") asig = [asig];
-
-            let estActual = String(t.estado || "pendiente").toLowerCase();
-
-            if ((isVendedor || isCarlos) && t.tipoTarea !== "alta") return;
-            if (isVendedor && t.vendedor !== nombreTecnicoLogueado) return;
-
-            let esAprobacion = estActual === "por_aprobar_carlos" || estActual === "aprobada_wilton" || estActual === "rechazada";
-            if (!isAdmin && !isWilton && !isCarlos && !isVendedor && esAprobacion) return;
-
-            if (!isAdmin && !isWilton && !isCarlos && !isVendedor && !asig.includes(nombreTecnicoLogueado) && !asig.includes("Todos")) return;
-
-            if ((isAdmin || isWilton) && document.getElementById("filtroTecnico").value !== "todos" && !asig.includes(document.getElementById("filtroTecnico").value)) return;
-
-            if (filtroFecha !== "todas" && t.fecha !== filtroFecha) return;
-            if (filtroEstado !== "todos" && estActual !== filtroEstado) return;
-
-            if (txtBuscar && !`${t.cliente} ${t.dni} ${t.dir} ${t.detalle}`.toLowerCase().includes(txtBuscar)) return;
-
-            pGrafico.push(t);
-
-            // Formato Visual de Estados
-            let textEst = estActual.toUpperCase().replace(/_/g, " ");
-            let iconEst = "⏳";
-            let colorEstadoTxt = "#f59e0b";
-            let clasePunto = "ep-pend";
-
-            if (estActual === "atendido") { textEst = "ATENDIDO";
-                iconEst = "✅";
-                colorEstadoTxt = "#10b981";
-                clasePunto = "ep-aten"; } else if (estActual === "no_atendido") { textEst = "NO ATENDIDO";
-                iconEst = "❌";
-                colorEstadoTxt = "#ef4444";
-                clasePunto = "ep-noat"; } else if (estActual === "en_camino") { textEst = "EN CAMINO";
-                iconEst = "🚶";
-                colorEstadoTxt = "#3b82f6";
-                clasePunto = "ep-cami"; } else if (estActual === "por_aprobar_carlos") { textEst = "POR APROBAR";
-                iconEst = "🟡";
-                colorEstadoTxt = "var(--neon-purple)";
-                clasePunto = "ep-aprobar"; } else if (estActual === "aprobada_wilton") { textEst = "VENTA APROBADA";
-                iconEst = "🔵";
-                colorEstadoTxt = "var(--neon-cyan)";
-                clasePunto = "ep-aprobada"; } else if (estActual === "rechazada") { textEst = "RECHAZADA";
-                iconEst = "🚫";
-                colorEstadoTxt = "var(--neon-red)";
-                clasePunto = "ep-rechazada"; }
-
-            let colorBadge = t.tipoTarea === "alta" ? "alta" : t.tipoTarea === "averia" ? "averia" : "baja";
-            let nombreTipo = t.tipoTarea === "alta" ? "🚀 ALTA" : t.tipoTarea === "averia" ? "🛠️ AVERÍA" : "🛑 BAJA";
-
-            let docLabel = t.tipoDoc || "DNI";
-
-            let infoCli = `<span class="cliente-nombre">${t.cliente}</span>
-                       <span class="cliente-info"><span class="lbl-info">${docLabel}:</span> ${t.dni || "-"}</span>
-                       <span class="cliente-info"><span class="lbl-info">TEL:</span> ${t.tel || "-"}</span>
-                       ${t.correo ? `<span class="cliente-info"><span class="lbl-info">EMAIL:</span> ${t.correo}</span>` : ""}
-                       ${t.vendedor ? `<span class="cliente-info" style="margin-top:8px;"><span class="lbl-info" style="color:var(--neon-pink)">VENDEDOR:</span> <b style="color:var(--text-main); background:var(--neon-pink); padding:2px 6px; border-radius:4px; font-size:11px;">${t.vendedor}</b></span>` : ""}`;
-
-            let extrasHtml = "";
-            if (t.caja || t.puerto) {
-                extrasHtml += `<br><span class="cliente-info" style="color:var(--neon-purple)"><span class="lbl-info">CAJA NAP:</span> ${t.caja || "--"} | <span class="lbl-info">PUERTO:</span> ${t.puerto || "--"}</span>`;
-            }
-
-            if (t.tipoTarea === "alta") {
-                if (t.periodo || t.comprobante) extrasHtml += `<span class="cliente-info" style="color:var(--text-muted)"><span class="lbl-info">PAGO:</span> ${t.periodo || ""} | ${t.comprobante || ""}</span>`;
-            } else if (t.tipoTarea === "averia" && t.infoRed) {
-                extrasHtml += `<br><span class="cliente-info" style="color:var(--neon-cyan)"><span class="lbl-info">RED:</span> ${t.infoRed}</span>`;
-            } else if (t.tipoTarea === "baja" && t.equipos) {
-                extrasHtml += `<br><span class="cliente-info" style="color:var(--neon-red)"><span class="lbl-info">RECOGER:</span> ${t.equipos}</span>`;
-            }
-
-            let slaHtml = "";
-            if (t.tsInicio) {
-                let hrInicio = new Date(t.tsInicio).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
-                let hrFin = t.tsFin ? new Date(t.tsFin).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" }) : "--:--";
-                let duracion = t.tsInicio && t.tsFin ? `(${Math.floor(Math.floor((t.tsFin - t.tsInicio) / 60000) / 60)}h ${Math.floor((t.tsFin - t.tsInicio) / 60000) % 60}m)` : "(En curso...)";
-
-                slaHtml = `<div style="background: rgba(0,229,255,0.05); border: 1px dashed var(--neon-cyan); padding: 8px; border-radius: 6px; margin-top: 8px;">
-                    <span class="cliente-info" style="margin-bottom:0; color:var(--neon-cyan)"><span class="lbl-info">⏱️ SLA:</span> Inicio: ${hrInicio} | Fin: ${hrFin} <b style="color:var(--text-main)">${duracion}</b></span>
-                    ${t.notaCierre ? `<span class="cliente-info" style="margin-top:4px; margin-bottom:0; color:var(--neon-green)"><span class="lbl-info">📝 NOTA TEC:</span> ${t.notaCierre}</span>` : ""}
-                </div>`;
-            }
-
-            let refHtml = t.referencia ? `<span class="cliente-info"><span class="lbl-info" style="color:var(--brand-orange)">REF:</span> ${t.referencia}</span>` : "";
-
-            let notaEstilo = estActual === "rechazada" ? "color: var(--neon-red); font-weight: bold; background: rgba(239, 68, 68, 0.1); padding: 4px; border-radius: 4px;" : "color: var(--btn-pendiente);";
-
-            let dirH = `<span class="badge-tipo ${colorBadge}">${nombreTipo} - ${t.detalle}</span>
-                    <span class="cliente-info" style="margin-top:6px;"><span class="lbl-info">DIR:</span> ${t.dir}</span>
-                    ${refHtml}
-                    <span class="cliente-info"><span class="lbl-info">FECHA:</span> ${formatoFecha(t.fecha)} | ${t.horaInicio || "--:--"} a ${t.horaFin || "--:--"}</span>
-                    <span class="cliente-info"><span class="lbl-info">TEC:</span> <span style="color:var(--btn-en-camino); font-weight:800">${asig.join(", ")}</span></span>
-                    ${extrasHtml}
-                    ${t.notas ? `<span class="cliente-info" style="${notaEstilo} margin-top:5px;"><span class="lbl-info">NOTA:</span> ${t.notas}</span>` : ""}
-                    ${slaHtml}`;
-
-            let numTelSeguro = String(t.tel || "");
-            let numLimpio = numTelSeguro.replace(/\D/g, "");
-            let linkWsp = numLimpio.length > 5 ? `https://wa.me/51${numLimpio}` : "#";
-            let txtCop = `*FECHA:* ${formatoFecha(t.fecha)}\n*CLIENTE:* ${t.cliente}\n*DIR:* ${t.dir}\n*TAREA:* ${t.detalle}`;
-
-            let botonesHtml = ``;
-
-            if (isCarlos && estActual === "por_aprobar_carlos") {
-                botonesHtml += `<div class="btn-grid-row">
-                            <button type="button" class="btn-action-ui" style="background: var(--neon-cyan); color: #000; flex: 1;" onclick="aprobarDirecto('${t.id}')">👍 Aprobar</button>
-                            <button type="button" class="btn-action-ui" style="background: transparent; border: 1px solid var(--neon-red); color: var(--neon-red); flex: 1;" onclick="rechazarDirecto('${t.id}')">❌ Rechazar</button>
-                        </div>`;
-            }
-
-            if ((isWilton || isAdmin) && estActual === "aprobada_wilton") {
-                botonesHtml += `<div class="btn-grid-row"><button type="button" class="btn-action-ui btn-ui-wilton" onclick="editarTrabajo('${t.id}')">📅 Programar Técnico</button></div>`;
-            }
-
-            if (!isVendedor && !isCarlos && !isWilton && !isAdmin && !esAprobacion) {
-                botonesHtml += `<div class="btn-grid-row"><button type="button" class="btn-action-ui btn-ui-estado" onclick="cambiarEstado('${t.id}', '${estActual}')">${iconEst} ${textEst.charAt(0) + textEst.slice(1).toLowerCase()}</button></div>`;
-            }
-
-            botonesHtml += `<div class="btn-grid-row">
-                        ${t.mapa ? `<button type="button" class="btn-action-ui btn-ui-mapa" onclick="verMapaCliente('${t.id}')">📍 Mapa</button>` : `<button type="button" class="btn-action-ui btn-ui-mapa" disabled>📍 Mapa</button>`}
-                        ${t.tipoTarea === "alta" ? `<button type="button" class="btn-action-ui btn-ui-nap">📦 Caja NAP</button>` : `<button type="button" class="btn-action-ui btn-ui-nap" style="visibility:hidden;">📦 Caja NAP</button>`}
-                    </div>`;
-
-            if (numLimpio.length > 5) botonesHtml += `<div class="btn-grid-row"><a href="${linkWsp}" target="_blank" class="btn-action-ui btn-ui-wsp">💬 WhatsApp</a></div>`;
-
-            botonesHtml += `<div class="btn-grid-row">
-                        <button type="button" class="btn-action-ui btn-ui-copiar" onclick="copiarDatos(this)">📋 Copiar Datos</button>
-                        ${(isAdmin || isWilton || isCarlos || isVendedor) ? `<button type="button" class="btn-action-ui btn-ui-editar" onclick="editarTrabajo('${t.id}')">✏️ Editar</button>` : ""}
-                    </div>`;
-
-            if (isAdmin) {
-                botonesHtml += `<div class="btn-grid-row"><button type="button" class="btn-action-ui btn-ui-eliminar" onclick="preguntarEliminar('${t.id}')">🗑️ Eliminar</button></div>`;
-            }
-
-            let tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td><span class="estado-punto ${clasePunto}"></span><span style="font-size:11px; font-weight:900; color:${colorEstadoTxt};">${textEst}</span></td>
-                <td>${infoCli}</td>
-                <td>${dirH}</td>
-                <td><div class="btn-acciones-grid">${botonesHtml}<textarea style="display:none;" class="texto-secreto">${txtCop}</textarea></div></td>
-            `;
-            tbody.appendChild(tr);
-        } catch (err) {
-            console.error("Error fila", err);
-        }
-    });
-
-    actualizarGraficosGerenciales(pGrafico);
-};
-
-// ============================================================ //
-// CAMBIAR ESTADO                                               //
-// ============================================================ //
-window.cambiarEstado = async (id, estadoActual) => {
-    let nE = "pendiente";
-
-    if (estadoActual === "pendiente") nE = "en_camino";
-    else if (estadoActual === "en_camino") nE = "atendido";
-    else if (estadoActual === "atendido") nE = "no_atendido";
-
-    let dataUpdate = { estado: nE };
-
-    if (nE === "en_camino") {
-        dataUpdate.tsInicio = Date.now();
-        await updateDoc(doc(coleccionTrabajos, id), dataUpdate);
-        mostrarToast("Técnico en camino. Tiempo iniciado ⏱️");
-    } else if (nE === "atendido" || nE === "no_atendido") {
-        idTrabajoCierreSLA = id;
-        estadoObjetivoSLA = nE;
-        document.getElementById("lblEstadoCierre").innerText = nE.replace("_", " ").toUpperCase();
-        document.getElementById("lblEstadoCierre").style.color = nE === "atendido" ? "var(--neon-green)" : "var(--neon-red)";
-        document.getElementById("modalCierre").style.display = "flex";
-    } else {
-        dataUpdate.tsInicio = null;
-        dataUpdate.tsFin = null;
-        dataUpdate.notaCierre = null;
-        await updateDoc(doc(coleccionTrabajos, id), dataUpdate);
-        mostrarToast("Estado reseteado a Pendiente.");
-    }
-};
-
-// ============================================================ //
-// EJECUTAR CIERRE SLA                                         //
-// ============================================================ //
-window.ejecutarCierreSLA = async () => {
-    if (!idTrabajoCierreSLA) return;
-
-    const nota = document.getElementById("txtNotaCierre").value.trim();
-
-    if (!nota) {
-        mostrarToast("❌ Debes ingresar una nota de cierre técnica.");
-        return;
-    }
-
-    try {
-        await updateDoc(doc(coleccionTrabajos, idTrabajoCierreSLA), {
-            estado: estadoObjetivoSLA,
-            tsFin: Date.now(),
-            notaCierre: nota,
-        });
-
-        window.cerrarModalCierre();
-        mostrarToast("Trabajo cerrado correctamente ✅");
-    } catch (e) {
-        mostrarToast("Error al cerrar tarea");
-    }
-};
-
-// ============================================================ //
-// GRÁFICOS GERENCIALES                                       //
-// ============================================================ //
-function actualizarGraficosGerenciales(trabajosFiltrados) {
-    if (!isAdmin && !isWilton && !isCarlos && !isVendedor) return;
-
-    setTimeout(() => {
-        try {
-            let pend = 0,
-                aten = 0,
-                noAten = 0;
-            let cTech = {};
-
-            trabajosFiltrados.forEach((t) => {
-                let est = String(t.estado || "pendiente").toLowerCase();
-
-                if (est === "atendido") aten++;
-                else if (est === "no_atendido") noAten++;
-                else pend++;
-
-                let asig = t.tecnicos || [];
-                if (typeof asig === "string") asig = [asig];
-
-                asig.forEach((tech) => {
-                    if (tech !== "Sin Asignar" && tech !== "Todos") {
-                        cTech[tech] = (cTech[tech] || 0) + 1;
-                    }
-                });
-            });
-
-            document.getElementById("kpiTotal").innerText = trabajosFiltrados.length;
-            document.getElementById("kpiAtendidos").innerText = aten;
-            document.getElementById("kpiPendientes").innerText = pend;
-            document.getElementById("kpiNoAtendidos").innerText = noAten;
-
-            if (typeof window.renderizarCalendario === "function") window.renderizarCalendario();
-
-            if (isAdmin || isWilton) {
-                const isDark = document.documentElement.getAttribute("data-theme") !== "light";
-                const textColor = isDark ? "#8b9bb4" : "#64748b";
-                const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
-
-                const canvasT = document.getElementById("graficoTecnicos");
-
-                if (canvasT) {
-                    const ctxT = canvasT.getContext("2d");
-
-                    if (chartTecnicos) chartTecnicos.destroy();
-
-                    let gradient = ctxT.createLinearGradient(0, 0, 0, 400);
-                    gradient.addColorStop(0, "#00e5ff");
-                    gradient.addColorStop(1, "#d500f9");
-
-                    chartTecnicos = new Chart(ctxT, {
-                        type: "bar",
-                        data: {
-                            labels: Object.keys(cTech),
-                            datasets: [{
-                                data: Object.values(cTech),
-                                backgroundColor: gradient,
-                                borderRadius: 6,
-                                barThickness: 40,
-                            }],
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: { legend: { display: false } },
-                            scales: {
-                                y: { grid: { color: gridColor }, ticks: { stepSize: 1, color: textColor } },
-                                x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } },
-                            },
-                        },
-                    });
-                }
-            }
-        } catch (e) {
-            console.error("Error gráficos:", e);
-        }
-    }, 150);
-}
-
-// ============================================================ //
-// RENDERIZAR CALENDARIO                                       //
-// ============================================================ //
-window.renderizarCalendario = () => {
-    const weekStrip = document.getElementById("calWeekStrip");
-    const dayHeader = document.getElementById("calDayHeader");
-    const timelineMini = document.getElementById("calTimelineMini");
-    const lblSemana = document.getElementById("lblSemanaActual");
-
-    if (!weekStrip || !dayHeader || !timelineMini) return;
-
-    const hoy = new Date();
-    const lunesBase = new Date(hoy);
-    lunesBase.setDate(hoy.getDate() - ((hoy.getDay() + 6) % 7));
-    lunesBase.setHours(0, 0, 0, 0);
-    lunesBase.setDate(lunesBase.getDate() + semanaOffset * 7);
-
-    const domingo = new Date(lunesBase);
-    domingo.setDate(lunesBase.getDate() + 6);
-
-    const opciones = { day: "numeric", month: "short" };
-    lblSemana.textContent = `${lunesBase.toLocaleDateString("es", opciones)} — ${domingo.toLocaleDateString("es", opciones)}`;
-
-    const hoyStr = hoy.toISOString().split("T")[0];
-
-    if (!diaSeleccionado || diaSeleccionado < lunesBase.toISOString().split("T")[0] || diaSeleccionado > domingo.toISOString().split("T")[0]) {
-        diaSeleccionado = hoy >= lunesBase && hoy <= domingo ? hoyStr : lunesBase.toISOString().split("T")[0];
-    }
-
-    const diasSemana = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
-    let htmlStrip = "";
-
-    for (let i = 0; i < 7; i++) {
-        const dia = new Date(lunesBase);
-        dia.setDate(lunesBase.getDate() + i);
-        const diaStr = dia.toISOString().split("T")[0];
-        const diaNum = dia.getDate();
-
-        const trabajosDia = dbTrabajos.filter(
-            (t) =>
-            (t.zona || "Norte") === zonaActual &&
-            t.fecha === diaStr &&
-            t.estado !== "por_aprobar_carlos" &&
-            t.estado !== "aprobada_wilton" &&
-            t.estado !== "rechazada"
-        );
-
-        const isActive = diaStr === diaSeleccionado;
-        const isToday = diaStr === hoyStr;
-
-        htmlStrip += `<div class="cal-week-day ${isActive ? "active" : ""} ${isToday ? "today" : ""}" onclick="seleccionarDia('${diaStr}')">
-                    <div class="cal-week-dayname">${diasSemana[i]}</div>
-                    <div class="cal-week-daynum">${diaNum}</div>
-                    ${trabajosDia.length > 0 ? `<div class="cal-week-daycount">${trabajosDia.length}</div>` : ""}
-                </div>`;
-    }
-
-    weekStrip.innerHTML = htmlStrip;
-
-    const fechaSel = new Date(diaSeleccionado + "T00:00:00");
-    dayHeader.textContent = fechaSel.toLocaleDateString("es", { weekday: "long", day: "numeric", month: "short" }).toUpperCase();
-
-    const trabajosSel = dbTrabajos
-        .filter(
-            (t) =>
-            (t.zona || "Norte") === zonaActual &&
-            t.fecha === diaSeleccionado &&
-            t.estado !== "por_aprobar_carlos" &&
-            t.estado !== "aprobada_wilton" &&
-            t.estado !== "rechazada"
-        )
-        .sort((a, b) => (a.horaInicio || "23:59").localeCompare(b.horaInicio || "23:59"));
-
-    if (trabajosSel.length === 0) {
-        timelineMini.innerHTML = '<span style="color: var(--text-muted); font-size: 11px; opacity: 0.7;">📭 Sin trabajos programados</span>';
-    } else {
-        let htmlPills = "";
-        trabajosSel.forEach((t) => {
-            htmlPills += `<div class="cal-event-pill ${t.tipoTarea || "alta"}" onclick="filtrarPorCliente('${t.cliente.replace(/'/g, "\\'")}')" title="${t.cliente} | ${t.horaInicio || "--:--"} | ${t.tecnicos}">
-                        <span class="cal-event-dot"></span>${t.horaInicio || "--:--"} · ${t.cliente.split(" ")[0]}
-                    </div>`;
-        });
-        timelineMini.innerHTML = htmlPills;
-    }
-};
-
-// ============================================================ //
-// NAVEGACIÓN CALENDARIO                                       //
-// ============================================================ //
-window.navegarSemana = (offset) => {
-    semanaOffset += offset;
-    window.renderizarCalendario();
-};
-
-window.irAHoy = () => {
-    semanaOffset = 0;
-    diaSeleccionado = new Date().toISOString().split("T")[0];
-    window.renderizarCalendario();
-};
-
-window.seleccionarDia = (fechaStr) => {
-    diaSeleccionado = fechaStr;
-    window.renderizarCalendario();
-};
-
-window.filtrarPorCliente = (nombre) => {
-    const buscador = document.getElementById("buscador");
-
-    if (buscador) {
-        buscador.value = nombre;
-        renderizarTabla();
-        mostrarToast(`🔍 Filtrando: ${nombre}`);
-        document.querySelector("table")?.scrollIntoView({ behavior: "smooth" });
-    }
-};
-
-// ============================================================ //
-// CALENDARIO GENERAL (FULLCALENDAR)                           //
-// ============================================================ //
-const coloresTecnicos = ["#2979ff", "#f50057", "#00e676", "#ffea00", "#d500f9", "#ff6d00", "#00e5ff", "#10b981"];
-
-window.abrirModalCalendario = () => {
-    document.getElementById("modalCalendario").style.display = "flex";
-
-    let listaTecnicos = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
-    let htmlFiltro = `<option value="todos">Todos los Técnicos</option>`;
-
-    listaTecnicos.forEach((t) => {
-        htmlFiltro += `<option value="${t}">${t}</option>`;
-    });
-
-    document.getElementById("filtroTecnicoCalendario").innerHTML = htmlFiltro;
-    actualizarCalendarioGeneral();
-};
-
-window.cerrarModalCalendario = () => {
-    document.getElementById("modalCalendario").style.display = "none";
-};
-
-window.actualizarCalendarioGeneral = () => {
-    const calendarEl = document.getElementById("calendarioGeneral");
-    const tecnicoFiltro = document.getElementById("filtroTecnicoCalendario")?.value || "todos";
-
-    if (!calendarEl) return;
-    if (window.calendarioInstancia) window.calendarioInstancia.destroy();
-
-    let eventos = [];
-    const coloresAsignados = {};
-    let idxColor = 0;
-
-    dbTrabajos.forEach((t) => {
-        if ((t.zona || "Norte") !== zonaActual || t.estado === "por_aprobar_carlos" || t.estado === "aprobada_wilton" || t.estado === "rechazada") return;
-
-        let tecnicos = Array.isArray(t.tecnicos) ? t.tecnicos : [t.tecnicos || "Sin Asignar"];
-
-        if (tecnicoFiltro !== "todos" && !tecnicos.includes(tecnicoFiltro)) return;
-
-        const techPrincipal = tecnicos[0];
-
-        if (!coloresAsignados[techPrincipal]) {
-            coloresAsignados[techPrincipal] = coloresTecnicos[idxColor % coloresTecnicos.length];
-            idxColor++;
-        }
-
-        let claseColor = "cal-event-alta";
-        if (t.tipoTarea === "averia") claseColor = "cal-event-averia";
-        if (t.tipoTarea === "baja") claseColor = "cal-event-baja";
-
-        eventos.push({
-            id: t.id,
-            title: `${t.horaInicio || ""} ${t.cliente}`,
-            start: t.fecha + "T" + (t.horaInicio || "08:00") + ":00",
-            end: t.fecha + "T" + (t.horaFin || "09:00") + ":00",
-            backgroundColor: coloresAsignados[techPrincipal] + "CC",
-            borderColor: coloresAsignados[techPrincipal],
-            textColor: "#ffffff",
-            extendedProps: {
-                detalle: t.detalle || "",
-                estado: t.estado || "pendiente",
-                tecnicos: tecnicos.join(", "),
-                notas: t.notas || "",
-                claseTipo: claseColor,
-            },
-        });
-    });
-
-    window.calendarioInstancia = new FullCalendar.Calendar(calendarEl, {
-        initialView: "timeGridWeek",
-        locale: "es",
-        headerToolbar: {
-            left: "prev,next today",
-            center: "title",
-            right: "timeGridDay,timeGridWeek,dayGridMonth",
-        },
-        slotMinTime: "06:00:00",
-        slotMaxTime: "22:00:00",
-        allDaySlot: false,
-        events: eventos,
-        eventClick: function(info) {
-            const props = info.event.extendedProps;
-            mostrarToast(`${info.event.title} | ${props.detalle} | Téc: ${props.tecnicos} | Estado: ${props.estado.toUpperCase()}`);
-        },
-        eventDidMount: function(info) {
-            const props = info.event.extendedProps;
-            info.el.title = `${info.event.title}\nTécnicos: ${props.tecnicos}\nDetalle: ${props.detalle}\nNotas: ${props.notas}`;
-        },
-    });
-
-    window.calendarioInstancia.render();
-};
-
-// ============================================================ //
-// UTILIDADES                                                   //
-// ============================================================ //
-function actualizarOpcionesFechas() {
-    const sel = document.getElementById("filtroFecha");
-    const tZona = dbTrabajos.filter((t) => (t.zona || "Norte") === zonaActual);
-    const fechas = [...new Set(tZona.map((t) => String(t.fecha)))].sort((a, b) => b.localeCompare(a));
-
-    let h = `<option value="todas">Todas las Fechas</option>`;
-    fechas.forEach((f) => {
-        h += `<option value="${f}">${formatoFecha(f)}</option>`;
-    });
-
-    let v = sel.value;
-    sel.innerHTML = h;
-
-    if (fechas.includes(v)) sel.value = v;
-}
-
-function formatoFecha(fs) {
-    if (!fs) return "";
-    let p = String(fs).split("-");
-    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fs;
-}
-
-function mostrarToast(msg) {
-    const t = document.getElementById("toast");
-    t.innerText = msg;
-    t.className = "show";
-
-    setTimeout(() => {
-        t.className = t.className.replace("show", "");
-    }, 3000);
-}
-
-window.copiarDatos = (btn) => {
-    let txt = btn.closest("td").querySelector(".texto-secreto").value;
-
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(txt).then(() => mostrarToast("Copiado"));
-    } else {
-        mostrarToast("Error al copiar");
-    }
-};
-
-window.preguntarEliminar = (id) => {
-    idTrabajoAEliminar = id;
-    document.getElementById("modalEliminar").style.display = "flex";
-};
-
-window.ejecutarEliminacion = async () => {
-    if (idTrabajoAEliminar) {
-        await deleteDoc(doc(coleccionTrabajos, idTrabajoAEliminar));
-        mostrarToast("Trabajo Eliminado");
-        window.cerrarModalEliminar();
-    }
-};
-
-// ============================================================ //
-// PLACEHOLDERS                                                 //
-// ============================================================ //
-window.procesarExcelClientes = async (event) => {
-    // Implementar según necesidad
-};
-
-window.exportarAExcel = () => {
-    // Implementar según necesidad
-};
-
-// ============================================================ //
-// SELECTOR TIPO TAREA                                         //
-// ============================================================ //
-window.seleccionarTipoTarea = (tipo) => {
-    document.getElementById("formTipoTareaValue").value = tipo;
-
-    document.querySelectorAll(".tab-btn").forEach((b) => {
-        b.classList.remove("active-alta", "active-averia", "active-baja");
-        if (b.id === "tabAveria") {
-            b.style.color = "#8b9bb4";
-            b.style.borderColor = "var(--panel-border)";
-        }
-    });
-
-    let tabActiva = document.getElementById("tab" + tipo.charAt(0).toUpperCase() + tipo.slice(1));
-    tabActiva.classList.add("active-" + tipo);
-
-    if (tipo === "averia") {
-        tabActiva.style.color = "#2979ff";
-        tabActiva.style.borderColor = "#2979ff";
-    }
-
-    document.getElementById("cajaBuscador").style.display = "block";
-
-    document.querySelector(".grupo-alta").style.display = tipo === "alta" ? "contents" : "none";
-    document.querySelector(".grupo-averia").style.display = tipo === "averia" ? "block" : "none";
-    document.querySelector(".grupo-baja").style.display = tipo === "baja" ? "block" : "none";
-};
-
-// ============================================================ //
-// TOGGLE CHECKBOX MULTI SELECT                                //
-// ============================================================ //
-window.toggleCheckbox = (el) => {
-    let chk = el.querySelector("input");
-    chk.checked = !chk.checked;
-
-    let chks = document.querySelectorAll("#techDropdown input:checked");
-    document.getElementById("techDisplay").innerText = chks.length === 0 ? "Sin Asignar" : Array.from(chks).map((c) => c.value).join(", ");
-};
-
-window.toggleTechDropdown = (e) => {
-    if (e) e.stopPropagation();
-    document.getElementById("techDropdown").classList.toggle("show");
-};
-
-// ============================================================ //
-// CERRAR MODALES                                               //
-// ============================================================ //
-window.cerrarModal = () => {
-    document.getElementById("modalAgregar").style.display = "none";
-    document.getElementById("techDropdown").classList.remove("show");
-};
-
-window.cerrarModalEliminar = () => {
-    document.getElementById("modalEliminar").style.display = "none";
-    idTrabajoAEliminar = null;
-};
-
-window.cerrarModalCierre = () => {
-    document.getElementById("modalCierre").style.display = "none";
-    document.getElementById("txtNotaCierre").value = "";
-    idTrabajoCierreSLA = null;
-};
-
-window.cerrarModalCobertura = () => {
-    document.getElementById("modalCobertura").style.display = "none";
-    ventaAValidarId = null;
-    window.cancelarRechazo();
-};
-
-window.cerrarModalRechazoRapido = () => {
-    document.getElementById("modalRechazoRapido").style.display = "none";
-    idVentaARechazarRapido = null;
-};
-
-// ============================================================ //
-// CERRAR MODALES CON ESC                                     //
-// ============================================================ //
-document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-        window.cerrarModal();
-        window.cerrarModalEliminar();
-        window.cerrarModalCierre();
-        window.cerrarModalCobertura();
-        window.cerrarModalRechazoRapido();
-    }
-});
-
-// ============================================================ //
-// CERRAR MODALES CLICK FUERA                                  //
-// ============================================================ //
-document.querySelectorAll(".modal-overlay").forEach((overlay) => {
-    overlay.addEventListener("click", (e) => {
-        if (e.target === overlay) {
-            window.cerrarModal();
-            window.cerrarModalEliminar();
-            window.cerrarModalCierre();
-            window.cerrarModalCobertura();
-            window.cerrarModalRechazoRapido();
-
-            if (document.getElementById("modalCalendario").style.display === "flex") {
-                window.cerrarModalCalendario();
-            }
-        }
-    });
-});
-
-// ============================================================ //
-// CERRAR DROPDOWN CLICK FUERA                                 //
-// ============================================================ //
-document.addEventListener("click", (e) => {
-    let dropdown = document.getElementById("techDropdown");
-    let container = document.getElementById("techSelectContainer");
-
-    if (dropdown && dropdown.classList.contains("show") && container && !container.contains(e.target)) {
-        dropdown.classList.remove("show");
-    }
-});
-
-// ============================================================ //
-// EXPORTAR FUNCIONES GLOBALES                                 //
-// ============================================================ //
-window.toggleTema = window.toggleTema;
-window.iniciarSesion = window.iniciarSesion;
-window.cerrarSesion = window.cerrarSesion;
-window.cambiarZona = window.cambiarZona;
-window.buscarCliente = window.buscarCliente;
-window.calcularPrecioTotal = window.calcularPrecioTotal;
-window.abrirModal = window.abrirModal;
-window.editarTrabajo = window.editarTrabajo;
-window.guardarTrabajo = window.guardarTrabajo;
-window.abrirModalCoberturaGeneral = window.abrirModalCoberturaGeneral;
-window.abrirValidacionCobertura = window.abrirValidacionCobertura;
-window.verMapaCliente = window.verMapaCliente;
-window.buscarEnMapa = window.buscarEnMapa;
-window.centrarEnMiUbicacion = window.centrarEnMiUbicacion;
-window.confirmarAprobacionVenta = window.confirmarAprobacionVenta;
-window.confirmarRechazoVenta = window.confirmarRechazoVenta;
-window.iniciarRechazo = window.iniciarRechazo;
-window.cancelarRechazo = window.cancelarRechazo;
-window.aprobarDirecto = window.aprobarDirecto;
-window.rechazarDirecto = window.rechazarDirecto;
-window.confirmarRechazoRapido = window.confirmarRechazoRapido;
-window.renderizarTabla = window.renderizarTabla;
-window.cambiarEstado = window.cambiarEstado;
-window.ejecutarCierreSLA = window.ejecutarCierreSLA;
-window.renderizarCalendario = window.renderizarCalendario;
-window.navegarSemana = window.navegarSemana;
-window.irAHoy = window.irAHoy;
-window.seleccionarDia = window.seleccionarDia;
-window.filtrarPorCliente = window.filtrarPorCliente;
-window.abrirModalCalendario = window.abrirModalCalendario;
-window.cerrarModalCalendario = window.cerrarModalCalendario;
-window.actualizarCalendarioGeneral = window.actualizarCalendarioGeneral;
-window.copiarDatos = window.copiarDatos;
-window.preguntarEliminar = window.preguntarEliminar;
-window.ejecutarEliminacion = window.ejecutarEliminacion;
-window.procesarExcelClientes = window.procesarExcelClientes;
-window.exportarAExcel = window.exportarAExcel;
-window.seleccionarTipoTarea = window.seleccionarTipoTarea;
-window.toggleCheckbox = window.toggleCheckbox;
-window.toggleTechDropdown = window.toggleTechDropdown;
-window.cerrarModal = window.cerrarModal;
-window.cerrarModalEliminar = window.cerrarModalEliminar;
-window.cerrarModalCierre = window.cerrarModalCierre;
-window.cerrarModalCobertura = window.cerrarModalCobertura;
-window.cerrarModalRechazoRapido = window.cerrarModalRechazoRapido;
-</script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
