@@ -142,6 +142,7 @@ window.recuperarContrasena = () => {
 };
 
 window.cerrarSesion = () => {
+    localStorage.clear(); // Limpia la sesión del calendario
     signOut(auth);
 };
 
@@ -184,6 +185,10 @@ onAuthStateChanged(auth, (user) => {
         if (isAdmin || isAdminLurin) {
             nombreTecnicoLogueado = isAdminLurin ? "ADMIN_LURIN" : "ADMIN";
             document.getElementById("lblUsuarioActivo").innerHTML = isAdminLurin ? `👑 ADMIN LURÍN` : `👑 ADMINISTRADOR`;
+            
+            // --- PUENTE CALENDARIO ---
+            localStorage.setItem('ten_rol', 'admin');
+            localStorage.setItem('ten_email', email);
 
             // Primero activamos todos los permisos de Admin
             document.querySelectorAll(".admin-only, .admin-wilton-only, .admin-carlos-only").forEach((el) =>
@@ -216,6 +221,11 @@ onAuthStateChanged(auth, (user) => {
         } else if (isWilton) {
             nombreTecnicoLogueado = "WILTON";
             document.getElementById("lblUsuarioActivo").innerHTML = `🛠️ WILTON SOPORTE`;
+            
+            // --- PUENTE CALENDARIO ---
+            localStorage.setItem('ten_rol', 'admin');
+            localStorage.setItem('ten_email', email);
+
             document.getElementById("contenedorSelectorZona").classList.add("show-admin-flex");
             document.getElementById("contenedorSelectorZona").style.display = "";
             document.querySelectorAll(".admin-wilton-only").forEach((el) => el.classList.add("show-admin-flex"));
@@ -226,6 +236,10 @@ onAuthStateChanged(auth, (user) => {
             nombreTecnicoLogueado = isCarlos ? nombreLimpio : nombreLimpio;
 
             document.getElementById("lblUsuarioActivo").innerHTML = isCarlos ? `📋 COORD. ${nombreLimpio}` : `💼 ${nombreLimpio}`;
+            
+            // --- PUENTE CALENDARIO ---
+            localStorage.setItem('ten_rol', 'ventas');
+            localStorage.setItem('ten_email', email);
 
             document.querySelectorAll(".admin-carlos-only").forEach((el) => el.classList.add("show-admin-flex"));
 
@@ -242,6 +256,11 @@ onAuthStateChanged(auth, (user) => {
             nombreTecnicoLogueado = email.split("@")[0].toUpperCase();
             document.getElementById("lblUsuarioActivo").innerHTML = `🛠️ ${nombreTecnicoLogueado}`;
             zonaActual = tecnicosLurin.includes(nombreTecnicoLogueado) ? "Lurin" : "Norte";
+            
+            // --- PUENTE CALENDARIO ---
+            localStorage.setItem('ten_rol', 'tecnico');
+            localStorage.setItem('ten_email', email);
+            localStorage.setItem('ten_nombre_tecnico', nombreTecnicoLogueado);
 
             // Ocultamos los botones de arriba para los técnicos
             document.querySelectorAll(".btn-ocultar-tecnico").forEach(el => el.style.display = "none");
@@ -1010,7 +1029,6 @@ window.renderizarTabla = () => {
             let nombreTipo = t.tipoTarea === "alta" ? "🚀 ALTA" : t.tipoTarea === "averia" ? "🛠️ AVERÍA" : t.tipoTarea === "baja" ? "🛑 BAJA" : "⚙️ OTROS TRABAJOS";
             let docLabel = t.tipoDoc || "DNI";
 
-            // 1. CORRECCIÓN DEL VENDEDOR: Solo se mostrará si la tarea es "alta"
             let infoCli = `<span class="cliente-nombre">${t.cliente}</span>`;
             
             if (t.tipoTarea === "otros") {
@@ -1037,7 +1055,6 @@ window.renderizarTabla = () => {
             if (t.tipoTarea === "averia" && t.infoRed) extrasHtml = `<br><span class="cliente-info" style="color:var(--neon-cyan)"><span class="lbl-info">RED:</span> ${t.infoRed}</span>`;
             if (t.tipoTarea === "baja" && t.equipos) extrasHtml = `<br><span class="cliente-info" style="color:var(--neon-red)"><span class="lbl-info">RECOGER:</span> ${t.equipos}</span>`;
 
-            // Dibujar la señal óptica si existe
             if (t.tx || t.rx) {
                 extrasHtml += `<div style="background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.3); padding: 4px 8px; border-radius: 4px; margin-top: 6px; display: inline-block;">
                     <span class="cliente-info" style="color:var(--neon-cyan); margin:0; font-size:11px;"><span class="lbl-info">📡 SEÑAL ROUTER:</span> TX: <b style="color:#fff">${t.tx || "--"}</b> | RX: <b style="color:#fff">${t.rx || "--"}</b></span>
@@ -1116,7 +1133,6 @@ window.renderizarTabla = () => {
                 btnCajaHtml = `<button type="button" class="btn-action-ui btn-ui-nap" style="visibility:hidden;">📦 Caja NAP</button>`;
             }
 
-            // --- MAPA DIRECTO PARA TÉCNICOS Y GENTE DE LURÍN ---
             let btnMapaHtml = '';
             if (t.mapa) {
                 let isTecnico = !isVendedor && !isCarlos && !isWilton && !isAdmin && !isAdminLurin;
@@ -1138,20 +1154,17 @@ window.renderizarTabla = () => {
 
             if (numLimpio.length > 5 && t.tipoTarea !== "otros") botonesHtml += `<div class="btn-grid-row"><a href="${linkWsp}" target="_blank" class="btn-action-ui btn-ui-wsp">💬 WhatsApp</a></div>`;
 
-            // --- LÓGICA INTELIGENTE DE BOTONES DE EDICIÓN Y SEÑAL ---
             let isTecnico = !isVendedor && !isCarlos && !isWilton && !isAdmin && !isAdminLurin;
             let btnSenalHtml = "";
             let textoBtnEditar = "✏️ Editar";
             let permitirEditarTecnico = false;
 
             if (t.tipoTarea === "alta" || t.tipoTarea === "averia") {
-                // Para altas y averías, sale el mini-modal dedicado a la señal del router
                 btnSenalHtml = `<button type="button" class="btn-action-ui btn-ui-senal" style="background: rgba(0, 229, 255, 0.1); border: 1px solid var(--neon-cyan); color: var(--neon-cyan);" onclick="abrirModalSenal('${t.id}', '${t.tipoTarea}', '${t.detalle}')">📡 Registrar Señal</button>`;
             } else if (t.tipoTarea === "otros") {
                 if (t.detalle === "Seguimiento de fibra") {
                     btnSenalHtml = `<button type="button" class="btn-action-ui btn-ui-senal" style="background: rgba(0, 229, 255, 0.1); border: 1px solid var(--neon-cyan); color: var(--neon-cyan);" onclick="abrirModalSenal('${t.id}', '${t.tipoTarea}', '${t.detalle}')">📡 Registrar Señal</button>`;
                 } else if (t.detalle === "Limpieza de caja") {
-                    // Para limpieza de caja, unificamos todo en un solo botón
                     permitirEditarTecnico = true; 
                     if (isTecnico) textoBtnEditar = "📋 Llenar Puertos y Señal";
                 }
@@ -1162,7 +1175,6 @@ window.renderizarTabla = () => {
                 btnEditGralHtml = `<button type="button" class="btn-action-ui btn-ui-editar" onclick="editarTrabajo('${t.id}')">${textoBtnEditar}</button>`;
             }
 
-            // Agregamos los botones a la tabla si existen
             if (btnSenalHtml !== "") {
                 botonesHtml += `<div class="btn-grid-row">${btnSenalHtml}</div>`;
             }

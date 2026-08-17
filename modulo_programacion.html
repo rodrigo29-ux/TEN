@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEN | Cronograma Operativo</title>
+    
+    <!-- Librerías y Frameworks -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script> tailwind.config = { darkMode: 'class' } </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .cal-dia:hover { cursor: pointer; filter: brightness(0.95); transition: 0.2s; }
+        .badge-interactiva:hover { filter: brightness(0.9); transform: scale(1.02); }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-gray-100 h-screen overflow-hidden transition-colors duration-300">
+
+    <div id="app-layout" class="h-full w-full flex relative hidden">
+        
+        <!-- FONDO OSCURO PARA MÓVILES AL ABRIR MENÚ -->
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/60 z-30 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+
+        <!-- MENÚ LATERAL (SIDEBAR - Solo Visible para Admins) -->
+        <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-800 text-white flex flex-col transition-transform duration-300 z-40 shadow-2xl -translate-x-full md:translate-x-0 hidden">
+            <div class="h-20 flex items-center justify-between md:justify-center px-6 md:px-0 border-b border-slate-800">
+                <h1 class="text-2xl font-bold tracking-wider text-blue-400"><i class="fa-solid fa-network-wired mr-2"></i> TEN<span class="text-white text-sm ml-1 font-normal">Soporte</span></h1>
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white focus:outline-none"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <nav class="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
+                <button onclick="switchTab('dashboard')" id="btn-dashboard" class="w-full flex items-center space-x-3 px-4 py-3 bg-blue-600 rounded-lg text-left transition-colors"><i class="fa-solid fa-chart-pie w-5 text-center"></i> <span>Dashboard</span></button>
+                <button onclick="switchTab('tecnicos')" id="btn-tecnicos" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-lg text-left transition-colors text-slate-300"><i class="fa-solid fa-users-gear w-5 text-center"></i> <span>Gestión Técnicos</span></button>
+                <button onclick="switchTab('calendario')" id="btn-calendario" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-lg text-left transition-colors text-slate-300"><i class="fa-solid fa-calendar-days w-5 text-center"></i> <span>Programación</span></button>
+                <button onclick="switchTab('registro')" id="btn-registro" class="w-full flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-lg text-left transition-colors text-slate-300"><i class="fa-solid fa-clipboard-list w-5 text-center"></i> <span>Auditoría</span></button>
+            </nav>
+            
+            <div class="p-4 border-t border-slate-800 space-y-3">
+                <button onclick="toggleDarkMode()" class="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-gray-300 transition-colors"><i class="fa-solid fa-moon" id="icon-theme"></i> <span id="text-theme">Modo Oscuro</span></button>
+                <div class="flex items-center justify-between bg-slate-950 p-2 rounded-lg">
+                    <div class="flex items-center space-x-2 overflow-hidden">
+                        <div class="h-8 w-8 rounded-full bg-blue-500 flex-shrink-0 flex items-center justify-center font-bold text-xs text-white">AD</div>
+                        <div class="text-xs truncate"><p class="font-medium text-gray-200 truncate" id="user-email">Cargando...</p></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50 dark:bg-slate-900 transition-colors duration-300 w-full">
+            
+            <header class="h-20 bg-white dark:bg-slate-800 shadow-sm border-b border-gray-100 dark:border-slate-700 flex items-center justify-between px-4 md:px-8 z-10 transition-colors duration-300">
+                <div class="flex items-center">
+                    <button id="btn-hamburguesa" onclick="toggleSidebar()" class="md:hidden mr-4 text-gray-600 dark:text-gray-300 hover:text-blue-600 hidden focus:outline-none"><i class="fa-solid fa-bars text-2xl"></i></button>
+                    <h2 id="page-title" class="text-lg md:text-xl font-semibold text-gray-700 dark:text-gray-200 truncate max-w-[150px] md:max-w-none">Panel de Estadísticas</h2>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="window.location.href='index.html'" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-gray-200 text-sm font-bold rounded-lg transition-colors border border-slate-300 dark:border-slate-600 shadow-sm flex items-center"><i class="fa-solid fa-arrow-left mr-2"></i> Volver a Operaciones</button>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-4 md:p-8">
+                <!-- 1. DASHBOARD -->
+                <div id="dashboard" class="tab-content space-y-6">
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between border-l-4 border-l-blue-500"><div class="mb-2 md:mb-0"><p class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1">Total Técnicos</p><p class="text-2xl md:text-3xl font-black text-gray-800 dark:text-white" id="kpi-tecnicos">0</p></div><div class="h-8 w-8 md:h-12 md:w-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-500"><i class="fa-solid fa-user-astronaut text-sm md:text-xl"></i></div></div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between border-l-4 border-l-indigo-500"><div class="mb-2 md:mb-0"><p class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1">Guardias (Mes)</p><p class="text-2xl md:text-3xl font-black text-gray-800 dark:text-white" id="kpi-guardias">0</p></div><div class="h-8 w-8 md:h-12 md:w-12 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-500"><i class="fa-solid fa-shield-halved text-sm md:text-xl"></i></div></div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between border-l-4 border-l-red-500"><div class="mb-2 md:mb-0"><p class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1">Faltas (Mes)</p><p class="text-2xl md:text-3xl font-black text-red-600 dark:text-red-400" id="kpi-faltas">0</p></div><div class="h-8 w-8 md:h-12 md:w-12 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center text-red-500"><i class="fa-solid fa-triangle-exclamation text-sm md:text-xl"></i></div></div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between border-l-4 border-l-emerald-500"><div class="mb-2 md:mb-0"><p class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1">Descansos (Mes)</p><p class="text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400" id="kpi-descansos">0</p></div><div class="h-8 w-8 md:h-12 md:w-12 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-500"><i class="fa-solid fa-mug-hot text-sm md:text-xl"></i></div></div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6"><h3 class="text-sm md:text-base font-bold text-gray-700 dark:text-gray-200 mb-4 uppercase tracking-wide">Histórico (6 Meses)</h3><div class="h-64 md:h-72 w-full relative"><canvas id="miGrafico"></canvas></div></div>
+                        <div class="lg:col-span-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6 flex flex-col"><h3 class="text-sm md:text-base font-bold text-gray-700 dark:text-gray-200 mb-4 uppercase tracking-wide text-center">Distribución Actual</h3><div class="flex-1 relative min-h-[200px] md:min-h-[250px]"><canvas id="graficoDistribucion"></canvas></div></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-6">
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6"><h3 class="text-xs md:text-sm font-bold text-gray-700 dark:text-gray-200 mb-4 uppercase"><i class="fa-solid fa-ranking-star text-indigo-500 mr-2"></i>Más Guardias</h3><div id="ranking-guardias"></div></div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6"><h3 class="text-xs md:text-sm font-bold text-gray-700 dark:text-gray-200 mb-4 uppercase"><i class="fa-solid fa-circle-exclamation text-red-500 mr-2"></i>Más Faltas</h3><div id="ranking-faltas"></div></div>
+                        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6"><h3 class="text-xs md:text-sm font-bold text-gray-700 dark:text-gray-200 mb-4 uppercase"><i class="fa-solid fa-mug-hot text-emerald-500 mr-2"></i>Más Descansos</h3><div id="ranking-descansos"></div></div>
+                    </div>
+                </div>
+
+                <!-- 2. GESTIÓN TÉCNICOS -->
+                <div id="tecnicos" class="tab-content space-y-6">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6">
+                        <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4"><i class="fa-solid fa-user-plus mr-2 text-blue-500"></i>Directorio</h3>
+                        <div class="flex flex-col md:flex-row gap-4">
+                            <input type="text" id="nombre" placeholder="Nombre completo" class="flex-1 px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                            <input type="number" id="celular" placeholder="Celular (Ej: 51987654321)" class="flex-1 px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 dark:text-white">
+                            <button onclick="agregarTecnico()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-md transition-all w-full md:w-auto"><i class="fa-solid fa-floppy-disk mr-2"></i>Guardar</button>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[500px]">
+                            <thead><tr class="bg-gray-50 dark:bg-slate-900 text-gray-500 dark:text-gray-400 text-xs md:text-sm uppercase tracking-wider border-b border-gray-100 dark:border-slate-700"><th class="px-4 md:px-6 py-4 font-medium">Técnico</th><th class="px-4 md:px-6 py-4 font-medium">Contacto</th><th class="px-4 md:px-6 py-4 font-medium text-center">Acciones</th></tr></thead>
+                            <tbody id="lista-tecnicos" class="divide-y divide-gray-100 dark:divide-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 3. CALENDARIO -->
+                <div id="calendario" class="tab-content active">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6">
+                        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+                            <div class="flex items-center space-x-1 md:space-x-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1 w-full lg:w-auto justify-center">
+                                <button onclick="cambiarMes(-1)" class="p-2 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-slate-800 rounded-md transition-all"><i class="fa-solid fa-chevron-left"></i></button>
+                                <h3 class="text-sm md:text-lg font-bold text-slate-800 dark:text-gray-200 w-32 md:w-44 text-center truncate" id="calendario-titulo">Cargando...</h3>
+                                <button onclick="cambiarMes(1)" class="p-2 text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-slate-800 rounded-md transition-all"><i class="fa-solid fa-chevron-right"></i></button>
+                                <button onclick="resetearMes()" class="ml-1 md:ml-2 px-2 md:px-3 py-1 text-[10px] md:text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-100 dark:border-blue-800">HOY</button>
+                            </div>
+                            <div class="flex items-center justify-between w-full lg:w-auto gap-2" id="controles-admin-cal">
+                                <button onclick="exportarCSV()" class="px-3 md:px-4 py-2 text-xs md:text-sm font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all flex items-center"><i class="fa-solid fa-file-csv mr-1 md:mr-2"></i> <span class="hidden sm:inline">Exportar Excel</span></button>
+                                <div class="flex bg-gray-100 dark:bg-slate-900 p-1 rounded-lg shadow-inner w-full lg:w-auto">
+                                    <button onclick="cambiarVistaCal('mensual')" id="btn-vista-mensual" class="flex-1 lg:flex-none px-2 md:px-3 py-2 text-xs md:text-sm font-semibold rounded-md bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm transition-all text-center">Mensual</button>
+                                    <button onclick="cambiarVistaCal('matriz')" id="btn-vista-matriz" class="flex-1 lg:flex-none px-2 md:px-3 py-2 text-xs md:text-sm font-semibold rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all text-center">Matriz</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- LEYENDA ACTUALIZADA CON VACACIONES Y DESCANSO ACUMULADO -->
+                        <div class="flex flex-wrap gap-2 md:gap-4 mb-4 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-slate-700 pb-4 justify-center md:justify-start">
+                            <span class="flex items-center"><div class="w-3 h-3 bg-indigo-500 rounded-sm mr-1"></div> Guardia</span>
+                            <span class="flex items-center"><div class="w-3 h-3 bg-red-500 rounded-sm mr-1"></div> Falta</span>
+                            <span class="flex items-center"><div class="w-3 h-3 bg-emerald-500 rounded-sm mr-1"></div> Descanso Normal</span>
+                            <span class="flex items-center"><div class="w-3 h-3 bg-cyan-500 rounded-sm mr-1"></div> Descanso Acum.</span>
+                            <span class="flex items-center"><div class="w-3 h-3 bg-amber-500 rounded-sm mr-1"></div> Vacaciones</span>
+                            <span class="flex items-center mt-1 md:mt-0 md:ml-auto w-full md:w-auto justify-center"><div class="w-2 h-2 bg-yellow-400 rounded-full mr-1"></div> Con Comentarios (💬)</span>
+                        </div>
+
+                        <div id="vista-mensual-container"><div class="overflow-x-auto pb-4"><div id="calendario-grid" class="grid grid-cols-7 gap-px bg-gray-200 dark:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden min-w-[700px]"></div></div></div>
+                        <div id="vista-matriz-container" class="hidden"><div class="overflow-x-auto border border-slate-300 dark:border-slate-600 rounded-lg shadow-md bg-white dark:bg-slate-800"><div id="matriz-grid"></div></div></div>
+                    </div>
+                </div>
+
+                <!-- 4. AUDITORIA -->
+                <div id="registro" class="tab-content h-full">
+                    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-4 md:p-6 flex flex-col min-h-[calc(100vh-140px)]">
+                        <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4"><i class="fa-solid fa-list-check mr-2 text-blue-500"></i>Auditoría del Sistema</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-blue-50 dark:bg-slate-900/50 p-4 rounded-lg border border-blue-100 dark:border-slate-700 flex justify-between items-center"><div><p class="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase">Movimientos (Hoy)</p><p class="text-2xl font-black text-slate-800 dark:text-white" id="log-kpi-hoy">0</p></div><i class="fa-solid fa-bolt text-2xl text-blue-300 dark:text-blue-500"></i></div>
+                            <div class="bg-emerald-50 dark:bg-slate-900/50 p-4 rounded-lg border border-emerald-100 dark:border-slate-700 flex justify-between items-center"><div><p class="text-xs text-emerald-600 dark:text-emerald-400 font-bold uppercase">Personal (Nuevos Mes)</p><p class="text-2xl font-black text-slate-800 dark:text-white" id="log-kpi-tec">0</p></div><i class="fa-solid fa-user-plus text-2xl text-emerald-300 dark:text-emerald-500"></i></div>
+                            <div class="bg-red-50 dark:bg-slate-900/50 p-4 rounded-lg border border-red-100 dark:border-slate-700 flex justify-between items-center"><div><p class="text-xs text-red-600 dark:text-red-400 font-bold uppercase">Registros Borrados</p><p class="text-2xl font-black text-slate-800 dark:text-white" id="log-kpi-del">0</p></div><i class="fa-solid fa-trash-can text-2xl text-red-300 dark:text-red-500"></i></div>
+                        </div>
+
+                        <div class="flex flex-col md:flex-row gap-4 mb-6">
+                            <div class="relative flex-1">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
+                                <input type="text" id="buscador-logs" onkeyup="filtrarLogs()" placeholder="Buscar por técnico, usuario, acción..." class="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm">
+                            </div>
+                            <select id="filtro-tipo-log" onchange="filtrarLogs()" class="p-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm">
+                                <option value="ALL">Todos los eventos</option>
+                                <option value="TECNICO">👥 Cambios de Técnicos</option>
+                                <option value="TURNO">📅 Movimientos de Turnos</option>
+                                <option value="SISTEMA">⚙️ Accesos al Sistema</option>
+                            </select>
+                        </div>
+
+                        <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-900/50 rounded-lg border border-gray-200 dark:border-slate-700 p-4 md:p-6" id="contenedor-logs">
+                            <div class="relative border-l-2 border-blue-200 dark:border-blue-800/50 ml-2 md:ml-4 space-y-6" id="historial-logs"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPTS MÓDULO CONECTADO -->
+    <script>
+        // --- CONFIGURACIÓN SUPABASE ---
+        const SUPABASE_URL = 'https://wtmmwcawkokceefkqiqf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0bW13Y2F3a29rY2VlZmtxaXFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzOTk0MDgsImV4cCI6MjEwMTk3NTQwOH0.HUd6Vymh4NI_dmT20acpV7k3fTK0Ob91-uqwYpAAdp4';
+        const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let tecnicosGlobal = []; let registrosGlobal = []; let logsGlobal = [];
+        let miGraficoInstancia = null; let graficoDistribucionInstancia = null;
+        let rolUsuario = ''; let miNombreFirebase = '';
+        
+        const fechaActual = new Date(); let añoGlobal = fechaActual.getFullYear(); let mesGlobal = fechaActual.getMonth(); 
+
+        // ============================================================ //
+        // 1. EL PUENTE (CONEXIÓN CON FIREBASE LOCALSTORAGE)
+        // ============================================================ //
+        function inicializarPuente() {
+            rolUsuario = localStorage.getItem('ten_rol');
+            const emailUsuario = localStorage.getItem('ten_email');
+            
+            if (!rolUsuario) { window.location.href = 'index.html'; return; }
+
+            document.getElementById('app-layout').classList.remove('hidden');
+            if(document.getElementById('user-email')) document.getElementById('user-email').innerText = emailUsuario;
+
+            if (rolUsuario === 'admin' || rolUsuario === 'ventas') {
+                document.getElementById('sidebar').classList.remove('hidden');
+                document.getElementById('btn-hamburguesa').classList.remove('hidden');
+                switchTab('dashboard');
+                cargarTodoElSistema();
+            } else {
+                miNombreFirebase = localStorage.getItem('ten_nombre_tecnico') || ''; 
+                document.getElementById('sidebar').classList.add('hidden');
+                document.getElementById('controles-admin-cal').classList.add('hidden'); 
+                document.getElementById('page-title').innerText = "Mi Cronograma Mensual";
+                switchTab('calendario');
+                cargarHorarioPersonal(); 
+            }
+        }
+
+        // ============================================================ //
+        // 2. CARGA DE DATOS SEGÚN EL ROL
+        // ============================================================ //
+        async function cargarTodoElSistema() {
+            const { data: t } = await clienteSupabase.from('tecnicos').select('*').order('id', { ascending: false }); 
+            if (t) { tecnicosGlobal = t; renderizarTecnicos(t); }
+            
+            const { data: r } = await clienteSupabase.from('registros_soporte').select('*, tecnicos(nombre)'); 
+            if (r) { registrosGlobal = r; procesarTodoElFrontend(); }
+            
+            cargarLogs(); 
+        }
+
+        async function cargarHorarioPersonal() {
+            const emailUsuario = localStorage.getItem('ten_email') || '';
+            const prefix = emailUsuario.split('@')[0].toUpperCase(); 
+
+            const diccionarioTecnicos = {
+                'MPACOTAIPE': 'Marcelino',
+                'RPACOTAIPE': 'Rodrigo',   
+                'CALARCON': 'Clever',
+                'JPATRICIO': 'Juan',
+                'JCORDOVA': 'Cordova',
+                'RRONDON': 'Renzo',
+                'RLEON': 'Ricardo',
+                'JLOLI': 'Josue',
+                'JFERNANDEZ': 'Jesus',
+                'EOLORTEGUI': 'Eber',
+                'JPALOMINO': 'Javier',
+                'DPACOTAIPE': 'Diego'
+            };
+
+            const nombreBusqueda = diccionarioTecnicos[prefix] || prefix;
+
+            const { data: t } = await clienteSupabase.from('tecnicos').select('*');
+            if (t) {
+                tecnicosGlobal = t.filter(tec => tec.nombre.toLowerCase().includes(nombreBusqueda.toLowerCase()));
+                if (tecnicosGlobal.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Técnico no encontrado',
+                        text: `Tu correo generó la búsqueda de "${nombreBusqueda}", pero no se encontró en Supabase. Verifica cómo escribiste su nombre al registrarlo.`,
+                        confirmButtonColor: '#3b82f6'
+                    });
+                }
+            }
+
+            const { data: r } = await clienteSupabase.from('registros_soporte').select('*, tecnicos(nombre)');
+            if (r) { 
+                const idsTecnicosValidos = tecnicosGlobal.map(tec => tec.id);
+                registrosGlobal = r.filter(reg => idsTecnicosValidos.includes(reg.tecnico_id));
+                procesarTodoElFrontend(); 
+            }
+        }
+
+        // ============================================================ //
+        // 3. RENDERIZADO VISUAL
+        // ============================================================ //
+        function procesarTodoElFrontend() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const textGraphColor = isDark ? '#cbd5e1' : '#64748b';
+            const gridGraphColor = isDark ? '#334155' : '#e2e8f0';
+
+            const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+            document.getElementById('calendario-titulo').innerText = `${mesesNombres[mesGlobal]} ${añoGlobal}`;
+
+            if(rolUsuario === 'admin' || rolUsuario === 'ventas') {
+                let gm=0, fm=0, dm=0; let dG=[0,0,0,0,0,0], dF=[0,0,0,0,0,0], dD=[0,0,0,0,0,0]; let u6=[];
+                let mAct = fechaActual.getMonth(), yAct = fechaActual.getFullYear();
+                for (let i=5; i>=0; i--) { let d = new Date(yAct, mAct-i, 1); u6.push({m: d.getMonth(), y: d.getFullYear(), nom: mesesNombres[d.getMonth()]}); }
+                let conteoTecnicos = {};
+
+                registrosGlobal.forEach(reg => {
+                    const [y, m, d] = reg.fecha.split('-');
+                    if (parseInt(y) === añoGlobal && parseInt(m)-1 === mesGlobal) {
+                        if(!conteoTecnicos[reg.tecnico_id] && reg.tecnicos) conteoTecnicos[reg.tecnico_id] = { nombre: reg.tecnicos.nombre, guardias: 0, faltas: 0, descansos: 0 };
+                        if (reg.tipo === 'Guardia') { gm++; if(reg.tecnicos) conteoTecnicos[reg.tecnico_id].guardias++; } 
+                        else if(reg.tipo === 'Falta') { fm++; if(reg.tecnicos) conteoTecnicos[reg.tecnico_id].faltas++; }
+                        // Agrupamos Descanso normal y Descanso Acum. para el KPI de Descansos
+                        else if(reg.tipo === 'Descanso' || reg.tipo === 'Descanso Acum.') { dm++; if(reg.tecnicos) conteoTecnicos[reg.tecnico_id].descansos++; }
+                    }
+                    const idx = u6.findIndex(item => item.m === parseInt(m)-1 && item.y === parseInt(y));
+                    if (idx !== -1) { 
+                        if (reg.tipo === 'Guardia') dG[idx]++; 
+                        else if(reg.tipo === 'Falta') dF[idx]++; 
+                        else if(reg.tipo === 'Descanso' || reg.tipo === 'Descanso Acum.') dD[idx]++; 
+                    }
+                });
+
+                document.getElementById('kpi-guardias').innerText = gm; document.getElementById('kpi-faltas').innerText = fm; document.getElementById('kpi-descansos').innerText = dm;
+
+                if (miGraficoInstancia) miGraficoInstancia.destroy();
+                miGraficoInstancia = new Chart(document.getElementById('miGrafico').getContext('2d'), {
+                    type: 'bar', data: { labels: u6.map(i=>i.nom), datasets: [ { label: 'Guardias', data: dG, backgroundColor: '#4f46e5' }, { label: 'Faltas', data: dF, backgroundColor: '#ef4444' }, { label: 'Descansos', data: dD, backgroundColor: '#10b981' } ] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { x:{ticks:{color:textGraphColor}, grid:{color:gridGraphColor}}, y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0, color:textGraphColor }, grid:{color:gridGraphColor} } }, plugins: { legend: { labels:{color:textGraphColor} } } }
+                });
+
+                if (graficoDistribucionInstancia) graficoDistribucionInstancia.destroy();
+                graficoDistribucionInstancia = new Chart(document.getElementById('graficoDistribucion').getContext('2d'), {
+                    type: 'doughnut', data: { labels: (gm||fm||dm)?['Guardias','Faltas','Descansos']:['Sin Datos'], datasets: [{ data: (gm||fm||dm)?[gm,fm,dm]:[1], backgroundColor: (gm||fm||dm)?['#4f46e5','#ef4444','#10b981']:['#64748b'], borderWidth:0 }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', labels:{color:textGraphColor, usePointStyle:true} } } }
+                });
+
+                let tTec = Object.values(conteoTecnicos);
+                function genRank(arr, prop, colBase) {
+                    let f = arr.filter(t => t[prop] > 0).sort((a,b) => b[prop] - a[prop]).slice(0, 5);
+                    if(f.length===0) return `<div class="text-center py-4 text-gray-400 dark:text-gray-500 text-xs md:text-sm">Sin registros suficientes en el mes actual.</div>`;
+                    let html = '';
+                    f.forEach(t => {
+                        let pct = (t[prop] / f[0][prop]) * 100;
+                        html += `<div class="bg-gray-50 dark:bg-slate-700/50 p-2 md:p-3 rounded-lg border border-gray-100 dark:border-slate-700 mb-2 md:mb-3"><div class="flex justify-between items-center text-xs md:text-sm mb-2"><span class="font-bold text-gray-700 dark:text-gray-200">${t.nombre}</span><span class="font-black text-${colBase}-600 dark:text-${colBase}-400">${t[prop]}</span></div><div class="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-1.5"><div class="bg-${colBase}-500 h-1.5 rounded-full" style="width: ${pct}%"></div></div></div>`;
+                    }); return html;
+                }
+                
+                document.getElementById('ranking-guardias').innerHTML = genRank(tTec, 'guardias', 'indigo');
+                document.getElementById('ranking-faltas').innerHTML = genRank(tTec, 'faltas', 'red');
+                document.getElementById('ranking-descansos').innerHTML = genRank(tTec, 'descansos', 'emerald');
+            }
+
+            const gM = document.getElementById('calendario-grid'); gM.innerHTML = '';
+            ['LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB', 'DOM'].forEach(d => gM.innerHTML += `<div class="bg-slate-100 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-600 py-1 md:py-2 text-center text-[10px] md:text-xs font-bold text-slate-600 dark:text-gray-400">${d}</div>`);
+            let dIni = new Date(añoGlobal, mesGlobal, 1).getDay(); dIni = dIni === 0 ? 6 : dIni - 1;
+            const dMes = new Date(añoGlobal, mesGlobal + 1, 0).getDate();
+            for (let i=0; i<dIni; i++) gM.innerHTML += `<div class="bg-gray-50 dark:bg-slate-800/50 h-24 md:h-[110px] border-r border-b border-gray-100 dark:border-slate-700"></div>`;
+            
+            for (let d=1; d<=dMes; d++) {
+                const fStr = `${añoGlobal}-${String(mesGlobal+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const regs = registrosGlobal.filter(r => r.fecha === fStr && tecnicosGlobal.map(t=>t.id).includes(r.tecnico_id));
+                
+                let isD = new Date(añoGlobal, mesGlobal, d).getDay() === 0; let isF = esFeriado(d, mesGlobal);
+                let bgDia = (isD || isF) ? 'bg-red-50/30 dark:bg-red-900/10 text-red-600 dark:text-red-400' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-gray-300';
+                
+                let badges = '';
+                regs.forEach(r => {
+                    // LÓGICA DE COLORES ACTUALIZADA
+                    let c = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'; // fallback
+                    if (r.tipo === 'Guardia') c = 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800';
+                    else if (r.tipo === 'Falta') c = 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-200 dark:border-red-800';
+                    else if (r.tipo === 'Descanso') c = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+                    else if (r.tipo === 'Vacaciones') c = 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+                    else if (r.tipo === 'Descanso Acum.') c = 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800';
+
+                    const nC = r.tecnicos ? r.tecnicos.nombre.split(' ')[0] : 'Téc';
+                    
+                    const evClick = (rolUsuario === 'admin' || rolUsuario === 'ventas') ? `onclick="gestionarCelda('${r.id}','${nC}','${r.tipo}','${fStr}','${r.comentario?r.comentario.replace(/'/g,"\\'"):''}',event)"` : '';
+                    let comentIcon = r.comentario ? '💬 ' : '';
+                    
+                    badges += `<div ${evClick} class="badge-interactiva mt-1 ${c} border border-opacity-60 text-[9px] md:text-[10.5px] rounded py-0.5 px-1 truncate font-bold text-center shadow-sm ${rolUsuario!=='tecnico'?'cursor-pointer':''}">${comentIcon}${r.tipo}: ${nC}</div>`;
+                });
+                
+                const esHoy = (d === fechaActual.getDate() && mesGlobal === fechaActual.getMonth() && añoGlobal === fechaActual.getFullYear()) ? 'border-2 border-blue-400 bg-blue-50/50 dark:bg-blue-900/20' : 'border-r border-b border-gray-200 dark:border-slate-700';
+                const addClick = (rolUsuario === 'admin' || rolUsuario === 'ventas') ? `onclick="abrirModalAdd('${fStr}')"` : '';
+                gM.innerHTML += `<div ${addClick} class="cal-dia h-24 md:h-[110px] p-1 md:p-1.5 text-right ${bgDia} ${esHoy} overflow-y-auto relative ${rolUsuario!=='tecnico'?'cursor-pointer':''}"><div class="mr-1 text-xs md:text-sm font-bold">${d}</div><div class="text-left mt-0.5 flex flex-col gap-0.5">${badges}</div></div>`;
+            }
+
+            if(rolUsuario === 'admin' || rolUsuario === 'ventas') {
+                let tM = `<table class="w-full text-xs bg-white dark:bg-slate-800 text-center"><thead class="bg-slate-100 dark:bg-slate-900 border-b-2 border-slate-300 dark:border-slate-700"><tr><th class="p-2 border-r border-slate-300 dark:border-slate-700 sticky left-0 z-10 bg-slate-200 dark:bg-slate-900 text-left uppercase">Personal</th>`;
+                for (let d=1; d<=dMes; d++) tM += `<th class="p-1 min-w-[34px] border-r border-slate-200 dark:border-slate-700"><div class="text-[13px] font-bold">${d}</div></th>`;
+                tM += `</tr></thead><tbody class="dark:text-gray-300">`;
+                tecnicosGlobal.forEach(t => {
+                    tM += `<tr class="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50"><td class="p-2 border-r border-slate-300 dark:border-slate-700 sticky left-0 z-10 bg-white dark:bg-slate-800 font-bold text-left truncate uppercase text-[10px] md:text-xs">${t.nombre.split(' ')[0]}</td>`;
+                    for (let d=1; d<=dMes; d++) {
+                        const fStr = `${añoGlobal}-${String(mesGlobal+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                        const reg = registrosGlobal.find(r => r.tecnico_id === t.id && r.fecha === fStr);
+                        if (reg) {
+                            let bg = 'bg-gray-500 text-white';
+                            if (reg.tipo === 'Guardia') bg = 'bg-indigo-600 text-white';
+                            else if (reg.tipo === 'Falta') bg = 'bg-red-500 text-white';
+                            else if (reg.tipo === 'Descanso') bg = 'bg-emerald-500 text-white';
+                            else if (reg.tipo === 'Vacaciones') bg = 'bg-amber-500 text-white';
+                            else if (reg.tipo === 'Descanso Acum.') bg = 'bg-cyan-500 text-white';
+                            
+                            let letra = reg.tipo === 'Descanso Acum.' ? 'DA' : reg.tipo.charAt(0);
+
+                            tM += `<td onclick="gestionarCelda('${reg.id}','${t.nombre}','${reg.tipo}','${fStr}','${reg.comentario?reg.comentario.replace(/'/g,"\\'"):''}')" class="p-0 border-r border-slate-200 cursor-pointer"><div class="mx-auto w-5 h-5 rounded flex items-center justify-center ${bg} font-bold text-[10px]">${letra}</div></td>`;
+                        } else {
+                            tM += `<td onclick="abrirModalAddM('${fStr}', ${t.id}, '${t.nombre}')" class="p-1 border-r border-slate-200 cursor-pointer hover:bg-blue-100"></td>`;
+                        }
+                    }
+                    tM += `</tr>`;
+                });
+                document.getElementById('matriz-grid').innerHTML = tM + `</tbody></table>`;
+            }
+        }
+
+        // ============================================================ //
+        // 4. MÓDULO DE AUDITORÍA
+        // ============================================================ //
+        async function registrarLogBD(accion, detalles) {
+            const email = localStorage.getItem('ten_email') || 'Desconocido';
+            await clienteSupabase.from('auditoria').insert([{ usuario: email, accion: accion, detalles: detalles }]);
+            cargarLogs(); 
+        }
+
+        async function cargarLogs() {
+            const { data, error } = await clienteSupabase.from('auditoria').select('*').order('fecha', { ascending: false }).limit(200);
+            
+            if(error) {
+                console.error("Error exacto de Supabase:", error);
+                const msg = error.message || JSON.stringify(error);
+                document.getElementById('historial-logs').innerHTML = `
+                    <div class="bg-red-50 dark:bg-red-900/30 p-4 rounded-lg border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400">
+                        <i class="fa-solid fa-triangle-exclamation mr-2"></i><b>Supabase dice:</b> ${msg}
+                    </div>`;
+                return;
+            }
+
+            if(data) {
+                logsGlobal = data;
+                renderizarLogs();
+            }
+        }
+
+        function renderizarLogs() {
+            const busqueda = document.getElementById('buscador-logs') ? document.getElementById('buscador-logs').value.toLowerCase() : '';
+            const filtro = document.getElementById('filtro-tipo-log') ? document.getElementById('filtro-tipo-log').value : 'ALL';
+            const contenedor = document.getElementById('historial-logs');
+            
+            if(!contenedor) return;
+
+            let filtrados = logsGlobal.filter(l => {
+                const coincideTexto = l.detalles.toLowerCase().includes(busqueda) || l.usuario.toLowerCase().includes(busqueda);
+                const coincideTipo = (filtro === 'ALL') || (l.accion === filtro);
+                return coincideTexto && coincideTipo;
+            });
+
+            contenedor.innerHTML = '';
+            if(filtrados.length === 0) {
+                contenedor.innerHTML = `<p class="text-sm text-gray-500 dark:text-gray-400 ml-4">No hay movimientos recientes.</p>`;
+            }
+
+            filtrados.forEach(l => {
+                const d = new Date(l.fecha);
+                const hora = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const fechaTxt = d.toLocaleDateString();
+                
+                let icon = 'fa-bolt text-blue-500'; let bgIcon = 'bg-blue-100 dark:bg-blue-900/50 ring-blue-50 dark:ring-slate-900';
+                if(l.accion === 'TECNICO') { icon = 'fa-user text-emerald-500'; bgIcon = 'bg-emerald-100 dark:bg-emerald-900/50 ring-emerald-50 dark:ring-slate-900'; }
+                if(l.accion === 'TURNO') { icon = 'fa-calendar-day text-indigo-500'; bgIcon = 'bg-indigo-100 dark:bg-indigo-900/50 ring-indigo-50 dark:ring-slate-900'; }
+                if(l.detalles.toLowerCase().includes('elimin') || l.detalles.toLowerCase().includes('borrad')) { icon = 'fa-trash text-red-500'; bgIcon = 'bg-red-100 dark:bg-red-900/50 ring-red-50 dark:ring-slate-900'; }
+
+                contenedor.innerHTML += `
+                    <div class="pl-6 md:pl-8 relative">
+                        <div class="w-8 h-8 ${bgIcon} rounded-full absolute -left-4 top-0 flex items-center justify-center ring-4 shadow-sm">
+                            <i class="fa-solid ${icon} text-[10px] md:text-xs"></i>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-3 md:p-4 rounded-lg border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-1.5 gap-1">
+                                <p class="text-xs font-bold text-gray-800 dark:text-gray-200 truncate"><i class="fa-regular fa-circle-user mr-1 text-gray-400"></i>${l.usuario}</p>
+                                <span class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-slate-700 px-2 py-0.5 rounded-full border border-gray-100 dark:border-slate-600 w-fit">${fechaTxt} • ${hora}</span>
+                            </div>
+                            <p class="text-xs md:text-sm text-gray-600 dark:text-gray-300 leading-relaxed">${l.detalles}</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            let mH = 0, nT = 0, dR = 0;
+            const hoyIso = new Date().toISOString().split('T')[0];
+            const mesIso = hoyIso.substring(0, 7);
+            
+            logsGlobal.forEach(l => {
+                const logIso = new Date(l.fecha).toISOString();
+                if(logIso.startsWith(hoyIso)) mH++;
+                if(logIso.startsWith(mesIso) && l.accion === 'TECNICO' && l.detalles.toLowerCase().includes('registrado')) nT++;
+                if(l.detalles.toLowerCase().includes('eliminad') || l.detalles.toLowerCase().includes('borrad')) dR++;
+            });
+
+            if(document.getElementById('log-kpi-hoy')) document.getElementById('log-kpi-hoy').innerText = mH;
+            if(document.getElementById('log-kpi-tec')) document.getElementById('log-kpi-tec').innerText = nT;
+            if(document.getElementById('log-kpi-del')) document.getElementById('log-kpi-del').innerText = dR;
+        }
+
+        function filtrarLogs() { renderizarLogs(); }
+
+        // --- FUNCIONES ADMIN CRUD ---
+        async function agregarTecnico() {
+            const n = document.getElementById('nombre').value.trim(); const c = document.getElementById('celular').value.trim();
+            if(!n || !c) return Swal.fire({ icon: 'warning', title: 'Faltan datos', text: 'Completa todos los campos.'});
+            
+            const { error } = await clienteSupabase.from('tecnicos').insert([{ nombre: n, celular: c }]);
+            if (error) return mostrarAlertaError('Error BD', error.message);
+            document.getElementById('nombre').value = ''; document.getElementById('celular').value = '';
+            
+            registrarLogBD('TECNICO', `Técnico registrado: ${n} (+${c})`); 
+            cargarTodoElSistema();
+        }
+
+        async function eliminarTecnico(id, nombre) {
+            Swal.fire({ title: '¿Eliminar a '+nombre+'?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', customClass:{popup:'rounded-xl shadow-2xl'} }).then(async (r) => {
+                if (r.isConfirmed) { 
+                    await clienteSupabase.from('tecnicos').delete().eq('id', id); 
+                    registrarLogBD('TECNICO', `Técnico eliminado de la base de datos: ${nombre}`); 
+                    cargarTodoElSistema(); 
+                }
+            });
+        }
+
+        function renderizarTecnicos(tecnicos) {
+            const lista = document.getElementById('lista-tecnicos'); lista.innerHTML = '';
+            document.getElementById('kpi-tecnicos').innerText = tecnicos.length;
+            if (tecnicos.length === 0) return lista.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-gray-400">Sin técnicos. Agrega uno.</td></tr>`;
+            tecnicos.forEach(t => {
+                lista.innerHTML += `
+                    <tr class="hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors border-b border-gray-100 dark:border-slate-700">
+                        <td class="px-4 md:px-6 py-4 font-medium flex items-center gap-2 md:gap-3 dark:text-gray-200">
+                            <div class="h-6 w-6 md:h-8 md:w-8 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center font-bold text-slate-600 dark:text-gray-300 text-xs md:text-sm">${t.nombre.charAt(0).toUpperCase()}</div>
+                            <span class="text-xs md:text-sm">${t.nombre}</span>
+                        </td>
+                        <td class="px-4 md:px-6 py-4"><span class="px-2 py-1 rounded-full text-[10px] md:text-xs font-semibold bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-300">+${t.celular}</span></td>
+                        <td class="px-4 md:px-6 py-4 text-center space-x-1 whitespace-nowrap">
+                            <button onclick="guardarRegistroDirecto(${t.id}, '${t.nombre}', 'Guardia', '')" class="px-2 py-1.5 text-xs rounded text-white bg-indigo-600 hover:bg-indigo-700" title="Asignar Guardia"><i class="fa-solid fa-shield-halved"></i></button>
+                            <button onclick="guardarRegistroDirecto(${t.id}, '${t.nombre}', 'Descanso', '')" class="px-2 py-1.5 text-xs rounded text-white bg-emerald-500 hover:bg-emerald-600" title="Asignar Descanso Normal"><i class="fa-solid fa-mug-hot"></i></button>
+                            <button onclick="guardarRegistroDirecto(${t.id}, '${t.nombre}', 'Falta', '')" class="px-2 py-1.5 text-xs rounded text-white bg-red-500 hover:bg-red-600" title="Asignar Falta"><i class="fa-solid fa-triangle-exclamation"></i></button>
+                            <button onclick="eliminarTecnico(${t.id}, '${t.nombre}')" class="ml-1 md:ml-2 p-1.5 text-gray-400 hover:text-red-500" title="Eliminar Técnico"><i class="fa-solid fa-trash-can"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        async function guardarRegistroDirecto(tecId, nombreTec, tipo, com, fecha = null) {
+            if(!fecha) { const off = fechaActual.getTimezoneOffset() * 60000; fecha = (new Date(fechaActual - off)).toISOString().split('T')[0]; }
+            await clienteSupabase.from('registros_soporte').insert([{ tecnico_id: tecId, tipo: tipo, fecha: fecha, comentario: com }]);
+            mostrarAlertaExito(`${tipo} guardado.`); 
+            
+            let extra = com ? ` (Nota: ${com})` : '';
+            registrarLogBD('TURNO', `Se asignó [${tipo}] a ${nombreTec} para la fecha ${fecha}.${extra}`);
+            cargarTodoElSistema();
+        }
+
+        async function gestionarCelda(id, nom, tipo, fec, com, ev) {
+            if(ev) ev.stopPropagation();
+            if(rolUsuario === 'tecnico') return; 
+            
+            // AQUI ESTÁN LAS DOS OPCIONES NUEVAS EN EL MENÚ DESPLEGABLE
+            const opcionesHTML = `
+                <select id="e-t" class="w-full mb-3 p-2 border rounded text-sm bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                    <option value="Guardia" ${tipo==='Guardia'?'selected':''}>Guardia</option>
+                    <option value="Descanso" ${tipo==='Descanso'?'selected':''}>Descanso Normal</option>
+                    <option value="Descanso Acum." ${tipo==='Descanso Acum.'?'selected':''}>Descanso Acumulado</option>
+                    <option value="Vacaciones" ${tipo==='Vacaciones'?'selected':''}>Vacaciones</option>
+                    <option value="Falta" ${tipo==='Falta'?'selected':''}>Falta</option>
+                </select>
+            `;
+            
+            const { value: v, isDenied } = await Swal.fire({ 
+                title: nom, 
+                html: `<div class="text-left mt-2">${opcionesHTML}<textarea id="e-c" class="w-full p-2 border rounded h-16 text-sm bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Agrega una nota (Ej: Aprobado por el jefe)">${com}</textarea></div>`, 
+                showDenyButton: true, showCancelButton: true, confirmButtonText: 'Actualizar', denyButtonText: 'Borrar', 
+                customClass: { popup: 'rounded-2xl shadow-2xl w-11/12 max-w-sm dark:bg-slate-800' }, 
+                preConfirm: () => { return { t: document.getElementById('e-t').value, c: document.getElementById('e-c').value } }
+            });
+            
+            if (v) { 
+                await clienteSupabase.from('registros_soporte').update({ tipo: v.t, comentario: v.c }).eq('id', id); 
+                let extra = v.c ? ` (Nota modificada)` : '';
+                registrarLogBD('TURNO', `Se modificó el turno de ${nom} a [${v.t}] el ${fec}.${extra}`);
+                cargarTodoElSistema(); 
+            } 
+            else if (isDenied) { 
+                await clienteSupabase.from('registros_soporte').delete().eq('id', id); 
+                registrarLogBD('TURNO', `Se eliminó el turno de ${nom} programado para el ${fec}.`);
+                cargarTodoElSistema(); 
+            }
+        }
+
+        async function abrirModalAdd(fec) {
+            if(rolUsuario === 'tecnico' || tecnicosGlobal.length===0) return;
+            let op = tecnicosGlobal.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
+            
+            const opcionesHTML = `
+                <select id="a-tp" class="w-full mb-3 p-2 border rounded text-sm bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                    <option value="Guardia">Guardia</option>
+                    <option value="Descanso">Descanso Normal</option>
+                    <option value="Descanso Acum.">Descanso Acumulado</option>
+                    <option value="Vacaciones">Vacaciones</option>
+                    <option value="Falta">Falta</option>
+                </select>
+            `;
+
+            const { value: v } = await Swal.fire({ 
+                title: 'Programar '+fec, 
+                html: `<div class="text-left mt-2"><select id="a-t" class="w-full mb-3 p-2 border rounded text-sm bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">${op}</select>${opcionesHTML}<textarea id="a-c" class="w-full p-2 border rounded h-16 text-sm bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white" placeholder="Comentarios..."></textarea></div>`, 
+                showCancelButton: true, customClass: { popup: 'rounded-2xl shadow-2xl w-11/12 max-w-sm dark:bg-slate-800' }, 
+                preConfirm: () => { return { t: document.getElementById('a-t').value, tp: document.getElementById('a-tp').value, c: document.getElementById('a-c').value } }
+            });
+            
+            if (v) {
+                const tecnicoObj = tecnicosGlobal.find(tec => tec.id == v.t);
+                guardarRegistroDirecto(v.t, tecnicoObj.nombre, v.tp, v.c, fec);
+            }
+        }
+
+        async function abrirModalAddM(fec, id, nom) {
+            const opcionesHTML = `
+                <select id="am-t" class="w-full mb-3 p-2 border rounded text-sm bg-gray-50 dark:bg-slate-700 dark:border-slate-600 dark:text-white">
+                    <option value="Guardia">Guardia</option>
+                    <option value="Descanso">Descanso Normal</option>
+                    <option value="Descanso Acum.">Descanso Acumulado</option>
+                    <option value="Vacaciones">Vacaciones</option>
+                    <option value="Falta">Falta</option>
+                </select>
+            `;
+
+            const { value: v } = await Swal.fire({ 
+                title: nom.split(' ')[0], 
+                html: `<div class="text-left mt-2"><p class="text-xs mb-2 text-center text-gray-500 dark:text-gray-400">Día: ${fec}</p>${opcionesHTML}</div>`, 
+                showCancelButton: true, customClass: { popup: 'rounded-2xl shadow-2xl w-11/12 max-w-sm dark:bg-slate-800' }, 
+                preConfirm: () => { return { t: document.getElementById('am-t').value } }
+            });
+            if (v) guardarRegistroDirecto(id, nom, v.t, '', fec);
+        }
+
+        // --- UTILIDADES GLOBALES ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        function cambiarMes(d) { mesGlobal += d; if (mesGlobal > 11) { mesGlobal = 0; añoGlobal++; } else if (mesGlobal < 0) { mesGlobal = 11; añoGlobal--; } procesarTodoElFrontend(); }
+        function resetearMes() { mesGlobal = fechaActual.getMonth(); añoGlobal = fechaActual.getFullYear(); procesarTodoElFrontend(); }
+        function esFeriado(dia, mes) { return ['1-0','28-3','29-3','1-4','7-5','29-5','23-6','28-6','29-6','6-7','30-7','8-9','1-10','8-11','9-11','25-11'].includes(`${dia}-${mes}`); }
+        
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelectorAll('aside nav button').forEach(btn => { btn.classList.remove('bg-blue-600', 'text-white'); btn.classList.add('hover:bg-slate-800', 'text-slate-300'); });
+            const activeBtn = document.getElementById('btn-' + tabId);
+            if(activeBtn) { activeBtn.classList.remove('hover:bg-slate-800', 'text-slate-300'); activeBtn.classList.add('bg-blue-600', 'text-white'); }
+            
+            const titulos = { 'dashboard': 'Panel de Estadísticas', 'tecnicos': 'Directorio', 'calendario': 'Planificación', 'registro': 'Auditoría del Sistema' };
+            if(document.getElementById('page-title') && (rolUsuario === 'admin' || rolUsuario === 'ventas')) document.getElementById('page-title').innerText = titulos[tabId];
+            
+            if(window.innerWidth < 768 && (rolUsuario === 'admin' || rolUsuario === 'ventas')) toggleSidebar();
+        }
+
+        function cambiarVistaCal(m) {
+            if (m === 'mensual') { document.getElementById('vista-mensual-container').classList.remove('hidden'); document.getElementById('vista-matriz-container').classList.add('hidden'); } 
+            else { document.getElementById('vista-matriz-container').classList.remove('hidden'); document.getElementById('vista-mensual-container').classList.add('hidden'); }
+        }
+
+        function exportarCSV() {
+            // AHORA EL EXCEL INCLUYE VACACIONES Y DESC. ACUMULADO
+            let csv = '\uFEFFTécnico;'; const diasMes = new Date(añoGlobal, mesGlobal + 1, 0).getDate(); const y = String(añoGlobal).slice(-2); const m = String(mesGlobal + 1).padStart(2, '0'); 
+            for (let d = 1; d <= diasMes; d++) { csv += `${String(d).padStart(2, '0')}/${m}/${y};`; } 
+            csv += 'Guardias;Faltas;Descansos Norm.;Descansos Acum.;Vacaciones\n'; 
+            
+            tecnicosGlobal.forEach(t => {
+                csv += `${t.nombre};`; 
+                let tg = 0, tf = 0, td = 0, tda = 0, tv = 0;
+                for (let d = 1; d <= diasMes; d++) {
+                    const fStr = `${añoGlobal}-${m}-${String(d).padStart(2, '0')}`; 
+                    const reg = registrosGlobal.find(r => r.tecnico_id === t.id && r.fecha === fStr);
+                    if (reg) { 
+                        csv += `${reg.tipo};`; 
+                        if(reg.tipo === 'Guardia') tg++; 
+                        else if(reg.tipo === 'Falta') tf++; 
+                        else if(reg.tipo === 'Descanso') td++; 
+                        else if(reg.tipo === 'Descanso Acum.') tda++; 
+                        else if(reg.tipo === 'Vacaciones') tv++; 
+                    } else { 
+                        csv += ';'; 
+                    }
+                } 
+                csv += `${tg};${tf};${td};${tda};${tv}\n`;
+            });
+            const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `Reporte_${m}_${añoGlobal}.csv`; link.click();
+            registrarLogBD('SISTEMA', `Exportación de Excel generada.`);
+        }
+
+        function toggleDarkMode() {
+            const esOscuro = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', esOscuro ? 'dark' : 'light');
+            document.getElementById('icon-theme').className = esOscuro ? 'fa-solid fa-sun text-yellow-400' : 'fa-solid fa-moon text-blue-300';
+            procesarTodoElFrontend(); 
+        }
+
+        function mostrarAlertaExito(msj) { Swal.fire({ icon: 'success', title: '¡Excelente!', text: msj, toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 }); }
+        function mostrarAlertaError(tit, msj) { Swal.fire({ icon: 'error', title: tit, text: msj, confirmButtonColor: '#ef4444', customClass:{popup:'rounded-xl shadow-2xl'} }); }
+
+        // INICIO DEL MÓDULO
+        window.addEventListener('DOMContentLoaded', () => { 
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+            inicializarPuente(); 
+        });
+    </script>
+</body>
+</html>
