@@ -4,200 +4,344 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TEN - Centro de Operaciones NOC</title>
+    <meta name="theme-color" content="#0f172a">
     
-    <meta name="theme-color" content="#131722">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="TEN Gestor">
-    <!-- Favicon -->
     <link rel="icon" href="logo.ico" type="image/x-icon">
     
-    <!-- Librerías Externas -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+
+<!-- ================= LOGIN VIEW ================= -->
 <div id="login-view">
-    <div class="login-wrapper">
-        <div class="login-illustration">
-            <img src="tecnico.png" alt="Técnico NOC" onerror="this.style.display='none';">
-            <h2>TEN INTERNET</h2>
-            <p>Plataforma de Operaciones de Fibra Óptica</p>
+    <div class="login-split">
+        <div class="login-left">
+            <div class="login-overlay"></div>
+            <img src="fondo.png" alt="Fondo" class="login-bg-img">
+            <div class="login-branding">
+                <img src="logo.png" alt="TEN" class="login-logo-big">
+                <h2>Plataforma de Operaciones FIBRA</h2>
+                <p>Gestión inteligente para el Centro de Operaciones de Red (NOC) y control de cuadrillas técnicas.</p>
+            </div>
         </div>
-        <form class="login-box" onsubmit="event.preventDefault(); iniciarSesion();">
-            <img src="logo.png" alt="Logo TEN" class="logo-oficial" onerror="this.style.display='none'; document.getElementById('altLogo').style.display='block';">
-            <h1 id="altLogo" style="display:none; color:var(--text-main); font-weight:900; margin:0 0 10px 0; font-size:40px;">TEN</h1>
-            <div class="login-subtitle">CENTRO DE OPERACIONES NOC</div>
-            
-            <div class="input-group">
-                <span class="input-icon">👤</span>
-                <input type="email" id="txtEmail" placeholder="Correo Electrónico" required>
-            </div>
-            
-            <div class="input-group">
-                <span class="input-icon">🔒</span>
-                <input type="password" id="txtPassword" placeholder="Contraseña" required>
-            </div>
-            
-            <button type="submit">INGRESAR AL SISTEMA</button>
-            <p id="login-error" style="color: var(--btn-sin-atender); font-size: 13px; display: none; margin-top:15px; font-weight: bold;">Error: Verifica tus credenciales.</p>
-            
-            <div style="margin-top: 15px; text-align: center;">
-                <a href="#" onclick="window.recuperarContrasena();" style="color: var(--text-muted); font-size: 12px; text-decoration: none; font-weight: 700; transition: 0.2s;" onmouseover="this.style.color='var(--neon-cyan)'" onmouseout="this.style.color='var(--text-muted)'">¿Olvidaste o quieres cambiar tu contraseña?</a>
-            </div>
-        </form>
+        <div class="login-right">
+            <form class="login-box" onsubmit="event.preventDefault(); iniciarSesion();">
+                <div class="login-header-mobile">
+                    <img src="logo.png" alt="Logo TEN" class="logo-oficial">
+                </div>
+                <h3>Bienvenido al Sistema</h3>
+                <p class="login-subtitle">Ingresa tus credenciales corporativas</p>
+                
+                <div class="input-group">
+                    <i class="fa-solid fa-envelope input-icon"></i>
+                    <input type="email" id="txtEmail" placeholder="Correo Electrónico" required>
+                </div>
+                
+                <div class="input-group">
+                    <i class="fa-solid fa-lock input-icon"></i>
+                    <input type="password" id="txtPassword" placeholder="Contraseña" required>
+                </div>
+                
+                <button type="submit" class="btn-login">INGRESAR <i class="fa-solid fa-arrow-right ml-2"></i></button>
+                <p id="login-error" class="error-msg" style="display: none;">Error: Verifica tus credenciales.</p>
+                
+                <div class="login-footer">
+                    <a href="#" onclick="window.recuperarContrasena();">¿Olvidaste tu contraseña?</a>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
-<div id="dashboard-view">
-    <div class="container">
-        <div class="header-brand">
-            <div class="header-titles">
-                <h1>TEN - CENTRO DE OPERACIONES</h1>
-                <div class="zone-selector-container admin-only" id="contenedorSelectorZona">
-                    <label>ZONA:</label>
-                    <select id="selectorZona" class="zone-select" onchange="cambiarZona(this.value)">
-                        <option value="Norte">CONO NORTE</option>
-                        <option value="Lurin">LURÍN</option>
-                    </select>
+<!-- ================= DASHBOARD VIEW ================= -->
+<div id="dashboard-view" style="display: none;">
+    <div class="app-layout">
+        
+        <!-- SIDEBAR -->
+        <div class="sidebar-overlay" onclick="window.toggleSidebar()"></div>
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <img src="logo.png" alt="TEN Logo" class="sidebar-logo">
+                <span class="sidebar-brand">TEN <b>NOC</b></span>
+            </div>
+            
+            <div class="sidebar-user">
+                <div class="avatar"><i class="fa-solid fa-user-tie"></i></div>
+                <div class="user-details">
+                    <span class="user-role" id="lblUsuarioActivo">Cargando...</span>
+                    <span class="user-status"><i class="fa-solid fa-circle"></i> En línea</span>
                 </div>
             </div>
-            <div class="user-info">
-                <button type="button" class="btn-theme-toggle" onclick="window.toggleTema()">🌓 Cambiar Tema</button>
-                <span class="user-badge" id="lblUsuarioActivo">👑 ADMINISTRADOR</span>
-                <button type="button" class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
-            </div>
-        </div>
 
-        <div class="botones-principales" id="contenedorBotonesAccion" style="display:none;">
-            
-            <!-- EL NUEVO BOTÓN PUENTE PARA TODOS -->
-            <button type="button" class="btn-cyan" style="background: #10b981; border-color: #10b981;" onclick="window.location.href='modulo_programacion.html'">
-                📅 Mi Horario / Programación
-            </button>
+            <nav class="sidebar-nav" id="contenedorBotonesAccion">
+                <p class="nav-section">PRINCIPAL</p>
+                
+                <button type="button" class="nav-btn btn-ocultar-tecnico active" onclick="abrirModal()">
+                    <i class="fa-solid fa-plus-circle"></i> Nuevo Trabajo
+                </button>
+                
+                <button type="button" class="nav-btn btn-ocultar-tecnico" id="btnMapaCoberturaGeneral" onclick="abrirModalCoberturaGeneral()">
+                    <i class="fa-solid fa-map-location-dot"></i> Mapa de Cobertura
+                </button>
 
-            <button type="button" class="btn-agregar-flotante btn-ocultar-tecnico" onclick="abrirModal()">+ Nuevo Trabajo</button>
-            <button type="button" class="btn-cyan btn-ocultar-tecnico" id="btnMapaCoberturaGeneral" onclick="abrirModalCoberturaGeneral()">🗺️ Mapa Cobertura</button>
+                <p class="nav-section admin-only">REPORTES Y AJUSTES</p>
+                <button type="button" class="nav-btn admin-wilton-only" onclick="abrirModalCalendario()" id="btnCalendarioAdmin">
+                    <i class="fa-solid fa-calendar-alt"></i> Calendario Global
+                </button>
+                <button type="button" class="nav-btn admin-only" onclick="exportarAExcel()" id="btnExportarAdmin">
+                    <i class="fa-solid fa-file-excel"></i> Exportar a Excel
+                </button>
+                <button type="button" class="nav-btn admin-only" onclick="abrirModalConfiguracion()">
+                    <i class="fa-solid fa-gear"></i> Configuración
+                </button>
 
-            <button type="button" class="btn-exportar admin-only" onclick="exportarAExcel()" id="btnExportarAdmin">📊 Exportar Excel</button>
-            <label class="btn-subir-bd admin-only" id="btnSubirBdAdmin">
-                📁 Subir BD Clientes
-                <input type="file" accept=".xlsx, .xls" style="display: none;" onchange="procesarExcelClientes(event)">
-            </label>
-            
-            <button type="button" class="btn-cyan btn-calendario-header admin-wilton-only" onclick="abrirModalCalendario()" id="btnCalendarioAdmin">📅 Calendario General</button>
-            
-            <div id="loaderUpload" class="loader"></div>
-        </div>
+                <p class="nav-section admin-only admin-carlos-only">BASE DE DATOS EXCEL</p>
+                <label class="nav-btn admin-only admin-carlos-only cursor-pointer" id="btnSubirBdAdmin">
+                    <i class="fa-solid fa-file-excel"></i> 1. Cargar Excel Local
+                    <input type="file" accept=".xlsx, .xls" style="display: none;" onchange="procesarExcelClientes(event)">
+                </label>
+                <button type="button" class="nav-btn admin-only admin-carlos-only" onclick="window.subirExcelAFirebase()">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> 2. Subir a la Nube
+                </button>
+                <button type="button" class="nav-btn admin-only admin-carlos-only" onclick="window.descargarExcelDeFirebase()">
+                    <i class="fa-solid fa-cloud-arrow-down"></i> 3. Bajar de la Nube
+                </button>
+                <button type="button" class="nav-btn admin-only admin-carlos-only" onclick="abrirModalFiltroBD()">
+                    <i class="fa-solid fa-filter"></i> 4. Filtrar Clientes
+                </button>
 
-        <div id="panelGraficosAdmin" class="admin-stats-grid admin-only">
-            <div class="stat-card calendar-premium-card" id="cardCalendarioNoc" style="grid-column: span 1;">
-                <div class="calendar-premium-header">
-                    <h3 style="margin: 0; border: none; padding: 0;">📅 AGENDA NOC</h3>
-                    <div class="calendar-nav">
-                        <button class="cal-nav-btn" onclick="navegarSemana(-1)" title="Semana anterior">◀</button>
-                        <span class="cal-semana-label" id="lblSemanaActual"></span>
-                        <button class="cal-nav-btn" onclick="navegarSemana(1)" title="Semana siguiente">▶</button>
-                        <button class="cal-nav-btn cal-today-btn" onclick="irAHoy()">HOY</button>
+                <p class="nav-section">RECURSOS HUMANOS</p>
+                <button type="button" class="nav-btn btn-hr" onclick="window.location.href='modulo_programacion.html'">
+                    <i class="fa-solid fa-clock"></i> Programación / Turnos
+                </button>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="app-main">
+            <!-- TOPBAR -->
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <button type="button" class="topbar-btn mobile-menu-btn" onclick="window.toggleSidebar()">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="zone-selector-container admin-only" id="contenedorSelectorZona">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <select id="selectorZona" class="zone-select" onchange="cambiarZona(this.value)">
+                            <option value="Norte">CONO NORTE</option>
+                            <option value="Lurin">LURÍN</option>
+                        </select>
                     </div>
                 </div>
-                <div class="cal-day-quickview" id="calDayQuickview">
-                    <div class="cal-day-header" id="calDayHeader">LUNES 05</div>
-                    <div class="cal-timeline-mini" id="calTimelineMini"></div>
+                
+                <div class="topbar-right">
+                    <button type="button" class="topbar-btn admin-only" style="position: relative;" onclick="abrirModalNotificaciones()" title="Recordatorios de Cobranza">
+                        <i class="fa-solid fa-bell"></i>
+                        <span id="badgeNotificaciones" style="position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; font-size: 10px; font-weight: bold; border-radius: 50%; width: 18px; height: 18px; display: none; align-items: center; justify-content: center;">0</span>
+                    </button>
+                    
+                    <button type="button" class="topbar-btn" onclick="window.toggleTema()" title="Cambiar Tema">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                    <button type="button" class="topbar-btn btn-logout" onclick="cerrarSesion()" title="Cerrar Sesión">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
                 </div>
-                <div class="cal-week-strip" id="calWeekStrip"></div>
-            </div>
+            </header>
 
-            <div class="stat-card" id="cardGraficoTecnicos">
-                <h3>CARGA DE TÉCNICOS</h3>
-                <div class="chart-container"><canvas id="graficoTecnicos"></canvas></div>
-            </div>
+            <div class="app-content">
+                
+                <div id="panelGraficosAdmin" class="admin-stats-grid admin-only">
+                    
+                    <div class="stat-card" id="cardCalendarioNoc">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-calendar-day text-blue"></i> Agenda NOC</h3>
+                            <div class="calendar-nav">
+                                <button onclick="navegarSemana(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+                                <button onclick="irAHoy()">Hoy</button>
+                                <button onclick="navegarSemana(1)"><i class="fa-solid fa-chevron-right"></i></button>
+                            </div>
+                        </div>
+                        <div class="text-center text-xs font-bold my-2" id="lblSemanaActual"></div>
+                        <div class="cal-day-quickview">
+                            <div class="cal-day-header" id="calDayHeader">LUNES</div>
+                            <div class="cal-timeline-mini" id="calTimelineMini"></div>
+                        </div>
+                        <div class="cal-week-strip" id="calWeekStrip"></div>
+                    </div>
 
-            <div class="stat-card" id="cardKpis">
-                <h3 id="tituloKpi">TOTALES</h3>
-                <div class="kpi-grid">
-                    <div class="kpi-box total"><span class="kpi-num" id="kpiTotal">0</span><span class="kpi-label" id="lblKpiTotal">Total</span></div>
-                    <div class="kpi-box success"><span class="kpi-num" id="kpiAtendidos">0</span><span class="kpi-label" id="lblKpiAtendidos">Atendidos</span></div>
-                    <div class="kpi-box danger"><span class="kpi-num" id="kpiNoAtendidos">0</span><span class="kpi-label" id="lblKpiNoAtendidos">No Atendidos</span></div>
-                    <div class="kpi-box warning"><span class="kpi-num" id="kpiPendientes">0</span><span class="kpi-label" id="lblKpiPendientes">Pendientes</span></div>
-                </div>
-            </div>
-        </div>
+                    <div class="stat-card" id="cardGraficoTecnicos">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-chart-column text-purple"></i> Carga de Técnicos</h3>
+                        </div>
+                        <div class="chart-container"><canvas id="graficoTecnicos"></canvas></div>
+                    </div>
 
-        <div class="control-panel" id="panelFiltros">
-            <div class="filtros-grupo">
-                <div class="filtro-item">
-                    <label>FECHA:</label>
-                    <select id="filtroFecha" onchange="renderizarTabla()"><option value="todas">Todas las Fechas</option></select>
-                </div>
-                <div class="filtro-item admin-wilton-only" id="filtroTecnicoContainer">
-                    <label>TÉCNICO:</label>
-                    <select id="filtroTecnico" onchange="renderizarTabla()"><option value="todos">Todos</option></select>
-                </div>
-                <div class="filtro-item">
-                    <label>ESTADO:</label>
-                    <select id="filtroEstado" onchange="renderizarTabla()">
-                        <option value="todos">Todos</option>
-                        <option value="por_aprobar_carlos">Por Aprobar (Ventas)</option>
-                        <option value="aprobada_wilton">Aprobada (NOC)</option>
-                        <option value="rechazada">Rechazadas</option>
-                        <option value="pendiente">Pendientes</option>
-                        <option value="en_camino">En Camino</option>
-                        <option value="atendido">Atendidos</option>
-                        <option value="no_atendido">No Atendidos</option>
-                    </select>
-                </div>
-                <div class="filtro-item" style="flex: 2;">
-                    <label>BUSCAR:</label>
-                    <input type="text" id="buscador" placeholder="DNI, nombre, tipo..." onkeyup="renderizarTabla()">
-                </div>
-            </div>
-        </div>
+                    <div class="stat-card" id="cardKpis">
+                        <div class="card-header">
+                            <h3 id="tituloKpi"><i class="fa-solid fa-chart-pie text-orange"></i> TOTALES</h3>
+                        </div>
+                        <div class="kpi-grid">
+                            <div class="kpi-box box-total">
+                                <div class="kpi-icon"><i class="fa-solid fa-layer-group"></i></div>
+                                <div class="kpi-data">
+                                    <span class="kpi-num" id="kpiTotal">0</span>
+                                    <span class="kpi-label" id="lblKpiTotal">Total</span>
+                                </div>
+                            </div>
+                            <div class="kpi-box box-success">
+                                <div class="kpi-icon"><i class="fa-solid fa-check-double"></i></div>
+                                <div class="kpi-data">
+                                    <span class="kpi-num" id="kpiAtendidos">0</span>
+                                    <span class="kpi-label" id="lblKpiAtendidos">Atendidos</span>
+                                </div>
+                            </div>
+                            <div class="kpi-box box-danger">
+                                <div class="kpi-icon"><i class="fa-solid fa-xmark"></i></div>
+                                <div class="kpi-data">
+                                    <span class="kpi-num" id="kpiNoAtendidos">0</span>
+                                    <span class="kpi-label" id="lblKpiNoAtendidos">No Atendidos</span>
+                                </div>
+                            </div>
+                            <div class="kpi-box box-warning">
+                                <div class="kpi-icon"><i class="fa-solid fa-clock"></i></div>
+                                <div class="kpi-data">
+                                    <span class="kpi-num" id="kpiPendientes">0</span>
+                                    <span class="kpi-label" id="lblKpiPendientes">Pendientes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- KPIs Estado Clientes -->
+                    <div class="stat-card" id="cardKpisClientes">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-users text-success"></i> ESTADO CLIENTES</h3>
+                            <span id="lblFechaBD" style="font-size: 0.65rem; color: var(--text-muted); font-weight: bold; background: var(--bg-app); padding: 4px 8px; border-radius: 12px; border: 1px solid var(--border);">Sin datos</span>
+                        </div>
+                        <div class="kpi-grid">
+                            <div class="kpi-box box-success">
+                                <div class="kpi-icon"><i class="fa-solid fa-user-check"></i></div>
+                                <div class="kpi-data">
+                                    <span class="kpi-num" id="kpiCliActivos">-</span>
+                                    <span class="kpi-label">Activos <b id="pctActivos" style="color: var(--success); font-size: 11px; margin-left: 3px;"></b></span>
+                                </div>
+                            </div>
+                            <div class="kpi-box box-warning">
+                                <div class="kpi-icon"><i class="fa-solid fa-user-xmark"></i></div>
+                                <div class="kpi-data">
+                                    <span class="kpi-num" id="kpiCliSuspendidos">-</span>
+                                    <span class="kpi-label">Suspendidos <b id="pctSuspendidos" style="color: var(--warning); font-size: 11px; margin-left: 3px;"></b></span>
+                                </div>
+                            </div>
+                            <div class="kpi-box box-danger">
+                                <div class="kpi-icon"><i class="fa-solid fa-user-minus"></i></div>
+                                <div class="kpi-data">
+                                    <span class="kpi-num" id="kpiCliRetirados">-</span>
+                                    <span class="kpi-label">Retirados <b id="pctRetirados" style="color: var(--danger); font-size: 11px; margin-left: 3px;"></b></span>
+                                </div>
+                            </div>
+                            <div class="kpi-box box-total">
+                                <div class="kpi-icon"><i class="fa-solid fa-users"></i></div>
+                                <div class="kpi-data">
+                                    <span class="kpi-num" id="kpiCliTotal">-</span>
+                                    <span class="kpi-label">Total General</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 15%;">Estado</th>
-                    <th style="width: 30%;">Datos del Cliente</th>
-                    <th style="width: 35%;">Trabajo y Dirección</th>
-                    <th style="width: 20%; text-align: center;">Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="tablaTrabajos">
-                <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Cargando...</td></tr>
-            </tbody>
-        </table>
+                </div>
+
+                <div class="control-panel" id="panelFiltros">
+                    <div class="filtros-grupo">
+                        <div class="filtro-item" id="filtroModuloContainer" style="display: none;">
+                            <label><i class="fa-solid fa-layer-group"></i> MÓDULO</label>
+                            <select id="filtroModulo" class="highlight-border-accent" style="color: var(--accent); font-weight: 900;" onchange="window.cambiarModuloVentas()">
+                            </select>
+                        </div>
+                        
+                        <div class="filtro-item">
+                            <label><i class="fa-regular fa-calendar"></i> FECHA</label>
+                            <select id="filtroFecha" onchange="renderizarTabla()"><option value="todas">Todas las Fechas</option></select>
+                        </div>
+                        <div class="filtro-item admin-wilton-only" id="filtroTecnicoContainer">
+                            <label><i class="fa-solid fa-helmet-safety"></i> TÉCNICO</label>
+                            <select id="filtroTecnico" onchange="renderizarTabla()"><option value="todos">Todos</option></select>
+                        </div>
+                        <div class="filtro-item">
+                            <label><i class="fa-solid fa-filter"></i> ESTADO</label>
+                            <select id="filtroEstado" onchange="renderizarTabla()">
+                                <option value="todos">Todos</option>
+                                <option value="por_aprobar_carlos">Por Aprobar (Ventas)</option>
+                                <option value="aprobada_wilton">Aprobada (NOC)</option>
+                                <option value="rechazada">Rechazadas</option>
+                                <option value="pendiente">Pendientes</option>
+                                <option value="en_camino">En Camino</option>
+                                <option value="atendido">Atendidos</option>
+                                <option value="no_atendido">No Atendidos</option>
+                            </select>
+                        </div>
+                        <div class="filtro-item flex-2">
+                            <label><i class="fa-solid fa-magnifying-glass"></i> BUSCAR CLIENTE</label>
+                            <input type="text" id="buscador" placeholder="Escribe DNI, nombre, tipo..." onkeyup="renderizarTabla()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 12%;"><i class="fa-solid fa-signal"></i> Estado</th>
+                                <th style="width: 25%;"><i class="fa-solid fa-user"></i> Datos del Cliente</th>
+                                <th style="width: 43%;"><i class="fa-solid fa-network-wired"></i> Trabajo y Dirección</th>
+                                <th style="width: 20%; text-align: center;"><i class="fa-solid fa-bolt"></i> Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaTrabajos">
+                            <tr><td colspan="4" class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Cargando información...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </main>
     </div>
 </div>
 
-<!-- ===== MODAL AGREGAR/EDITAR ===== -->
+<!-- ================= MODALES ================= -->
+
 <div class="modal-overlay" id="modalAgregar">
-    <div class="modal-content" id="modalContentCaja" onclick="event.stopPropagation()">
+    <div class="modal-content modal-v2" id="modalContentCaja" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModal()">×</button>
-        <h3 id="modalTitulo" style="margin-top: 0; color: var(--text-main); font-size: 20px; font-weight: 900; text-transform: uppercase;">Registro de Tarea</h3>
+        <h3 id="modalTitulo" class="modal-title">Registro de Tarea</h3>
         <input type="hidden" id="formTrabajoId">
         <input type="hidden" id="formTipoTareaValue" value="alta">
         <input type="hidden" id="formEstadoActual"> 
 
         <div class="modal-tabs">
-            <button type="button" class="tab-btn active-alta" id="tabAlta" onclick="seleccionarTipoTarea('alta')">🚀 ALTA (Instalación)</button>
-            <button type="button" class="tab-btn" id="tabAveria" onclick="seleccionarTipoTarea('averia')" style="color: #2979ff; border-color: #2979ff;">🛠️ AVERÍA</button>
-            <button type="button" class="tab-btn" id="tabBaja" onclick="seleccionarTipoTarea('baja')">🛑 BAJA (Retiro)</button>
-            <button type="button" class="tab-btn" id="tabOtros" onclick="seleccionarTipoTarea('otros')" style="color: #8b9bb4; border-color: var(--panel-border);">⚙️ OTROS TRABAJOS</button>
+            <button type="button" class="tab-btn active-alta" id="tabAlta" onclick="seleccionarTipoTarea('alta')"><i class="fa-solid fa-rocket"></i> ALTA (Instalación)</button>
+            <button type="button" class="tab-btn" id="tabAveria" onclick="seleccionarTipoTarea('averia')" style="color: var(--info); border-color: var(--info);"><i class="fa-solid fa-screwdriver-wrench"></i> AVERÍA</button>
+            <button type="button" class="tab-btn" id="tabBaja" onclick="seleccionarTipoTarea('baja')"><i class="fa-solid fa-ban"></i> BAJA (Retiro)</button>
+            <button type="button" class="tab-btn" id="tabOtros" onclick="seleccionarTipoTarea('otros')" style="color: var(--warning); border-color: var(--border);"><i class="fa-solid fa-gear"></i> OTROS TRABAJOS</button>
+            <button type="button" class="tab-btn" id="tabRetencion" onclick="seleccionarTipoTarea('retencion')" style="color: #ec4899; border-color: var(--border);"><i class="fa-solid fa-headset"></i> RETENCIÓN</button>
         </div>
 
         <div class="search-box" id="cajaBuscador" style="display: none;">
-            <label style="color: var(--neon-cyan); font-size: 12px; font-weight: 900; margin-bottom: 8px;">🔍 AUTOCOMPLETAR CON ID O DNI</label>
+            <label class="section-label"><i class="fa-solid fa-magnifying-glass"></i> AUTOCOMPLETAR CON ID O DNI</label>
             <div style="display: flex; gap: 10px;">
-                <input type="text" id="formIdCliente" class="form-control" placeholder="Ej: 000178 o 71234567" style="border-color: var(--neon-cyan); flex-grow: 1;">
-                <button type="button" onclick="buscarCliente()" class="btn-guardar" style="width: auto; background: var(--neon-cyan); color: #000; padding: 10px 20px;">Buscar</button>
+                <input type="text" id="formIdCliente" class="form-control highlight-border-accent" placeholder="Ej: 000178 o 71234567">
+                <button type="button" onclick="buscarCliente()" class="btn-primary">Buscar</button>
             </div>
-            <span id="searchResult" style="font-size: 11px; font-weight: 800; display: block; margin-top: 8px;"></span>
+            <span id="searchResult" class="search-result-msg"></span>
         </div>
 
-        <!-- BLOQUE OCULTO PARA VENDEDORES Y CARLOS -->
         <div id="grupoAsignacionTecnico">
             <div class="horario-container">
                 <div class="form-group">
@@ -223,10 +367,9 @@
                     <input type="time" id="formHoraFin" class="form-control">
                 </div>
             </div>
-            <hr style="border: 0; border-top: 1px solid var(--panel-border); margin: 20px 0;">
+            <hr class="modal-divider">
         </div>
         
-        <!-- CONTENEDOR COMÚN (Se oculta en Otros Trabajos) -->
         <div id="camposClienteComunes">
             <div class="horario-container">
                 <div class="form-group" style="flex: 2;">
@@ -234,8 +377,8 @@
                     <input type="text" id="formNombre" class="form-control" placeholder="Ej: Juan Perez">
                 </div>
                 <div class="form-group" style="flex: 1;" id="grupoSedeVenta">
-                    <label style="color: var(--brand-orange);">Sede (Zona):</label>
-                    <select id="formSedeVenta" class="form-control" style="border-color: rgba(255,109,0,0.5);">
+                    <label style="color: var(--warning);">Sede (Zona):</label>
+                    <select id="formSedeVenta" class="form-control highlight-border-warning">
                         <option value="Norte">Los Olivos</option>
                         <option value="Lurin">Lurín</option>
                     </select>
@@ -283,8 +426,8 @@
                 <input type="text" id="formDireccion" class="form-control" placeholder="Ej: Mz A Lt 1">
             </div>
             <div class="form-group">
-                <label style="color: var(--brand-orange);">Referencia de Dirección:</label>
-                <input type="text" id="formReferencia" class="form-control" placeholder="Ej: Casa de 3 pisos amarilla, frente al parque" style="border-color: rgba(255,109,0,0.5);">
+                <label style="color: var(--warning);">Referencia de Dirección:</label>
+                <input type="text" id="formReferencia" class="form-control highlight-border-warning" placeholder="Ej: Casa de 3 pisos amarilla">
             </div>
             <div class="form-group">
                 <label>Link de Google Maps (Ubicación):</label>
@@ -292,12 +435,11 @@
             </div>
         </div>
 
-        <!-- MUNDO: ALTA -->
         <div class="grupo-alta" style="display: contents;">
             <div class="horario-container" style="align-items: center; gap: 15px;">
                 <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                    <label style="color: var(--neon-cyan);">Servicio:</label>
-                    <select id="formTipoServicio" class="form-control" onchange="window.calcularPrecioTotal()" style="font-weight: 800; border-color: rgba(0, 229, 255, 0.5);">
+                    <label style="color: var(--accent);">Servicio:</label>
+                    <select id="formTipoServicio" class="form-control font-bold highlight-border-accent" onchange="window.calcularPrecioTotal()">
                         <option value="Internet Solo">Internet Solo</option>
                         <option value="Internet + Cable">Internet + Cable</option>
                         <option value="Solo Consulta">Solo Consulta</option>
@@ -311,18 +453,14 @@
 
                 <div class="form-group" style="flex: 2; margin-bottom: 0;">
                     <label>Plan Elegido:</label>
-                    <select id="formPlanVenta" class="form-control" onchange="window.calcularPrecioTotal()" style="font-weight: 800;">
-                        <option value="50|PLAN S/. 50 BASICO 2">PLAN S/. 50 BASICO 2</option>
-                        <option value="55|PLAN S/. 55 BASICO">PLAN S/. 55 BASICO</option>
-                        <option value="69|PLAN S/. 69 PROMO">PLAN S/. 69 PROMO</option>
-                        <option value="100|PLAN S/. 100 MEDIO">PLAN S/. 100 MEDIO (Cable Incluido)</option>
-                        <option value="120|PLAN S/. 120 INTER">PLAN S/. 120 INTER (Cable Incluido)</option>
+                    <select id="formPlanVenta" class="form-control font-bold" onchange="window.calcularPrecioTotal()">
+                        <!-- Los planes se inyectan dinámicamente -->
                     </select>
                 </div>
 
                 <div class="form-group price-display-container" style="flex: 1; margin-bottom: 0;">
-                    <span style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">A Cobrar:</span>
-                    <div id="formPrecioTotal" class="price-badge" style="font-size: 20px;">S/ 50</div>
+                    <span class="price-label">A Cobrar:</span>
+                    <div id="formPrecioTotal" class="price-badge">S/ 50</div>
                 </div>
             </div>
             
@@ -333,10 +471,6 @@
                         <option value="Quincenal">Quincenal</option>
                         <option value="TELECREDITO">TELECREDITO</option>
                         <option value="Estándar">Estándar</option>
-                        <option value="Estándar02">Estándar02</option>
-                        <option value="Estándar03">Estándar03</option>
-                        <option value="Estándar04">Estándar04</option>
-                        <option value="Estándar05">Estándar05</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -362,129 +496,144 @@
                 <label>Observaciones de Venta:</label>
                 <input type="text" id="formObsAlta" class="form-control" placeholder="Ej: Dejar 20m de cable extra">
             </div>
-            
         </div>
 
-        <!-- MUNDO: AVERÍA -->
         <div class="grupo-averia" style="display: none;">
             <div class="form-group">
-                <label style="color: var(--neon-cyan);">Info de Red (Auto-Cargado):</label>
-                <input type="text" id="formInfoRedAveria" class="form-control" style="background: rgba(0,229,255,0.05); color: var(--neon-cyan);">
+                <label style="color: var(--accent);">Info de Red (Auto-Cargado):</label>
+                <input type="text" id="formInfoRedAveria" class="form-control highlight-bg-accent">
             </div>
             <div class="form-group">
                 <label>Tipo de Problema:</label>
                 <select id="formProblemaAveria" class="form-control">
                     <option value="Punto rojo">Punto rojo</option>
                     <option value="Problemas con el IPTV">Problemas con el IPTV</option>
-                    <option value="Problemas con el cable">Problemas con el cable</option>
                     <option value="Sin Internet">Sin Internet</option>
-                    <option value="Internet Lento">Internet Lento</option>
-                    <option value="Traspaso">Traspaso</option>
                 </select>
             </div>
             <div class="form-group">
                 <label>Diagnóstico Inicial (Notas):</label>
-                <textarea id="formNotasAveria" class="form-control" rows="2" placeholder="Ej: Cliente indica que pasó un camión"></textarea>
+                <textarea id="formNotasAveria" class="form-control" rows="2"></textarea>
             </div>
         </div>
 
-        <!-- MUNDO: BAJA -->
         <div class="grupo-baja" style="display: none;">
             <div class="form-group">
                 <label>Motivo de Baja:</label>
-                <input type="text" id="formMotivoBaja" class="form-control" placeholder="Ej: Viaje, Mal servicio, Económico">
+                <input type="text" id="formMotivoBaja" class="form-control">
             </div>
             <div class="form-group">
                 <label>Equipos a Recuperar:</label>
-                <input type="text" id="formEquiposBaja" class="form-control" placeholder="Ej: 1 Router Huawei, 1 Deco">
+                <input type="text" id="formEquiposBaja" class="form-control">
             </div>
         </div>
         
-        <!-- MUNDO: OTROS TRABAJOS (Mantenimiento y Seguimiento) -->
-        <div class="grupo-otros" style="display: none; border: 1px dashed var(--brand-orange); padding: 15px; border-radius: 8px; background: rgba(245, 158, 11, 0.05);">
+        <div class="grupo-otros module-otros" style="display: none;">
             <div class="form-group">
-                <label style="color: #f59e0b;">TIPO DE TRABAJO:</label>
-                <select id="formTipoOtros" class="form-control" onchange="window.cambiarSubtipoOtros()" style="border-color: rgba(245, 158, 11, 0.5); font-weight: 900;">
+                <label style="color: var(--warning);">TIPO DE TRABAJO:</label>
+                <select id="formTipoOtros" class="form-control font-bold highlight-border-warning" onchange="window.cambiarSubtipoOtros()">
                     <option value="Limpieza de caja">🧹 Limpieza de caja</option>
                     <option value="Seguimiento de fibra">📡 Seguimiento de fibra</option>
                 </select>
             </div>
             
-            <!-- SUB-MÓDULO: LIMPIEZA DE CAJA (ACTUALIZADO) -->
             <div id="seccionLimpiezaCaja">
                 <div class="horario-container" style="margin-top: 15px;">
                     <div class="form-group">
                         <label>Nombre/Número de Caja:</label>
-                        <input type="text" id="formCajaOtros" class="form-control" placeholder="Ej: CAJA 05 ASOC CHILLON">
+                        <input type="text" id="formCajaOtros" class="form-control">
                     </div>
                     <div class="form-group">
                         <label>Link de la Caja (Ubicación Maps):</label>
-                        <input type="text" id="formLinkCajaOtros" class="form-control" placeholder="https://maps.app.goo.gl/...">
+                        <input type="text" id="formLinkCajaOtros" class="form-control">
                     </div>
                 </div>
                 
-                <!-- NUEVO CAMPO: SEÑAL DE CAJA (Integrado aquí) -->
                 <div class="form-group" style="margin-top: 10px;">
-                    <label style="color: var(--brand-orange);">📡 Potencia Actual en Caja NAP:</label>
-                    <input type="text" id="formSenalCajaOtros" class="form-control" placeholder="Ej: -18.0 dBm" style="border-color: rgba(245, 158, 11, 0.5);">
+                    <label style="color: var(--warning);">📡 Potencia Actual en Caja NAP:</label>
+                    <input type="text" id="formSenalCajaOtros" class="form-control highlight-border-warning">
                 </div>
 
                 <div class="form-group" style="margin-top: 10px;">
-                    <label style="color: var(--neon-cyan);">CANTIDAD DE PUERTOS (Generador):</label>
+                    <label style="color: var(--accent);">CANTIDAD DE PUERTOS (Generador):</label>
                     <select id="formCantPuertos" class="form-control" onchange="window.generarPuertos()">
                         <option value="0">Ninguno / No aplica</option>
                         <option value="8">8 Puertos</option>
                         <option value="16">16 Puertos</option>
                     </select>
                 </div>
-                <div id="puertosContainer" style="margin-top: 15px; display: flex; flex-direction: column; gap: 8px;">
-                    <!-- Los puertos se inyectan aquí con JS -->
-                </div>
+                <div id="puertosContainer" class="puertos-grid"></div>
             </div>
 
-            <!-- SUB-MÓDULO: SEGUIMIENTO DE FIBRA -->
-            <div id="seccionSeguimientoFibra" style="display: none; margin-top: 15px; border-top: 1px dashed rgba(245, 158, 11, 0.3); padding-top: 15px;">
-                <label style="color: var(--neon-cyan); font-size: 11px; font-weight: 900; margin-bottom: 8px; display:block;">🔍 BUSCAR DATOS DEL CLIENTE</label>
+            <div id="seccionSeguimientoFibra" style="display: none; margin-top: 15px;">
+                <label class="section-label"><i class="fa-solid fa-magnifying-glass"></i> BUSCAR DATOS DEL CLIENTE</label>
                 <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <input type="text" id="formBusquedaFibra" class="form-control" placeholder="ID o DNI..." style="border-color: var(--neon-cyan);">
-                    <button type="button" onclick="window.buscarClienteFibra()" class="btn-guardar" style="width: auto; background: var(--neon-cyan); color: #000; padding: 10px 20px;">Buscar</button>
+                    <input type="text" id="formBusquedaFibra" class="form-control highlight-border-accent" placeholder="ID o DNI...">
+                    <button type="button" onclick="window.buscarClienteFibra()" class="btn-primary">Buscar</button>
                 </div>
                 <div class="horario-container">
                     <div class="form-group" style="flex: 2;">
                         <label>Cliente / Titular:</label>
-                        <input type="text" id="formClienteFibra" class="form-control" placeholder="Nombre completo">
+                        <input type="text" id="formClienteFibra" class="form-control">
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label>DNI / ID:</label>
-                        <input type="text" id="formDniFibra" class="form-control" placeholder="Documento">
+                        <input type="text" id="formDniFibra" class="form-control">
                     </div>
                 </div>
                 <div class="horario-container">
                     <div class="form-group">
                         <label>Plan / Pago Mensual:</label>
-                        <input type="text" id="formPlanFibra" class="form-control" placeholder="Ej: Plan 50 - S/50">
+                        <input type="text" id="formPlanFibra" class="form-control">
                     </div>
                     <div class="form-group">
-                        <label style="color: var(--neon-purple);">Equipos Adicionales:</label>
-                        <input type="text" id="formEquiposFibra" class="form-control" placeholder="Ej: 2 Mesh, 1 Deco">
+                        <label style="color: var(--purple);">Equipos Adicionales:</label>
+                        <input type="text" id="formEquiposFibra" class="form-control">
                     </div>
                 </div>
                 <div class="horario-container">
                     <div class="form-group">
                         <label>📍 Ubicación Inicio (Caja NAP):</label>
-                        <input type="text" id="formLinkInicioFibra" class="form-control" placeholder="Link de Google Maps">
+                        <input type="text" id="formLinkInicioFibra" class="form-control">
                     </div>
                     <div class="form-group">
                         <label>🏠 Ubicación Fin (Casa/Router):</label>
-                        <input type="text" id="formLinkFinFibra" class="form-control" placeholder="Link de Google Maps">
+                        <input type="text" id="formLinkFinFibra" class="form-control">
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- CAMPOS CAJA COMUNES (Para Alta, Avería, Baja) -->
+        <!-- PASO 1: SELECTOR DE CARLOS/MILI DENTRO DE RETENCIÓN -->
+        <div class="grupo-retencion" style="display: none;">
+            <!-- NUEVO: Selector de Gestor -->
+            <div class="form-group">
+                <label style="color: var(--accent);"><i class="fa-solid fa-user-tag"></i> Asignar a (Bandeja):</label>
+                <select id="formAsignadoRetencion" class="form-control highlight-border-accent">
+                    <option value="JRODRIGUEZ">Carlos (jrodriguez)</option>
+                    <option value="MVENTOCILLA">Mili (mventocilla)</option>
+                    <option value="CPACOTAIPE">C. Pacotaipe (cpacotaipe)</option>
+                    <option value="CALVINO">Cobranzas (calvino)</option>
+                    <option value="OALVINO">Cobranzas (oalvino)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label style="color: var(--accent);">Estado de Llamada / Acción:</label>
+                <select id="formEstadoLlamada" class="form-control highlight-border-accent">
+                    <option value="En Seguimiento">📞 Llamar / En Seguimiento</option>
+                    <option value="Promesa de Pago">✅ Promesa de Pago</option>
+                    <option value="Retiro Definitivo">🚨 Transformar a: RETIRO DE EQUIPOS (Baja)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Notas / Observaciones del Cliente:</label>
+                <textarea id="formNotasRetencion" class="form-control" rows="3" placeholder="Ej: Cliente indica que pagará el viernes a las 4pm..."></textarea>
+            </div>
+        </div>
+
         <div id="camposCajaComunes" style="display: block;">
-            <div class="horario-container" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--panel-border);">
+            <div class="horario-container" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border);">
                 <div class="form-group">
                     <label>Caja NAP (Asignada/Detectada):</label>
                     <input type="text" id="formCajaAlta" class="form-control" placeholder="Ej: CAJA 01">
@@ -495,8 +644,8 @@
                 </div>
             </div>
             <div class="form-group">
-                <label style="color: var(--neon-purple);">Link de la Caja NAP (Opcional):</label>
-                <input type="text" id="formLinkCaja" class="form-control" placeholder="Ej: https://maps.app.goo.gl/..." style="border-color: rgba(213, 0, 249, 0.4);">
+                <label style="color: var(--purple);">Link de la Caja NAP (Opcional):</label>
+                <input type="text" id="formLinkCaja" class="form-control highlight-border-purple" placeholder="Ej: https://maps.app.goo.gl/...">
             </div>
         </div>
         
@@ -507,71 +656,65 @@
     </div>
 </div>
 
-<!-- ===== MODALES ADICIONALES ===== -->
 <div class="modal-overlay" id="modalCobertura">
-    <div class="modal-content modal-fullscreen" style="display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+    <div class="modal-content modal-v2 modal-fullscreen" style="display: flex; flex-direction: column;" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalCobertura()">×</button>
-        <div class="header-titles" style="margin-bottom: 15px; display: flex; justify-content: space-between; width: 100%; align-items: center; padding-right: 35px; box-sizing: border-box; flex-wrap: wrap; gap: 10px;">
-            <h3 style="margin: 0; color: var(--text-main); font-size: 20px; font-weight: 900; text-transform: uppercase;">🗺️ Validar Cobertura</h3>
+        <div class="header-titles" style="margin-bottom: 15px; display: flex; justify-content: space-between; width: 100%; align-items: center; padding-right: 35px; flex-wrap: wrap; gap: 10px;">
+            <h3 class="modal-title"><i class="fa-solid fa-map"></i> Validar Cobertura</h3>
             <div style="display: flex; gap: 8px; flex: 1; min-width: 280px; max-width: 500px;">
-                <input type="text" id="txtBuscarMapa" class="form-control" placeholder="Coordenadas, link o dirección..." style="border-color: var(--neon-cyan); background: rgba(0, 229, 255, 0.05); color: var(--text-main);">
-                <button type="button" class="btn-guardar" style="width: auto; padding: 8px 15px; background: var(--neon-cyan); color: #000; font-size: 12px; white-space: nowrap;" onclick="buscarEnMapa()">🔍 Buscar</button>
+                <input type="text" id="txtBuscarMapa" class="form-control highlight-bg-accent highlight-border-accent" placeholder="Coordenadas o link...">
+                <button type="button" class="btn-primary" onclick="buscarEnMapa()">🔍 Buscar</button>
             </div>
-            <button type="button" class="btn-guardar" style="width: auto; padding: 8px 15px; background: var(--brand-orange); color: #fff; font-size: 12px; display: flex; align-items: center; gap: 6px; white-space: nowrap;" onclick="centrarEnMiUbicacion()">
-                <span id="iconoUbicacion">📍</span> Mi Ubicación GPS
-            </button>
+            <button type="button" class="btn-warning" onclick="centrarEnMiUbicacion()"><span id="iconoUbicacion">📍</span> Mi Ubicación GPS</button>
         </div>
-        <div id="infoClienteCobertura" style="margin-bottom: 15px; padding: 15px; background: rgba(0,229,255,0.05); border: 1px dashed var(--neon-cyan); border-radius: 8px; display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div id="infoClienteCobertura" class="info-box-mapa" style="display: none;">
             <div>
-                <strong style="color: var(--neon-cyan); font-size: 14px; display: block;" id="cobNombreCliente">Juan Perez</strong>
-                <span style="color: var(--text-muted); font-size: 13px;" id="cobDirCliente">Mz A Lt 1</span>
+                <strong id="cobNombreCliente">Juan Perez</strong><br>
+                <span id="cobDirCliente">Mz A Lt 1</span>
             </div>
-            <a href="#" id="cobLinkMapa" target="_blank" class="btn-guardar" style="width: auto; padding: 8px 15px; background: #3b82f6; text-decoration: none; font-size: 12px;">📍 Abrir en Google Maps Externo</a>
+            <a href="#" id="cobLinkMapa" target="_blank" class="btn-primary text-sm">📍 Abrir en Google Maps</a>
         </div>
-        <div style="position: relative; flex: 1; min-height: 400px; border-radius: 8px; overflow: hidden; border: 1px solid var(--panel-border);">
-            <iframe id="iframeCobertura" src="" width="100%" height="100%" style="border:0; position: absolute; top: 0; left: 0;"></iframe>
-            <div id="mapCenterPin" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); pointer-events: none; display: none; z-index: 10; text-align: center;">
-                <div style="font-size: 38px; text-shadow: 0 5px 10px rgba(0,0,0,0.5); line-height: 1;">📍</div>
-                <div style="width: 6px; height: 6px; background: var(--neon-red); border-radius: 50%; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); box-shadow: 0 0 10px var(--neon-red);"></div>
-            </div>
+        <div class="map-container-frame">
+            <iframe id="iframeCobertura" src="" width="100%" height="100%"></iframe>
+            <div id="mapCenterPin" class="map-pin">📍<div class="map-pin-dot"></div></div>
         </div>
         <div class="modal-buttons" id="botonesCoberturaValidacion" style="display: none; margin-top: 20px;">
-            <button type="button" class="btn-cancelar" style="color: var(--neon-red); border-color: var(--neon-red);" onclick="iniciarRechazo()">❌ Rechazar Venta</button>
-            <button type="button" class="btn-guardar" style="background: var(--neon-cyan); color: #000;" onclick="confirmarAprobacionVenta()">👍 Confirmar Cobertura y Aprobar</button>
+            <button type="button" class="btn-danger-outline" onclick="iniciarRechazo()">❌ Rechazar Venta</button>
+            <button type="button" class="btn-primary" onclick="confirmarAprobacionVenta()">👍 Aprobar Cobertura</button>
         </div>
-        <div id="cajaRechazo" style="display:none; margin-top: 20px; padding: 20px; background: rgba(239, 68, 68, 0.1); border: 1px dashed var(--neon-red); border-radius: 8px;">
-             <label style="color: var(--neon-red); font-weight: 900; font-size: 13px; display: block; margin-bottom: 8px;">MOTIVO DEL RECHAZO (Obligatorio):</label>
-             <input type="text" id="txtMotivoRechazo" class="form-control" placeholder="Ej: No hay NAP cerca, cliente fuera de zona..." style="border-color: var(--neon-red);">
+        <div id="cajaRechazo" class="reject-box">
+             <label>MOTIVO DEL RECHAZO (Obligatorio):</label>
+             <input type="text" id="txtMotivoRechazo" class="form-control">
              <div style="display: flex; gap: 10px; margin-top: 15px;">
-                 <button class="btn-cancelar" onclick="cancelarRechazo()" style="color: var(--text-main); border-color: var(--panel-border);">Cancelar</button>
-                 <button class="btn-guardar" style="background: var(--neon-red);" onclick="confirmarRechazoVenta()">Confirmar Rechazo Definitivo</button>
+                 <button class="btn-cancelar" onclick="cancelarRechazo()">Cancelar</button>
+                 <button class="btn-danger" onclick="confirmarRechazoVenta()">Confirmar Rechazo</button>
              </div>
         </div>
     </div>
 </div>
 
 <div class="modal-overlay" id="modalEliminar">
-    <div class="modal-content" style="max-width: 400px; text-align: center;" onclick="event.stopPropagation()">
+    <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModalEliminar()">×</button>
-        <h3 style="color: var(--neon-red); margin-top: 0; font-size: 20px;">🗑️ Eliminar Trabajo</h3>
-        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 25px;">¿Estás seguro que deseas eliminar esta tarea permanentemente? No se podrá recuperar.</p>
-        <div class="modal-buttons" style="justify-content: center;">
+        <h3 class="text-danger mb-4"><i class="fa-solid fa-trash-can text-3xl block mb-2"></i> Eliminar Trabajo</h3>
+        <p class="text-muted text-sm mb-6">¿Estás seguro que deseas eliminar esta tarea permanentemente? No se podrá recuperar.</p>
+        <div class="modal-buttons justify-center">
             <button type="button" class="btn-cancelar" onclick="window.cerrarModalEliminar()">Cancelar</button>
-            <button type="button" class="btn-guardar" style="background: var(--neon-red);" onclick="window.ejecutarEliminacion()">Sí, Eliminar</button>
+            <button type="button" class="btn-danger" onclick="window.ejecutarEliminacion()">Sí, Eliminar</button>
         </div>
     </div>
 </div>
 
 <div class="modal-overlay" id="modalCierre">
-    <div class="modal-content" style="max-width: 450px;" onclick="event.stopPropagation()">
+    <div class="modal-content modal-v2 max-w-md" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModalCierre()">×</button>
-        <h3 style="color: var(--neon-cyan); margin-top: 0; font-size: 18px; text-transform: uppercase;">Cierre de Tarea</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Estás a punto de marcar el trabajo como <b id="lblEstadoCierre">ATENDIDO</b>. Por favor, ingresa una nota de cierre para la gerencia.</p>
+        <h3 class="text-accent mb-4"><i class="fa-solid fa-flag-checkered"></i> Cierre de Tarea</h3>
+        <p class="text-muted text-sm mb-4">Estás a punto de marcar el trabajo como <b id="lblEstadoCierre">ATENDIDO</b>. Ingresa la nota técnica.</p>
         <div class="form-group">
-            <label style="color: var(--neon-cyan);">Nota de Cierre / Solución Técnica:</label>
-            <textarea id="txtNotaCierre" class="form-control" rows="3" placeholder="Ej: Se cambió el conector rápido, la potencia quedó en -21dBm..."></textarea>
+            <label class="text-accent">Nota de Cierre / Solución Técnica:</label>
+            <textarea id="txtNotaCierre" class="form-control" rows="3" placeholder="Ej: Se cambió el conector rápido..."></textarea>
         </div>
-        <div class="modal-buttons" style="margin-top: 20px;">
+        <div class="modal-buttons mt-6">
             <button type="button" class="btn-cancelar" onclick="window.cerrarModalCierre()">Cancelar</button>
             <button type="button" class="btn-guardar" onclick="window.ejecutarCierreSLA()">Confirmar Cierre</button>
         </div>
@@ -579,65 +722,283 @@
 </div>
 
 <div class="modal-overlay" id="modalCalendario">
-    <div class="modal-content modal-fullscreen" onclick="event.stopPropagation()">
+    <div class="modal-content modal-v2 modal-fullscreen" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalCalendario()">×</button>
-        <div class="header-titles" style="margin-bottom: 20px;">
-            <h3 style="margin: 0; color: var(--text-main); font-size: 20px; font-weight: 900; text-transform: uppercase;">Monitor de Técnicos</h3>
-        </div>
-        <div class="form-group" style="max-width: 300px; margin-bottom: 15px;">
+        <h3 class="modal-title mb-6"><i class="fa-solid fa-users-viewfinder"></i> Monitor Global de Técnicos</h3>
+        <div class="form-group w-64 mb-4">
             <label>Filtrar por Técnico:</label>
             <select id="filtroTecnicoCalendario" class="form-control" onchange="actualizarCalendarioGeneral()">
                 <option value="todos">Todos los Técnicos</option>
             </select>
         </div>
-        <div id="calendarioGeneral" style="flex: 1; min-height: 600px; width: 100%; background: var(--bg-body); padding: 15px; border-radius: 8px; border: 1px solid var(--panel-border);"></div>
+        <div id="calendarioGeneral" class="fullcalendar-wrapper" style="flex:1; min-height: 500px;"></div>
     </div>
 </div>
 
 <div class="modal-overlay" id="modalRechazoRapido">
-    <div class="modal-content" style="max-width: 400px; text-align: center;" onclick="event.stopPropagation()">
+    <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalRechazoRapido()">×</button>
-        <h3 style="color: var(--neon-red); margin-top: 0; font-size: 20px;">❌ Rechazar Venta</h3>
-        <div class="form-group" style="text-align: left;">
-            <label style="color: var(--neon-red);">Motivo del rechazo (Obligatorio):</label>
-            <input type="text" id="txtMotivoRechazoRapido" class="form-control" placeholder="Ej: No hay cobertura, cliente desistió..." style="border-color: var(--neon-red);">
+        <h3 class="text-danger mb-4"><i class="fa-solid fa-ban text-3xl block mb-2"></i> Rechazar Venta</h3>
+        <div class="form-group text-left">
+            <label class="text-danger">Motivo del rechazo (Obligatorio):</label>
+            <input type="text" id="txtMotivoRechazoRapido" class="form-control highlight-border-danger">
         </div>
-        <div class="modal-buttons" style="margin-top: 20px;">
+        <div class="modal-buttons mt-6">
             <button type="button" class="btn-cancelar" onclick="cerrarModalRechazoRapido()">Cancelar</button>
-            <button type="button" class="btn-guardar" style="background: var(--neon-red);" onclick="confirmarRechazoRapido()">Confirmar Rechazo</button>
+            <button type="button" class="btn-danger" onclick="confirmarRechazoRapido()">Confirmar Rechazo</button>
         </div>
     </div>
 </div>
 
-<!-- ===== MODAL EXCLUSIVO PARA SEÑAL ÓPTICA ===== -->
 <div class="modal-overlay" id="modalSenal" style="display: none;">
-    <div class="modal-content" style="max-width: 350px; padding: 25px;">
+    <div class="modal-content modal-v2 max-w-sm" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModalSenal()">×</button>
-        <h3 style="margin-top: 0; color: var(--neon-cyan); font-size: 18px; font-weight: 900; text-align: center;">📡 REGISTRAR SEÑAL</h3>
+        <h3 class="text-accent text-center mb-6"><i class="fa-solid fa-satellite-dish text-2xl block mb-2"></i> REGISTRAR SEÑAL</h3>
         
         <input type="hidden" id="formSenalId">
         
-        <!-- Router (Altas, Averías, Seguimiento) -->
-        <div id="camposModalSenalRouter" class="horario-container" style="display: none; flex-direction: column; gap: 15px; margin-top: 20px;">
-            <div class="form-group" style="width: 100%; margin: 0;">
+        <div id="camposModalSenalRouter" class="flex flex-col gap-4" style="display: none;">
+            <div class="form-group m-0">
                 <label>Potencia TX (Ida):</label>
-                <input type="text" id="modalFormTx" class="form-control" placeholder="Ej: 2.5 dBm" style="border-color: rgba(0, 229, 255, 0.5);">
+                <input type="text" id="modalFormTx" class="form-control highlight-border-accent">
             </div>
-            <div class="form-group" style="width: 100%; margin: 0;">
+            <div class="form-group m-0">
                 <label>Potencia RX (Retorno):</label>
-                <input type="text" id="modalFormRx" class="form-control" placeholder="Ej: -22.5 dBm" style="border-color: rgba(0, 229, 255, 0.5);">
+                <input type="text" id="modalFormRx" class="form-control highlight-border-accent">
             </div>
         </div>
 
-        <!-- Caja (Limpieza de Caja) -->
-        <div id="camposModalSenalCaja" class="form-group" style="display: none; margin-top: 20px;">
-            <label style="color: var(--brand-orange);">Potencia en Caja NAP:</label>
-            <input type="text" id="modalFormSenalCaja" class="form-control" placeholder="Ej: -18.0 dBm" style="border-color: rgba(245, 158, 11, 0.5);">
+        <div id="camposModalSenalCaja" class="form-group mt-4" style="display: none;">
+            <label class="text-warning">Potencia en Caja NAP:</label>
+            <input type="text" id="modalFormSenalCaja" class="form-control highlight-border-warning">
         </div>
 
-        <div class="modal-buttons" style="margin-top: 25px;">
+        <div class="modal-buttons mt-8">
             <button type="button" class="btn-cancelar" onclick="window.cerrarModalSenal()">Cancelar</button>
             <button type="button" class="btn-guardar" onclick="window.guardarModalSenal()">Guardar Señal</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODAL: FILTRO AVANZADO DE BASE DE DATOS EXCEL                -->
+<!-- ============================================================ -->
+<div class="modal-overlay" id="modalFiltroBD">
+    <!-- Le forzamos overflow: hidden para que el modal NO genere scroll externo -->
+    <div class="modal-content modal-v2" style="max-width: 95vw !important; width: 95vw !important; height: 95vh !important; display: flex; flex-direction: column; overflow: hidden !important;" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="cerrarModalFiltroBD()">×</button>
+        
+        <!-- ENCABEZADO FIJO (flex-shrink: 0 impide que se aplaste) -->
+        <div style="flex-shrink: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
+                <h3 class="modal-title m-0"><i class="fa-solid fa-database text-accent"></i> Buscador Avanzado de Clientes</h3>
+                <button class="btn-success" style="padding: 8px 15px; display: flex; gap: 8px; align-items: center;" onclick="window.prepararEnvioBandeja()">
+                    <i class="fa-solid fa-paper-plane"></i> Configurar y Enviar Seleccionados
+                </button>
+            </div>
+            
+            <div class="control-panel" style="margin-bottom: 20px;">
+                <div class="filtros-grupo">
+                    <div class="filtro-item">
+                        <label>Estado del Cliente:</label>
+                        <select id="filtroBdEstado" class="form-control" onchange="ejecutarFiltroBD()"><option value="Todos">Todos</option><option value="Activo">Activos</option><option value="Suspendido">Suspendidos</option><option value="Retirado">Retirados</option></select>
+                    </div>
+                    <div class="filtro-item">
+                        <label>Zona de Cobertura:</label>
+                        <select id="filtroBdZona" class="form-control" onchange="ejecutarFiltroBD()"><option value="Todas">Todas las Zonas</option></select>
+                    </div>
+                    <div class="filtro-item">
+                        <label>Plan Contratado:</label>
+                        <select id="filtroBdPlan" class="form-control" onchange="ejecutarFiltroBD()"><option value="Todos">Todos los Planes</option></select>
+                    </div>
+                    <div class="filtro-item">
+                        <label>Mes:</label>
+                        <select id="filtroBdMes" class="form-control" onchange="ejecutarFiltroBD()"><option value="Todos">Todos</option></select>
+                    </div>
+                    <div class="filtro-item">
+                        <label>Año:</label>
+                        <select id="filtroBdAnio" class="form-control" onchange="ejecutarFiltroBD()"><option value="Todos">Todos</option></select>
+                    </div>
+                    <div class="filtro-item flex-2">
+                        <label>Buscar (Nombre / DNI):</label>
+                        <input type="text" id="filtroBdTexto" class="form-control" placeholder="Escribe para buscar..." onkeyup="ejecutarFiltroBD()">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CENTRO MÓVIL: Aquí va la tabla. min-height: 0 es el truco vital de Flexbox -->
+        <div class="table-wrapper" style="flex: 1; overflow-y: auto !important; overflow-x: auto; min-height: 0; border-radius: 8px; border: 1px solid var(--border);">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead style="position: sticky; top: 0; background: var(--bg-app); z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    <tr>
+                        <th style="width: 5%; text-align: center; padding: 12px;"><input type="checkbox" id="chkAllBD" onchange="toggleAllBD(this)" class="chk-bd-item"></th>
+                        <th style="width: 10%; padding: 12px;">Estado</th>
+                        <th style="width: 25%; padding: 12px;">Cliente</th>
+                        <th style="width: 15%; padding: 12px;">Teléfonos</th>
+                        <th style="width: 25%; padding: 12px;">Zona y Dirección</th>
+                        <th style="width: 10%; padding: 12px;">Plan Contratado</th>
+                        <th style="width: 10%; text-align:center; padding: 12px;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaResultadosBD">
+                    <tr><td colspan="7" class="text-center text-muted py-8">Sube el archivo Excel de clientes para comenzar a buscar.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- PIE FIJO (Contador de clientes siempre visible al fondo) -->
+        <div style="flex-shrink: 0; margin-top: 15px; padding: 12px; background: rgba(0, 229, 255, 0.05); border: 1px solid var(--accent); border-radius: 8px; text-align: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.02);">
+            <span id="contadorResultadosBD" style="font-weight: 900; color: var(--accent); font-size: 1.1rem;">0 clientes encontrados</span>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODALES DE COBRANZAS ================= -->
+<div class="modal-overlay" id="modalGestionarCobranza">
+    <div class="modal-content modal-v2 max-w-md" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="cerrarModalGeneral('modalGestionarCobranza')">×</button>
+        <h3 class="modal-title mb-4"><i class="fa-solid fa-headset text-accent"></i> Gestión de Cliente</h3>
+        
+        <div style="background: rgba(0,0,0,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border);">
+            <strong id="lblCobCliente" style="font-size: 1.1rem; color: var(--text-main); display: block;">Nombre Cliente</strong>
+            <span id="lblCobDni" style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;">DNI</span>
+        </div>
+
+        <input type="hidden" id="cobDni">
+        <input type="hidden" id="cobNombre">
+
+        <div class="form-group">
+            <label>Respuesta del Cliente:</label>
+            <select id="cobEstado" class="form-control highlight-border-accent">
+                <option value="Promesa de Pago">✅ Promesa de Pago</option>
+                <option value="Volver a llamar">⏳ Volver a llamar (No contesta)</option>
+                <option value="Retiro Definitivo">❌ Solicita Retiro / Baja</option>
+                <option value="Ya pagó">💰 Indica que ya pagó</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Programar Recordatorio para el día:</label>
+            <input type="date" id="cobFecha" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label>Notas / Detalles del acuerdo:</label>
+            <textarea id="cobNota" class="form-control" rows="3" placeholder="Ej: El cliente indica que pagará quincena a las 4pm..."></textarea>
+        </div>
+
+        <div class="modal-buttons mt-6">
+            <button type="button" class="btn-cancelar" onclick="cerrarModalGeneral('modalGestionarCobranza')">Cancelar</button>
+            <button type="button" class="btn-guardar" onclick="guardarCobranza()">Guardar Registro</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalNotificaciones">
+    <div class="modal-content modal-v2" style="max-width: 600px;" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="cerrarModalGeneral('modalNotificaciones')">×</button>
+        <h3 class="modal-title mb-4"><i class="fa-solid fa-bell text-warning"></i> Recordatorios para Hoy</h3>
+        <p class="text-muted text-sm mb-4">Lista de clientes que agendaron promesa de pago o seguimiento para el día de hoy o fechas vencidas.</p>
+        
+        <div class="table-wrapper" style="max-height: 300px;">
+            <table>
+                <thead style="position: sticky; top: 0; background: var(--bg-panel);">
+                    <tr>
+                        <th style="width: 40%;">Cliente</th>
+                        <th style="width: 25%;">Acuerdo</th>
+                        <th style="width: 20%;">Programado</th>
+                        <th style="width: 15%; text-align:center;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaNotificaciones">
+                    <!-- Se inyecta con JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Módulo de Configuración (DINÁMICO) -->
+<div class="modal-overlay" id="modalConfiguracion">
+    <div class="modal-content modal-v2" style="max-width: 600px;" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="cerrarModalGeneral('modalConfiguracion')">×</button>
+        <h3 class="modal-title mb-4"><i class="fa-solid fa-gear text-muted"></i> Configuración del Sistema</h3>
+        
+        <p class="text-sm text-muted mb-4">Administra los planes que aparecen en el formulario de ventas. (Los cambios se aplican inmediatamente).</p>
+        
+        <div style="display:flex; gap:10px; margin-bottom: 20px; align-items: flex-end;">
+            <div class="form-group" style="flex: 1; margin: 0;">
+                <label>Precio (S/):</label>
+                <input type="number" id="txtNuevoPlanPrecio" class="form-control" placeholder="Ej: 60">
+            </div>
+            <div class="form-group" style="flex: 3; margin: 0;">
+                <label>Nombre del Plan:</label>
+                <input type="text" id="txtNuevoPlanNombre" class="form-control" placeholder="Ej: PLAN S/. 60 FULL FIBRA">
+            </div>
+            <button class="btn-primary" onclick="agregarPlanConfig()" style="height: 44px; padding: 0 20px;"><i class="fa-solid fa-plus"></i> Añadir</button>
+        </div>
+
+        <div class="table-wrapper" style="max-height: 250px;">
+            <table>
+                <thead style="position: sticky; top: 0; background: var(--bg-panel);">
+                    <tr>
+                        <th style="width: 20%;">Precio</th>
+                        <th style="width: 60%;">Descripción del Plan</th>
+                        <th style="width: 20%; text-align: center;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaConfigPlanes">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE PRE-ENVÍO A BANDEJA (PARA ENVÍOS MASIVOS) -->
+<div class="modal-overlay" id="modalPreEnvioBandeja">
+    <div class="modal-content modal-v2 max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="cerrarModalGeneral('modalPreEnvioBandeja')">×</button>
+        <h3 class="text-accent mb-4"><i class="fa-solid fa-paper-plane"></i> Enviar a Bandeja</h3>
+        <input type="hidden" id="preEnvioDni"> 
+        
+        <!-- NUEVO SELECTOR PARA ENVÍO MASIVO -->
+        <div class="form-group">
+            <label style="color: var(--accent);"><i class="fa-solid fa-user-tag"></i> Asignar a:</label>
+            <select id="preEnvioAsignado" class="form-control highlight-border-accent">
+                <option value="JRODRIGUEZ">Carlos (jrodriguez)</option>
+                <option value="MVENTOCILLA">Mili (mventocilla)</option>
+                <option value="CPACOTAIPE">C. Pacotaipe (cpacotaipe)</option>
+                <option value="CALVINO">Cobranzas (calvino)</option>
+                <option value="OALVINO">Cobranzas (oalvino)</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Estado / Acción Inicial:</label>
+            <select id="preEnvioEstado" class="form-control highlight-border-accent">
+                <option value="En Seguimiento">📞 Llamar / En Seguimiento</option>
+                <option value="Promesa de Pago">✅ Promesa de Pago</option>
+                <option value="Retiro Definitivo">🛑 Solicitud de Retiro (Directo a NOC)</option>
+            </select>
+        </div>
+        <div class="horario-container">
+            <div class="form-group">
+                <label>Programar Fecha:</label>
+                <input type="date" id="preEnvioFecha" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Hora:</label>
+                <input type="time" id="preEnvioHora" class="form-control">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Observación / Contexto:</label>
+            <textarea id="preEnvioNota" class="form-control" rows="2" placeholder="Ej: Cliente suspendido por 2 meses..."></textarea>
+        </div>
+        <div class="modal-buttons mt-4">
+            <button type="button" class="btn-cancelar" onclick="cerrarModalGeneral('modalPreEnvioBandeja')">Cancelar</button>
+            <button type="button" class="btn-guardar" onclick="window.confirmarEnvioBandeja()">Confirmar Envío</button>
         </div>
     </div>
 </div>
