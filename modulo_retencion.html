@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
 
@@ -408,7 +409,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, query, where, getDocs, deleteDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
@@ -422,6 +423,17 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+enableIndexedDbPersistence(db)
+  .then(() => {
+      console.log("✅ Modo Offline Comercial Activado: Gestiones se guardarán sin conexión.");
+  })
+  .catch((err) => {
+      if (err.code == 'failed-precondition') {
+          console.warn("⚠️ Múltiples pestañas abiertas, persistencia offline deshabilitada.");
+      } else if (err.code == 'unimplemented') {
+          console.warn("⚠️ Este navegador no soporta persistencia offline.");
+      }
+  });
 const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
 const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4");
 const coleccionClientes = collection(db, "artifacts", appId, "public", "data", "clientes_base");

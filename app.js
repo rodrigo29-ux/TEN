@@ -21,6 +21,7 @@ import {
     where,
     getDocs,
     writeBatch,
+    enableIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -35,6 +36,20 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+// ============================================================ //
+// ACTIVAR PERSISTENCIA OFFLINE FIREBASE                        //
+// ============================================================ //
+enableIndexedDbPersistence(db)
+  .then(() => {
+      console.log("✅ Modo Offline Activado: Los datos se guardarán sin conexión.");
+  })
+  .catch((err) => {
+      if (err.code == 'failed-precondition') {
+          console.warn("⚠️ Múltiples pestañas abiertas, persistencia offline deshabilitada.");
+      } else if (err.code == 'unimplemented') {
+          console.warn("⚠️ Este navegador no soporta persistencia offline.");
+      }
+  });
 const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
 
 const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4");
