@@ -1,3 +1,6 @@
+// ============================================================ //
+// CONFIGURACIÓN FIREBASE                                       //
+// ============================================================ //
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import {
     getAuth,
@@ -20,9 +23,6 @@ import {
     writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// ============================================================ //
-// CONFIGURACIÓN FIREBASE                                       //
-// ============================================================ //
 const firebaseConfig = {
     apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
     authDomain: "ten-soporte.firebaseapp.com",
@@ -45,12 +45,15 @@ const coleccionCobranzas = collection(db, "artifacts", appId, "public", "data", 
 // ESTADO GLOBAL Y ROLES                                        //
 // ============================================================ //
 let dbTrabajos = [];
+window.bdClientesGlobal = [];
 
 let isAdmin = false;
 let isAdminLurin = false;
 let isWilton = false;
 let isCarlos = false;
 let isVendedor = false;
+let isCobranzas = false;
+let unsubscribeCobranzas = null;
 
 let nombreTecnicoLogueado = "";
 let zonaActual = "Norte";
@@ -60,26 +63,32 @@ const tecnicosLurin = ["BILLS", "CIELO"];
 
 let chartTecnicos = null;
 let unsubscribeTrabajos = null;
-let unsubscribeCobranzas = null; // Nueva variable para cancelar escucha de cobranzas
 let idTrabajoAEliminar = null;
-
 let idTrabajoCierreSLA = null;
 let estadoObjetivoSLA = null;
-
 let ventaAValidarId = null;
 let idVentaARechazarRapido = null;
-
 let semanaOffset = 0;
 let diaSeleccionado = null;
 
 const MAPA_NOC = "https://www.google.com/maps/d/embed?mid=1EKIxuTIGSM9GJ8YTbP_HCxhh-l5DOFw&ehbc=2E312F";
 const MAPA_VENTAS = "https://www.google.com/maps/d/embed?mid=1fMA7B2CSQKbdMlNO6lxVvh9pF_JnY-s&ehbc=2E312F";
 
-window.bdClientesGlobal = [];
-
 function obtenerUrlMapa() {
     return (isAdmin || isAdminLurin || isWilton) ? MAPA_NOC : MAPA_VENTAS;
 }
+
+// ============================================================ //
+// FUNCIÓN GLOBAL DEL MENÚ LATERAL (HAMBURGUESA)                //
+// ============================================================ //
+window.toggleSidebar = () => {
+    const sidebar = document.querySelector('.app-sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('show');
+        overlay.classList.toggle('show');
+    }
+};
 
 // ============================================================ //
 // TEMA                                                         //
@@ -92,7 +101,7 @@ window.toggleTema = () => {
     const newTheme = currentTheme === "light" ? "dark" : "light";
     document.documentElement.setAttribute("data-theme", newTheme);
     localStorage.setItem("temaTen", newTheme);
-    if (isAdmin || isAdminLurin || isWilton || isCarlos || isVendedor) renderizarTabla();
+    if (isAdmin || isAdminLurin || isWilton || isCarlos || isVendedor || isCobranzas) window.renderizarTabla();
 };
 
 // ============================================================ //
@@ -103,8 +112,9 @@ window.iniciarSesion = () => {
     const pass = document.getElementById("txtPassword").value;
     signInWithEmailAndPassword(auth, email, pass).catch(() => {
         let errLabel = document.getElementById("login-error");
-        errLabel.innerText = "Error: Verifica tus credenciales.";
-        errLabel.style.display = "block";
+        let errContainer = document.getElementById("login-error-container");
+        errLabel.innerHTML = "<i class='fa-solid fa-circle-exclamation'></i> Error: Verifica tus credenciales.";
+        errContainer.style.display = "block";
     });
 };
 
@@ -135,9 +145,6 @@ window.recuperarContrasena = () => {
         });
 };
 
-// ============================================================ //
-// CERRAR SESIÓN (CORREGIDO)                                    //
-// ============================================================ //
 window.cerrarSesion = () => { 
     localStorage.removeItem('ten_rol'); 
     localStorage.removeItem('ten_email'); 
@@ -145,10 +152,28 @@ window.cerrarSesion = () => {
     signOut(auth); 
 };
 
+// ============================================================ //
+// MOSTRAR / OCULTAR CONTRASEÑA LOGIN                           //
+// ============================================================ //
+window.togglePasswordVisibility = () => {
+    const passInput = document.getElementById("txtPassword");
+    const toggleIcon = document.getElementById("togglePassword");
+    
+    if (passInput.type === "password") {
+        passInput.type = "text";
+        toggleIcon.classList.remove("fa-eye");
+        toggleIcon.classList.add("fa-eye-slash"); // Cambia al ícono de ojito tachado
+    } else {
+        passInput.type = "password";
+        toggleIcon.classList.remove("fa-eye-slash");
+        toggleIcon.classList.add("fa-eye"); // Vuelve al ojito normal
+    }
+};
+
 window.cambiarZona = (z) => {
     zonaActual = z;
     actualizarFiltroTecnicos();
-    renderizarTabla();
+    window.renderizarTabla();
 };
 
 onAuthStateChanged(auth, (user) => {
@@ -158,7 +183,7 @@ onAuthStateChanged(auth, (user) => {
 
         const email = user.email.toLowerCase();
 
-        // 1. Listas de correos actualizadas
+        // 1. LOS NUEVOS USUARIOS Y ROLES
         const correosAdminGlobal = ["admin@ten.com", "rpacotaipe@ten.com", "eolortegui@ten.com", "jpalomino@ten.com", "dpacotaipe@ten.com"];
         const correosAdminLurin = ["ecuta@ten.com", "strujillo@ten.com"];
         const coordinadoresVentas = ["carlos@ten.com", "jrodriguez@ten.com", "mventocilla@ten.com", "cpacotaipe@ten.com"];
@@ -166,15 +191,24 @@ onAuthStateChanged(auth, (user) => {
 
         isAdmin = correosAdminGlobal.includes(email);
         isAdminLurin = correosAdminLurin.includes(email);
-        isWilton = email === "wherrera@ten.com";
-        isCarlos = coordinadoresVentas.includes(email);
+        isWilton = email === "wherrera@ten.com"; 
+        isCarlos = coordinadoresVentas.includes(email); 
         isVendedor = email.includes("ventas");
-        
-        let isCobranzas = areaCobranzas.includes(email);
+        isCobranzas = areaCobranzas.includes(email); 
+
+        // Diccionario para normalizar los nombres internos
+        const mapaGestores = {
+            "carlos@ten.com": "JRODRIGUEZ",
+            "jrodriguez@ten.com": "JRODRIGUEZ",
+            "mventocilla@ten.com": "MVENTOCILLA",
+            "cpacotaipe@ten.com": "CPACOTAIPE",
+            "calvino@ten.com": "CALVINO",
+            "oalvino@ten.com": "OALVINO"
+        };
 
         let nombreUsuarioAdmin = email.split("@")[0].toUpperCase();
 
-        document.querySelectorAll(".admin-only, .admin-wilton-only, .admin-carlos-only").forEach((el) => {
+        document.querySelectorAll(".admin-only, .admin-wilton-only, .admin-carlos-only, .btn-cobranzas").forEach((el) => {
             el.classList.remove("show-admin", "show-admin-flex", "show-admin-grid");
         });
 
@@ -203,12 +237,10 @@ onAuthStateChanged(auth, (user) => {
                 document.getElementById("contenedorSelectorZona").style.display = "flex";
                 zonaActual = document.getElementById("selectorZona").value;
             }
-
             configurarGraficosBase("TOTALES", "Total", "Atendidos", "Pendientes");
             
         } else if (isWilton || isCobranzas) {
-            // WILTON Y COBRANZAS ESTÁN JUNTOS AQUÍ
-            nombreTecnicoLogueado = email.split("@")[0].toUpperCase();
+            nombreTecnicoLogueado = mapaGestores[email] || email.split("@")[0].toUpperCase();
             
             document.getElementById("lblUsuarioActivo").innerHTML = isCobranzas ? 
                 `💰 COBRANZAS <br><span style="font-size:10px; color:var(--text-muted); font-weight:900;">${nombreTecnicoLogueado}</span>` : 
@@ -223,25 +255,19 @@ onAuthStateChanged(auth, (user) => {
             document.querySelectorAll(".admin-wilton-only").forEach((el) => el.classList.add("show-admin-flex"));
             
             if (isCobranzas) {
-                document.querySelectorAll(".admin-carlos-only").forEach((el) => el.classList.add("show-admin-flex"));
+                document.querySelectorAll(".admin-carlos-only, .btn-cobranzas").forEach((el) => el.classList.add("show-admin-flex"));
             }
             
             document.getElementById("panelGraficosAdmin").classList.add("show-admin-grid");
-            
             configurarGraficosBase(isCobranzas ? "COBRANZAS Y NOC" : "TOTALES", "Total", "Atendidos", "Pendientes");
             zonaActual = document.getElementById("selectorZona").value;
             
         } else if (isCarlos || isVendedor) {
-            // VENTAS Y COORDINADORES (MILI, CARLOS, CPACOTAIPE)
-            let nombreLimpio = email.split("@")[0].split(".")[0].toUpperCase();
-            nombreTecnicoLogueado = nombreLimpio;
-
-            document.getElementById("lblUsuarioActivo").innerHTML = isCarlos ? `📋 COORD. ${nombreLimpio}` : `💼 ${nombreLimpio}`;
+            nombreTecnicoLogueado = mapaGestores[email] || email.split("@")[0].split(".")[0].toUpperCase();
+            document.getElementById("lblUsuarioActivo").innerHTML = isCarlos ? `📋 COORD. ${nombreTecnicoLogueado}` : `💼 ${nombreTecnicoLogueado}`;
             
             localStorage.setItem('ten_rol', 'ventas');
             localStorage.setItem('ten_email', email);
-
-            document.querySelectorAll(".admin-carlos-only").forEach((el) => el.classList.add("show-admin-flex"));
 
             const panelGraficos = document.getElementById("panelGraficosAdmin");
             panelGraficos.classList.add("show-admin-grid");
@@ -250,15 +276,44 @@ onAuthStateChanged(auth, (user) => {
             if (document.getElementById("cardGraficoTecnicos")) document.getElementById("cardGraficoTecnicos").style.display = "none";
             if (document.getElementById("cardKpisClientes")) document.getElementById("cardKpisClientes").style.display = "none";
 
-            configurarGraficosBase("REPORTE DE VENTAS", "Total Registradas", "Instaladas", "Por Instalar");
+            // Ocultar selector de zona (Forzar Cono Norte)
+            const contZona = document.getElementById("contenedorSelectorZona");
+            if (contZona) contZona.style.display = "none";
             zonaActual = "Norte";
 
+            // Ocultar el botón de Recursos Humanos (Programación/Turnos)
+            const navBtnHr = document.querySelector(".btn-hr");
+            if (navBtnHr) {
+                navBtnHr.style.display = "none";
+                const navSecHr = navBtnHr.previousElementSibling; // Oculta el título "RECURSOS HUMANOS"
+                if(navSecHr && navSecHr.tagName === 'P') navSecHr.style.display = "none";
+            }
+
+            if (isCarlos) {
+                // LOS COORDINADORES SÍ VEN LA BASE DE DATOS Y RETENCIÓN
+                document.querySelectorAll(".admin-carlos-only, .btn-cobranzas").forEach((el) => el.classList.add("show-admin-flex"));
+                configurarGraficosBase("REPORTE DE VENTAS", "Total Registradas", "Instaladas", "Por Instalar");
+            } else if (isVendedor) {
+                // LOS VENDEDORES ESTRICTOS NO VEN NADA DE ESO
+                document.querySelectorAll(".admin-carlos-only, .btn-cobranzas").forEach((el) => {
+                    el.classList.remove("show-admin-flex");
+                    el.style.display = "none";
+                });
+                
+                // Ocultamos los subtítulos del menú izquierdo que quedan vacíos
+                document.querySelectorAll(".nav-section").forEach(sec => {
+                    if (sec.innerText.includes("BASE DE DATOS") || sec.innerText.includes("ÁREA COMERCIAL")) {
+                        sec.style.display = "none";
+                    }
+                });
+                configurarGraficosBase("MIS VENTAS", "Total Registradas", "Instaladas", "Por Instalar");
+            }
+
         } else {
-            // TÉCNICOS NORMALES
             nombreTecnicoLogueado = email.split("@")[0].toUpperCase();
             document.getElementById("lblUsuarioActivo").innerHTML = `🛠️ ${nombreTecnicoLogueado}`;
             
-            // Usamos la variable global tecnicosLurin ya declarada arriba (sin redeclarar)
+            const tecnicosLurin = ["BILLS", "CIELO"];
             zonaActual = tecnicosLurin.includes(nombreTecnicoLogueado) ? "Lurin" : "Norte";
             
             localStorage.setItem('ten_rol', 'tecnico');
@@ -275,49 +330,27 @@ onAuthStateChanged(auth, (user) => {
             if (typeof window.renderizarCalendario === "function") window.renderizarCalendario();
         }, 800);
 
-        // CONFIGURAMOS EL SELECTOR DE MÓDULO (NOC vs RETENCIÓN)
-        let fMod = document.getElementById("filtroModuloContainer");
-        let isCobranzasFlag = typeof nombreTecnicoLogueado !== "undefined" && (nombreTecnicoLogueado === "CALVINO" || nombreTecnicoLogueado === "OALVINO");
-        
-        if (fMod) {
-            let selectMod = document.getElementById("filtroModulo");
-            if (isAdmin || isAdminLurin || isCarlos || isCobranzasFlag) {
-                fMod.style.display = "flex";
-                if (isCarlos) {
-                    selectMod.innerHTML = `<option value="alta">🚀 Instalaciones</option><option value="retencion">📞 Retención</option>`;
-                    selectMod.value = "retencion";
-                } else if (isCobranzasFlag) {
-                    selectMod.innerHTML = `<option value="noc">🌍 Operaciones NOC</option><option value="retencion">📞 Retención</option><option value="todos">👁️ Ver Todo</option>`;
-                    selectMod.value = "retencion";
-                } else {
-                    selectMod.innerHTML = `<option value="noc">🌍 Operaciones NOC</option><option value="retencion">📞 Retención</option><option value="todos">👁️ Ver Todo</option>`;
-                    selectMod.value = "noc";
-                }
-                if(typeof window.cambiarModuloVentas === 'function') window.cambiarModuloVentas();
-            } else {
-                fMod.style.display = "none";
-            }
-        }
-
         actualizarFiltroTecnicos();
         cargarTrabajosEnVivo();
 
-        if (isAdmin || isWilton || isCarlos || isCobranzasFlag) {
+        if (isAdmin || isWilton || isCarlos || isCobranzas) {
             if (typeof window.iniciarEscuchaCobranzas === 'function') window.iniciarEscuchaCobranzas();
-        }
-
-        if (!localStorage.getItem("kpi_total")) {
-            console.log("Dispositivo nuevo detectado. Descargando BD de Firebase...");
-            mostrarToast("📥 Dispositivo nuevo: Sincronizando clientes por primera vez...");
-            if (typeof window.descargarExcelDeFirebase === 'function') {
-                window.descargarExcelDeFirebase();
-            }
+            
+            // VERIFICACIÓN INTELIGENTE DE BASE DE DATOS (PROMESA)
+            window.cargarBDLocalYActualizarUI().then((hayDatos) => {
+                if (!hayDatos) {
+                    console.log("Sin BD local. Descargando desde Firebase...");
+                    mostrarToast("📥 Dispositivo nuevo: Sincronizando clientes...");
+                    if (typeof window.descargarExcelDeFirebase === 'function') {
+                        window.descargarExcelDeFirebase();
+                    }
+                }
+            });
         }
 
     } else {
-        // SI NO ESTÁ LOGUEADO, LO REGRESA A LA PANTALLA NEGRA
         if (unsubscribeTrabajos) unsubscribeTrabajos();
-        if (unsubscribeCobranzas) unsubscribeCobranzas();
+        if (unsubscribeCobranzas) unsubscribeCobranzas(); // APAGAR COBRANZAS AL SALIR
         dbTrabajos = [];
         document.getElementById("login-view").style.display = "flex";
         document.getElementById("dashboard-view").style.display = "none";
@@ -325,12 +358,288 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // ============================================================ //
+// MANEJO DE BASE DE DATOS LOCAL Y SEMÁFORO                     //
+// ============================================================ //
+window.cargarBDLocalYActualizarUI = () => {
+    return new Promise((resolve) => {
+        const request = indexedDB.open("TEN_DB_CLIENTES", 2);
+        request.onupgradeneeded = (ev) => {
+            if (!ev.target.result.objectStoreNames.contains("clientesStore")) {
+                ev.target.result.createObjectStore("clientesStore", { keyPath: "id" });
+            }
+        };
+        request.onsuccess = (e) => {
+            const db = e.target.result;
+            if (db.objectStoreNames.contains("clientesStore")) {
+                const tx = db.transaction("clientesStore", "readonly");
+                const getReq = tx.objectStore("clientesStore").get("bd_completa");
+                getReq.onsuccess = () => {
+                    if (getReq.result && getReq.result.data && getReq.result.data.length > 0) {
+                        window.bdClientesGlobal = getReq.result.data;
+                        window.actualizarEstadoBD();
+                        resolve(true);
+                    } else {
+                        resolve(false);
+                    }
+                };
+                getReq.onerror = () => resolve(false);
+            } else {
+                resolve(false);
+            }
+        };
+        request.onerror = () => resolve(false);
+    });
+};
+
+window.actualizarEstadoBD = () => {
+    const lbl = document.getElementById('lblEstadoBD');
+    if (lbl) {
+        const total = window.bdClientesGlobal ? window.bdClientesGlobal.length : 0;
+        if (total > 0) {
+            const fecha = localStorage.getItem('kpi_fecha') || 'Hoy';
+            lbl.innerHTML = `✅ ${total} cl. | Act: ${fecha}`;
+            lbl.style.color = 'var(--success)';
+        } else {
+            lbl.innerHTML = '⚠️ Sin datos locales';
+            lbl.style.color = 'var(--warning)';
+        }
+    }
+    
+    // Actualiza los KPIs visuales si la pantalla de NOC los tiene
+    if (localStorage.getItem("kpi_total")) {
+        let activos = parseInt(localStorage.getItem("kpi_activos")) || 0;
+        let suspendidos = parseInt(localStorage.getItem("kpi_suspendidos")) || 0;
+        let retirados = parseInt(localStorage.getItem("kpi_retirados")) || 0;
+        let total = parseInt(localStorage.getItem("kpi_total")) || 0;
+        let fecha = localStorage.getItem("kpi_fecha") || "Desconocida";
+
+        let pctAct = total > 0 ? Math.round((activos / total) * 100) : 0;
+        let pctSus = total > 0 ? Math.round((suspendidos / total) * 100) : 0;
+        let pctRet = total > 0 ? Math.round((retirados / total) * 100) : 0;
+
+        if(document.getElementById("kpiCliActivos")) document.getElementById("kpiCliActivos").innerText = activos;
+        if(document.getElementById("kpiCliSuspendidos")) document.getElementById("kpiCliSuspendidos").innerText = suspendidos;
+        if(document.getElementById("kpiCliRetirados")) document.getElementById("kpiCliRetirados").innerText = retirados;
+        if(document.getElementById("kpiCliTotal")) document.getElementById("kpiCliTotal").innerText = total;
+        
+        if(document.getElementById("pctActivos")) document.getElementById("pctActivos").innerText = `(${pctAct}%)`;
+        if(document.getElementById("pctSuspendidos")) document.getElementById("pctSuspendidos").innerText = `(${pctSus}%)`;
+        if(document.getElementById("pctRetirados")) document.getElementById("pctRetirados").innerText = `(${pctRet}%)`;
+        if(document.getElementById("lblFechaBD")) document.getElementById("lblFechaBD").innerText = `Act: ${fecha}`;
+    }
+    
+    if(typeof window.renderizarTablaPlanesConfig === 'function') window.renderizarTablaPlanesConfig();
+};
+
+window.mostrarModalActualizarBD = () => {
+    let fileInput = document.getElementById('fileNuevoExcel');
+    if(fileInput) fileInput.click();
+};
+
+// ============================================================ //
+// MOTOR DE EXCEL (PROCESAMIENTO Y ACTUALIZACIÓN UI)            //
+// ============================================================ //
+window.procesarExcelClientes = (event) => {
+    let file = event.target.files[0];
+    if (!file) {
+        window.actualizarEstadoBD();
+        return; 
+    }
+    
+    mostrarToast("⏳ Leyendo Excel y calculando datos...");
+    
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            let data = new Uint8Array(e.target.result);
+            let workbook = XLSX.read(data, {type: 'array'});
+            let worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            
+            window.bdClientesGlobal = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+            
+            let activos = 0, suspendidos = 0, retirados = 0;
+            window.bdClientesGlobal.forEach(c => {
+                let fila = {};
+                for (let llave in c) {
+                    let cleanKey = llave.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").trim();
+                    fila[cleanKey] = c[llave];
+                }
+                let estMinus = String(fila["estadocliente"] || fila["estado"] || "").toLowerCase().trim();
+                if (estMinus.includes("activo")) activos++;
+                else if (estMinus.includes("suspendido") || estMinus.includes("cortado")) suspendidos++;
+                else if (estMinus.includes("retirado") || estMinus.includes("baja")) retirados++;
+            });
+
+            let total = activos + suspendidos + retirados;
+            if(total === 0) total = window.bdClientesGlobal.length;
+
+            let opcionesFecha = { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' };
+            let fechaHoy = new Date().toLocaleDateString('es-PE', opcionesFecha);
+
+            localStorage.setItem("kpi_activos", activos);
+            localStorage.setItem("kpi_suspendidos", suspendidos);
+            localStorage.setItem("kpi_retirados", retirados);
+            localStorage.setItem("kpi_total", total); 
+            localStorage.setItem("kpi_fecha", fechaHoy);
+
+            const request = indexedDB.open("TEN_DB_CLIENTES", 2);
+            request.onupgradeneeded = (ev) => {
+                if (!ev.target.result.objectStoreNames.contains("clientesStore")) {
+                    ev.target.result.createObjectStore("clientesStore", { keyPath: "id" });
+                }
+            };
+            request.onsuccess = (ev) => {
+                const db = ev.target.result;
+                const tx = db.transaction("clientesStore", "readwrite");
+                tx.objectStore("clientesStore").put({ id: "bd_completa", data: window.bdClientesGlobal });
+                tx.oncomplete = () => {
+                    event.target.value = ''; 
+                    window.actualizarEstadoBD();
+                    mostrarToast("✅ Excel Local guardado. Sube a la nube si deseas compartirlo.");
+                    if(typeof window.ejecutarFiltroBD === "function") window.ejecutarFiltroBD();
+                };
+            };
+        } catch(error) {
+            console.error(error);
+            mostrarToast("❌ Error al leer el Excel.");
+            window.actualizarEstadoBD();
+        }
+    };
+    reader.readAsArrayBuffer(file);
+};
+
+window.subirExcelAFirebase = async () => {
+    if(!window.bdClientesGlobal || window.bdClientesGlobal.length === 0) {
+        mostrarToast("⚠️ Primero debes Actualizar la BD (Subir Excel Local)."); 
+        return;
+    }
+    mostrarToast("⏳ Subiendo a la Nube... Esto tomará unos segundos. No cierres la página.");
+    
+    try {
+        let batches = [];
+        let batch = writeBatch(db);
+        let count = 0;
+
+        for (let i = 0; i < window.bdClientesGlobal.length; i++) {
+            let c = window.bdClientesGlobal[i];
+            
+            let fila = {};
+            for(let key in c) {
+                let cleanKey = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").trim();
+                fila[cleanKey] = c[key];
+            }
+            let dniSeguro = fila["ndocumento"] || fila["dni"] || fila["idcliente"];
+            
+            if (!dniSeguro) continue;
+            
+            let docRef = doc(coleccionClientes, String(dniSeguro));
+            batch.set(docRef, {
+                nombre: fila["apellidosynombres"] || fila["nombre"] || "Sin Nombre", 
+                dni: String(dniSeguro), 
+                id_cliente: String(dniSeguro),
+                telefonos: c.telefonos ? (Array.isArray(c.telefonos) ? c.telefonos.join(" / ") : c.telefonos) : "",
+                zona: fila["zona"] || fila["distrito"] || "", 
+                direccion: fila["direccion"] || fila["domicilio"] || "",
+                plan: fila["tarifadeinternet"] || fila["plan"] || "", 
+                estado: fila["estadocliente"] || fila["estado"] || "Activo"
+            }, { merge: true });
+
+            count++;
+            if (count === 400) {
+                batches.push(batch.commit());
+                batch = writeBatch(db);
+                count = 0;
+            }
+        }
+        if (count > 0) batches.push(batch.commit());
+
+        await Promise.all(batches);
+        mostrarToast("✅ Excel guardado en la Nube. Ya está disponible para todos.");
+    } catch (e) {
+        console.error(e);
+        mostrarToast("❌ Error al subir a la Nube.");
+    }
+};
+
+// ============================================================ //
+// FUNCIÓN CORREGIDA: window.descargarExcelDeFirebase            //
+// ============================================================ //
+window.descargarExcelDeFirebase = async () => {
+    mostrarToast("⏳ Descargando base de datos desde la Nube... Por favor espera.");
+    try {
+        const querySnapshot = await getDocs(coleccionClientes);
+        let clientesDescargados = [];
+        let activos = 0, suspendidos = 0, retirados = 0;
+
+        querySnapshot.forEach((doc) => {
+            let c = doc.data();
+            if (typeof c.telefonos === "string") {
+                c.telefonos = c.telefonos.split(" / ").filter(t => t.trim() !== "");
+            } else if (!c.telefonos) {
+                c.telefonos = [];
+            }
+            clientesDescargados.push(c);
+            
+            let estMinus = (c.estado || "").toLowerCase();
+            if (estMinus.includes("activo")) activos++;
+            else if (estMinus.includes("suspendido") || estMinus.includes("cortado")) suspendidos++;
+            else if (estMinus.includes("retirado") || estMinus.includes("baja")) retirados++;
+        });
+
+        if (clientesDescargados.length === 0) {
+            mostrarToast("⚠️ La Nube está vacía. Un administrador debe subir el Excel primero.");
+            window.actualizarEstadoBD();
+            return;
+        }
+
+        window.bdClientesGlobal = clientesDescargados;
+
+        let total = activos + suspendidos + retirados;
+        let opcionesFecha = { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' };
+        let fechaHoy = new Date().toLocaleDateString('es-PE', opcionesFecha);
+
+        localStorage.setItem("kpi_activos", activos);
+        localStorage.setItem("kpi_suspendidos", suspendidos);
+        localStorage.setItem("kpi_retirados", retirados);
+        localStorage.setItem("kpi_total", total > 0 ? total : clientesDescargados.length);
+        localStorage.setItem("kpi_fecha", fechaHoy);
+
+        const request = indexedDB.open("TEN_DB_CLIENTES", 2);
+        
+        request.onupgradeneeded = (ev) => {
+            if (!ev.target.result.objectStoreNames.contains("clientesStore")) {
+                ev.target.result.createObjectStore("clientesStore", { keyPath: "id" });
+            }
+        };
+
+        request.onsuccess = (e) => {
+            const db = e.target.result;
+            const tx = db.transaction("clientesStore", "readwrite");
+            tx.objectStore("clientesStore").put({ id: "bd_completa", data: window.bdClientesGlobal });
+            tx.oncomplete = () => {
+                window.actualizarEstadoBD();
+                mostrarToast(`✅ ¡Listo! ${clientesDescargados.length} clientes guardados.`);
+            };
+        };
+        
+        request.onerror = () => {
+            mostrarToast("❌ Error al guardar en el navegador.");
+            window.actualizarEstadoBD();
+        };
+
+    } catch (e) {
+        console.error(e);
+        mostrarToast("❌ Error al descargar. Revisa tu conexión a internet.");
+        window.actualizarEstadoBD();
+    }
+};
+
+// ============================================================ //
 // FUNCIONES AUXILIARES Y DE INTERFAZ                           //
 // ============================================================ //
 function configurarGraficosBase(titulo, lTotal, lSuccess, lWarning) {
     const panelGraficos = document.getElementById("panelGraficosAdmin");
-    
-    if (isAdmin || isAdminLurin || isWilton) {
+    if (isAdmin || isAdminLurin || isWilton || isCobranzas) {
         if (document.getElementById("cardGraficoTecnicos")) document.getElementById("cardGraficoTecnicos").style.display = "flex";
         if (document.getElementById("cardCalendarioNoc")) document.getElementById("cardCalendarioNoc").style.display = "flex";
         if (document.getElementById("cardKpisClientes")) document.getElementById("cardKpisClientes").style.display = "flex";
@@ -348,7 +657,7 @@ function actualizarFiltroTecnicos() {
     let lista = zonaActual === "Norte" ? tecnicosNorte : tecnicosLurin;
     let html = `<option value="todos">Todos</option>`;
     lista.forEach((t) => { html += `<option value="${t}">${t}</option>`; });
-    document.getElementById("filtroTecnico").innerHTML = html;
+    if(document.getElementById("filtroTecnico")) document.getElementById("filtroTecnico").innerHTML = html;
 }
 
 function actualizarSelectTecnicosModal() {
@@ -357,18 +666,17 @@ function actualizarSelectTecnicosModal() {
     lista.forEach((t) => {
         html += `<div class="multi-option" onclick="window.toggleCheckbox(this)"><input type="checkbox" value="${t}"><label>${t}</label></div>`;
     });
-    document.getElementById("techDropdown").innerHTML = html;
-    document.getElementById("techDisplay").innerText = "Sin Asignar";
+    if(document.getElementById("techDropdown")) document.getElementById("techDropdown").innerHTML = html;
+    if(document.getElementById("techDisplay")) document.getElementById("techDisplay").innerText = "Sin Asignar";
 }
 
 function cargarTrabajosEnVivo() {
     if (unsubscribeTrabajos) unsubscribeTrabajos();
-
     unsubscribeTrabajos = onSnapshot(coleccionTrabajos, (snapshot) => {
         dbTrabajos = [];
         snapshot.forEach((doc) => { dbTrabajos.push({ id: doc.id, ...doc.data() }); });
         actualizarOpcionesFechas();
-        renderizarTabla();
+        window.renderizarTabla();
         if (typeof window.renderizarCalendario === "function") window.renderizarCalendario();
     });
 }
@@ -384,20 +692,40 @@ window.buscarCliente = async () => {
 
     let clienteLocal = null;
     if (window.bdClientesGlobal && window.bdClientesGlobal.length > 0) {
-        clienteLocal = window.bdClientesGlobal.find(c => c.dni === queryVal);
+        clienteLocal = window.bdClientesGlobal.find(c => {
+            let filaTemporal = {};
+            for(let key in c) {
+                let cleanKey = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+                filaTemporal[cleanKey] = c[key];
+            }
+            let nDni = filaTemporal["ndocumento"] || filaTemporal["dni"] || filaTemporal["idcliente"] || "";
+            return String(nDni).trim() === String(queryVal).trim();
+        });
     }
 
     if (clienteLocal) {
-        document.getElementById("formNombre").value = clienteLocal.nombre || "";
-        document.getElementById("formDni").value = clienteLocal.dni || "";
-        let tels = clienteLocal.telefonos && clienteLocal.telefonos.length > 0 ? clienteLocal.telefonos : [];
-        document.getElementById("formTelefonoPrincipal").value = tels[0] || "";
-        document.getElementById("formTelefonoSecundario").value = tels.slice(1).join(" / ") || "";
-        document.getElementById("formDireccion").value = clienteLocal.zona ? `${clienteLocal.zona} - ${clienteLocal.direccion}` : clienteLocal.direccion;
-        document.getElementById("formMapa").value = clienteLocal.linkMapa || "";
-        document.getElementById("formInfoRedAveria").value = `Plan: ${clienteLocal.plan || "Sin Plan"}`;
+        let filaLimpia = {};
+        for(let key in clienteLocal) {
+            let cleanKey = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+            filaLimpia[cleanKey] = clienteLocal[key];
+        }
+
+        document.getElementById("formNombre").value = filaLimpia["apellidosynombres"] || filaLimpia["nombre"] || "";
+        document.getElementById("formDni").value = filaLimpia["ndocumento"] || filaLimpia["dni"] || filaLimpia["idcliente"] || "";
         
-        msg.innerText = "✅ Autocompletado desde tu Base de Datos Excel";
+        let tels = [];
+        if (filaLimpia["telefono1"]) tels.push(filaLimpia["telefono1"]);
+        if (filaLimpia["telefono2"]) tels.push(filaLimpia["telefono2"]);
+        document.getElementById("formTelefonoPrincipal").value = tels[0] || "";
+        document.getElementById("formTelefonoSecundario").value = tels[1] || "";
+        
+        let zon = filaLimpia["zona"] || filaLimpia["distrito"] || "";
+        let dir = filaLimpia["direccion"] || filaLimpia["domicilio"] || "";
+        document.getElementById("formDireccion").value = zon ? `${zon} - ${dir}` : dir;
+        
+        document.getElementById("formInfoRedAveria").value = `Plan: ${filaLimpia["tarifadeinternet"] || filaLimpia["plan"] || "Sin Plan"}`;
+        
+        msg.innerText = "✅ Autocompletado desde BD Excel";
         msg.style.color = "var(--success)";
         return;
     }
@@ -407,26 +735,30 @@ window.buscarCliente = async () => {
         if (docSnap.empty) docSnap = await getDocs(query(coleccionClientes, where("dni", "==", queryVal)));
         if (!docSnap.empty) {
             const data = docSnap.docs[0].data();
-            document.getElementById("formNombre").value = data.nombre; document.getElementById("formDni").value = data.dni;
-            let tels = data.telefonos ? data.telefonos.split(" / ") : [];
-            document.getElementById("formTelefonoPrincipal").value = tels[0] || ""; document.getElementById("formTelefonoSecundario").value = tels.slice(1).join(" / ") || "";
+            document.getElementById("formNombre").value = data.nombre; 
+            document.getElementById("formDni").value = data.dni;
+            let tels = typeof data.telefonos === "string" ? data.telefonos.split(" / ") : (Array.isArray(data.telefonos) ? data.telefonos : []);
+            document.getElementById("formTelefonoPrincipal").value = tels[0] || ""; 
+            document.getElementById("formTelefonoSecundario").value = tels.slice(1).join(" / ") || "";
             document.getElementById("formDireccion").value = data.zona ? `${data.zona} - ${data.direccion}` : data.direccion;
-            document.getElementById("formMapa").value = data.ubicacion; document.getElementById("formInfoRedAveria").value = `Plan: ${data.plan} | TV: ${data.info_tv}`;
+            document.getElementById("formInfoRedAveria").value = `Plan: ${data.plan}`;
             msg.innerText = "✅ Cliente Autocompletado (Nube)"; msg.style.color = "var(--success)";
-        } else { msg.innerText = "❌ Cliente no encontrado en ningún registro."; msg.style.color = "var(--danger)"; }
-    } catch (err) { msg.innerText = "⚠️ Error de red en la búsqueda."; msg.style.color = "var(--warning)"; }
+        } else { msg.innerText = "❌ Cliente no encontrado."; msg.style.color = "var(--danger)"; }
+    } catch (err) { msg.innerText = "⚠️ Error de red."; msg.style.color = "var(--warning)"; }
 };
 
 window.calcularPrecioTotal = () => {
     let planVal = document.getElementById("formPlanVenta").value;
-    let precioBase = parseInt(planVal.split("|")[0]);
+    let parts = planVal.split("|");
+    let precioBase = parseInt(parts[0]) || 0;
     let tipoServicio = document.getElementById("formTipoServicio").value;
     let precioFinal = precioBase;
 
     if (tipoServicio === "Internet + Cable" && (precioBase === 50 || precioBase === 55 || precioBase === 69)) {
         precioFinal += 20;
     }
-    document.getElementById("formPrecioTotal").innerText = `S/ ${precioFinal}`;
+    
+    document.getElementById("formPrecioTotal").innerText = isNaN(precioFinal) ? "S/ 0" : `S/ ${precioFinal}`;
 };
 
 // ============================================================ //
@@ -474,23 +806,9 @@ window.abrirModal = () => {
         window.calcularPrecioTotal();
         actualizarSelectTecnicosModal();
         
-        try {
-            window.seleccionarTipoTarea("alta");
-        } catch (e) {
-            console.error("Error en seleccionarTipoTarea:", e);
-            let grupoAlta = document.querySelector(".grupo-alta");
-            let grupoAveria = document.querySelector(".grupo-averia");
-            let grupoBaja = document.querySelector(".grupo-baja");
-            let grupoOtros = document.querySelector(".grupo-otros");
-            let grupoRetencion = document.querySelector(".grupo-retencion");
-            if (grupoAlta) grupoAlta.style.display = "contents";
-            if (grupoAveria) grupoAveria.style.display = "none";
-            if (grupoBaja) grupoBaja.style.display = "none";
-            if (grupoOtros) grupoOtros.style.display = "none";
-            if (grupoRetencion) grupoRetencion.style.display = "none";
-        }
+        try { window.seleccionarTipoTarea("alta"); } catch (e) {}
 
-        let isTecnicoCampo = !isAdmin && !isAdminLurin && !isWilton && !isCarlos && !isVendedor;
+        let isTecnicoCampo = !isAdmin && !isAdminLurin && !isWilton && !isCarlos && !isVendedor && !isCobranzas;
 
         if (isTecnicoCampo) {
             let tabs = document.querySelector(".modal-tabs");
@@ -502,7 +820,19 @@ window.abrirModal = () => {
             let otros = document.getElementById("formTipoOtros");
             if (otros) otros.disabled = true; 
             document.getElementById("modalTitulo").innerHTML = "⚙️ Completar Datos";
-        } else if (isVendedor || isCarlos) {
+        } else if (isVendedor) {
+            // REGLAS ESTRICTAS PARA VENDEDORES
+            let tabs = document.querySelector(".modal-tabs");
+            if (tabs) tabs.style.display = "none";
+            let asignacion = document.getElementById("grupoAsignacionTecnico");
+            if (asignacion) asignacion.style.display = "none";
+            let sede = document.getElementById("grupoSedeVenta");
+            if (sede) sede.style.display = "none";
+            let otrosInput = document.getElementById("formTipoOtros");
+            if (otrosInput) otrosInput.disabled = true;
+            document.getElementById("modalTitulo").innerHTML = "<i class='fa-solid fa-rocket'></i> Registrar Nueva Venta";
+        } else if (isCarlos) {
+            // REGLAS PARA COORDINADORES
             let tabs = document.querySelector(".modal-tabs");
             if (tabs) tabs.style.display = "flex";
             let asignacion = document.getElementById("grupoAsignacionTecnico");
@@ -513,8 +843,6 @@ window.abrirModal = () => {
             if (baja) baja.style.display = "none";
             let otros = document.getElementById("tabOtros");
             if (otros) otros.style.display = "none";
-            let retencion = document.getElementById("tabRetencion");
-            if (retencion) retencion.style.display = isCarlos ? "block" : "none"; 
             let sede = document.getElementById("grupoSedeVenta");
             if (sede) sede.style.display = "block";
             let otrosInput = document.getElementById("formTipoOtros");
@@ -530,8 +858,6 @@ window.abrirModal = () => {
             if (baja) baja.style.display = "block";
             let otros = document.getElementById("tabOtros");
             if (otros) otros.style.display = "block";
-            let retencion = document.getElementById("tabRetencion");
-            if (retencion) retencion.style.display = "none";
             let sede = document.getElementById("grupoSedeVenta");
             if (sede) sede.style.display = "none";
             let otrosInput = document.getElementById("formTipoOtros");
@@ -540,17 +866,7 @@ window.abrirModal = () => {
 
         let modal = document.getElementById("modalAgregar");
         if (modal) modal.style.display = "flex";
-        console.log("✅ Modal abierto correctamente");
-    } catch (error) {
-        console.error("❌ Error al abrir modal:", error);
-        try {
-            let modal = document.getElementById("modalAgregar");
-            if (modal) modal.style.display = "flex";
-        } catch (e) {
-            console.error("❌ No se pudo mostrar el modal:", e);
-        }
-        mostrarToast("⚠️ Error al abrir el modal. Revisa la consola.");
-    }
+    } catch (error) { console.error("❌ Error al abrir modal:", error); }
 };
 
 window.editarTrabajo = (id) => {
@@ -607,21 +923,6 @@ window.editarTrabajo = (id) => {
                 });
             }
         }
-    } else if (t.tipoTarea === "retencion") {
-        document.getElementById("formEstadoLlamada").value = t.estadoLlamada || "En Seguimiento";
-        document.getElementById("formNotasRetencion").value = t.notas || "";
-        // Campos comunes
-        document.getElementById("formNombre").value = t.cliente || "";
-        document.getElementById("formDni").value = t.dni || "";
-        let telsArray = (t.tel || "").split(" / ");
-        document.getElementById("formTelefonoPrincipal").value = telsArray[0] || "";
-        document.getElementById("formTelefonoSecundario").value = telsArray.slice(1).join(" / ") || "";
-        document.getElementById("formDireccion").value = t.dir || "";
-        // Cargar el select de asignación si existe
-        let selectAsig = document.getElementById("formAsignadoRetencion");
-        if (selectAsig && t.asignadoRetencion) {
-            selectAsig.value = t.asignadoRetencion;
-        }
     } else {
         document.getElementById("formTipoDoc").value = t.tipoDoc || "DNI";
         document.getElementById("formNombre").value = t.cliente || "";
@@ -668,6 +969,12 @@ window.editarTrabajo = (id) => {
 };
 
 window.guardarTrabajo = async () => {
+    let btnGuardar = document.querySelector("#modalAgregar .btn-guardar");
+    if(btnGuardar) {
+        btnGuardar.disabled = true;
+        btnGuardar.innerHTML = '⏳ Guardando...';
+    }
+
     let techSelec = Array.from(document.querySelectorAll("#techDropdown input:checked")).map((c) => c.value);
     if (techSelec.length === 0) techSelec = ["Sin Asignar"];
 
@@ -691,20 +998,16 @@ window.guardarTrabajo = async () => {
     if (tipo === "otros") {
         let subtipo = document.getElementById("formTipoOtros").value;
         data.detalle = subtipo;
-        
         if (subtipo === "Limpieza de caja") {
             data.caja = document.getElementById("formCajaOtros").value;
             data.linkCaja = document.getElementById("formLinkCajaOtros").value;
             data.mapa = data.linkCaja; 
             data.senalCaja = document.getElementById("formSenalCajaOtros").value.trim(); 
-            
             let nomFalso = data.caja ? `MANTENIMIENTO: ${data.caja}` : "MANTENIMIENTO DE RED";
             data.cliente = nomFalso.toUpperCase();
             data.dir = "Ubicación de Trabajo Externo";
-            
             let cant = parseInt(document.getElementById('formCantPuertos').value) || 0;
             data.cantPuertos = cant;
-            
             let puertosArr = [];
             for(let i=1; i<=cant; i++) {
                 let pId = document.getElementById(`puertoId_${i}`) ? document.getElementById(`puertoId_${i}`).value : "";
@@ -713,7 +1016,6 @@ window.guardarTrabajo = async () => {
             }
             data.puertosData = puertosArr;
             data.notas = cant > 0 ? `Limpieza/Verificación de ${cant} Puertos en Caja.` : "Trabajo de infraestructura.";
-            
         } else if (subtipo === "Seguimiento de fibra") {
             data.cliente = document.getElementById("formClienteFibra").value || "Cliente Desconocido";
             data.dni = document.getElementById("formDniFibra").value;
@@ -724,35 +1026,6 @@ window.guardarTrabajo = async () => {
             data.notas = `Seguimiento de Fibra. Plan: ${data.plan}`;
             data.dir = "Revisar tendido de fibra óptica.";
         }
-        
-    } else if (tipo === "retencion") {
-        let estadoLl = document.getElementById("formEstadoLlamada").value;
-        if (estadoLl === "Retiro Definitivo") {
-            // MAGIA: Carlos solicita retiro. Se transforma a BAJA y pasa a la bandeja de Wilton.
-            tipo = "baja"; 
-            data.tipoTarea = "baja";
-            data.detalle = "Retiro de Equipos";
-            data.notas = document.getElementById("formNotasRetencion").value;
-            data.estado = "pendiente"; 
-            data.tecnicos = ["Sin Asignar"]; 
-        } else {
-            // Sigue siendo Retención
-            data.estadoLlamada = estadoLl;
-            data.detalle = "Llamada - " + estadoLl;
-            data.notas = document.getElementById("formNotasRetencion").value;
-            data.tecnicos = ["Sin Asignar"]; // Se queda en la bandeja de ventas
-            
-            // NUEVO: Guardar si es de Carlos o Mili (Forzamos MAYÚSCULAS para evitar bugs)
-            let selectAsignado = document.getElementById("formAsignadoRetencion");
-            if (selectAsignado) {
-                data.asignadoRetencion = selectAsignado.value.toUpperCase();
-            }
-        }
-        
-        data.cliente = document.getElementById("formNombre").value || "Cliente en Retención";
-        data.dni = document.getElementById("formDni").value || "";
-        data.tel = telFinal;
-        data.dir = document.getElementById("formDireccion").value;
     } else {
         data.tipoDoc = document.getElementById("formTipoDoc").value;
         data.cliente = document.getElementById("formNombre").value || "Desconocido";
@@ -769,7 +1042,6 @@ window.guardarTrabajo = async () => {
         if (tipo === "alta") {
             const planCompleto = document.getElementById("formPlanVenta").value;
             const parts = planCompleto.split("|");
-            const precioVal = parts[0];
             const nombrePlan = parts[1];
             const tipoServicio = document.getElementById("formTipoServicio").value;
             const precio = document.getElementById("formPrecioTotal").innerText;
@@ -828,6 +1100,11 @@ window.guardarTrabajo = async () => {
         mostrarToast("Tarea guardada exitosamente");
     } catch (e) {
         mostrarToast("Error al guardar"); console.error(e);
+    } finally {
+        if(btnGuardar) {
+            btnGuardar.disabled = false;
+            btnGuardar.innerText = 'Guardar Tarea';
+        }
     }
 };
 
@@ -1002,7 +1279,7 @@ window.confirmarRechazoRapido = async () => {
 };
 
 // ============================================================ //
-// RENDERIZAR TABLA (CON REGLAS ESTRICTAS Y MENSAJE VACÍO)     //
+// RENDERIZAR TABLA (SIN RETENCIÓN)                             //
 // ============================================================ //
 window.renderizarTabla = () => {
     const tbody = document.getElementById("tablaTrabajos");
@@ -1017,22 +1294,17 @@ window.renderizarTabla = () => {
     if (isAdmin || isAdminLurin || isWilton) listData = listData.filter((t) => (t.zona || "Norte") === zonaActual);
 
     let tOrdenado = listData.sort((a, b) => {
-        // 1. Primero ordena por fecha
         let res = (b.fecha || "").localeCompare(a.fecha || "");
         if (res !== 0) return res;
         
-        // 2. Si es la misma fecha, ordena de mañana a noche (8 AM a 9 AM)
         let horaA = a.horaInicio || "23:59";
         let horaB = b.horaInicio || "23:59";
-        
-        // Convertimos las horas (ej. "08:30") a minutos totales para evitar bugs
         let minA = (parseInt(horaA.split(':')[0] || 23) * 60) + parseInt(horaA.split(':')[1] || 59);
         let minB = (parseInt(horaB.split(':')[0] || 23) * 60) + parseInt(horaB.split(':')[1] || 59);
         
-        return minA - minB; // Ascendente: El más bajo (ej. 8am = 480min) va arriba.
+        return minA - minB; 
     });
 
-    const moduloSeleccionado = document.getElementById("filtroModulo")?.value || "todos";
     const tecnicoFiltro = document.getElementById("filtroTecnico")?.value || "todos";
 
     tOrdenado.forEach((t) => {
@@ -1041,33 +1313,20 @@ window.renderizarTabla = () => {
             if (typeof asig === "string") asig = [asig];
             
             let estActual = String(t.estado || "pendiente").toLowerCase();
-            
-            let esRetencion = (t.tipoTarea === "retencion") || (t.tipoTarea === "otros" && t.detalle === "Llamada");
             let esAprobacion = (estActual === "por_aprobar_carlos" || estActual === "aprobada_wilton" || estActual === "rechazada");
 
-            let isCobranzas = (nombreTecnicoLogueado === "CALVINO" || nombreTecnicoLogueado === "OALVINO");
+            let esRetencion = (t.tipoTarea === "retencion");
+            let esRetiroNOC = esRetencion && t.estadoLlamada === "Retiro Definitivo";
 
-            // 🛡️ REGLAS ESTRICTAS DE VISIBILIDAD:
-            if (isCarlos) { // Esto incluye a JRODRIGUEZ, MVENTOCILLA, CPACOTAIPE
-                if (moduloSeleccionado === "alta" && t.tipoTarea !== "alta") return;
-                if (moduloSeleccionado === "retencion" && !esRetencion) return;
-                
-                // MÁGIA: Se aísla la retención para que cada quien vea la suya.
-                if (esRetencion && t.asignadoRetencion && t.asignadoRetencion.toUpperCase() !== nombreTecnicoLogueado) return;
+            if (esRetencion && !esRetiroNOC) return;
+
+            if (isCarlos) {
+                if (t.tipoTarea !== "alta") return;
             } else if (isVendedor) {
                 if (t.tipoTarea !== "alta" || t.vendedor !== nombreTecnicoLogueado) return;
-            } else if (isWilton) {
-                if (esRetencion) return; // Wilton normal no ve retención
-            } else if (isCobranzas) {
-                // Cobranzas es un Dios como el Admin, ve Retención (todos) y NOC (todos)
-                if (moduloSeleccionado === "noc" && esRetencion) return;
-                if (moduloSeleccionado === "retencion" && !esRetencion) return;
-            } else if (isAdmin || isAdminLurin) {
-                if (moduloSeleccionado === "noc" && esRetencion) return;
-                if (moduloSeleccionado === "retencion" && !esRetencion) return;
+            } else if (isWilton || isAdmin || isAdminLurin || isCobranzas) {
+                // Ellos ven el panorama completo NOC
             } else {
-                // Técnicos normales...
-                if (esRetencion) return;
                 if (esAprobacion) return; 
                 if (!asig.includes(nombreTecnicoLogueado) && !asig.includes("Todos")) return; 
             }
@@ -1076,14 +1335,12 @@ window.renderizarTabla = () => {
 
             if (filtroFecha !== "todas" && t.fecha !== filtroFecha) return;
             if (filtroEstado !== "todos" && estActual !== filtroEstado) return;
-
             if (txtBuscar && !`${t.cliente} ${t.dni} ${t.dir} ${t.detalle}`.toLowerCase().includes(txtBuscar)) return;
 
             pGrafico.push(t);
 
             let textEst = estActual.toUpperCase().replace(/_/g, " ");
             let clasePunto = "ep-pend";
-
             if (estActual === "atendido") { textEst = "ATENDIDO"; clasePunto = "ep-aten"; } 
             else if (estActual === "no_atendido") { textEst = "NO ATENDIDO"; clasePunto = "ep-noat"; } 
             else if (estActual === "en_camino") { textEst = "EN CAMINO"; clasePunto = "ep-cami"; } 
@@ -1091,15 +1348,14 @@ window.renderizarTabla = () => {
             else if (estActual === "aprobada_wilton") { textEst = "VENTA APROBADA"; clasePunto = "ep-aprobada"; } 
             else if (estActual === "rechazada") { textEst = "RECHAZADA"; clasePunto = "ep-rechazada"; }
 
-            let colorBadge = t.tipoTarea === "alta" ? "alta" : t.tipoTarea === "averia" ? "averia" : t.tipoTarea === "baja" ? "baja" : "otros";
-            let nombreTipo = t.tipoTarea === "alta" ? "🚀 ALTA" : t.tipoTarea === "averia" ? "🛠️ AVERÍA" : t.tipoTarea === "baja" ? "🛑 BAJA" : "⚙️ OTROS TRABAJOS";
+            let colorBadge = t.tipoTarea === "alta" ? "alta" : t.tipoTarea === "averia" ? "averia" : t.tipoTarea === "baja" || esRetiroNOC ? "baja" : "otros";
+            let nombreTipo = t.tipoTarea === "alta" ? "🚀 ALTA" : t.tipoTarea === "averia" ? "🛠️ AVERÍA" : t.tipoTarea === "baja" || esRetiroNOC ? "🛑 BAJA" : "⚙️ OTROS";
             let docLabel = t.tipoDoc || "DNI";
 
             let infoCli = `<span class="cliente-nombre">${t.cliente}</span>`;
-            
             if (t.tipoTarea === "otros") {
                 if (t.detalle === "Limpieza de caja") {
-                    infoCli += `<span class="cliente-info"><span class="lbl-info">PUERTOS:</span> <b style="color:var(--text-main);">${t.cantPuertos || 0}</b></span>`;
+                    infoCli += `<span class="cliente-info"><span class="lbl-info">PUERTOS:</span> <b>${t.cantPuertos || 0}</b></span>`;
                     if(t.caja) infoCli += `<span class="cliente-info"><span class="lbl-info">CAJA NAP:</span> ${t.caja}</span>`;
                 } else if (t.detalle === "Seguimiento de fibra") {
                     infoCli += `<span class="cliente-info"><span class="lbl-info">DNI/ID:</span> ${t.dni || "-"}</span>`;
@@ -1110,26 +1366,22 @@ window.renderizarTabla = () => {
                 infoCli += `<span class="cliente-info"><span class="lbl-info">${docLabel}:</span> ${t.dni || "-"}</span>
                            <span class="cliente-info"><span class="lbl-info">TEL:</span> ${t.tel || "-"}</span>
                            ${t.correo ? `<span class="cliente-info"><span class="lbl-info">EMAIL:</span> ${t.correo}</span>` : ""}
-                           ${(t.vendedor && t.tipoTarea === "alta") ? `<span class="cliente-info mt-1"><span class="lbl-info" style="color:var(--danger)">VENDEDOR:</span> <b style="color:var(--danger);">${t.vendedor}</b></span>` : ""}`;
+                           ${(t.vendedor && t.tipoTarea === "alta") ? `<span class="cliente-info"><span class="lbl-info" style="color:var(--danger)">VENDEDOR:</span> <b style="color:var(--danger);">${t.vendedor}</b></span>` : ""}`;
             }
 
             let extrasHtml = "";
             if (t.tipoTarea === "alta") {
-                if (t.caja || t.puerto) extrasHtml += `<span class="cliente-info mt-1" style="color:var(--purple)"><span class="lbl-info">CAJA:</span> ${t.caja || "--"} | <span class="lbl-info">P:</span> ${t.puerto || "--"}</span>`;
+                if (t.caja || t.puerto) extrasHtml += `<span class="cliente-info" style="color:var(--purple)"><span class="lbl-info">CAJA:</span> ${t.caja || "--"} | <span class="lbl-info">P:</span> ${t.puerto || "--"}</span>`;
                 if (t.periodo || t.comprobante) extrasHtml += `<span class="cliente-info"><span class="lbl-info">PAGO:</span> ${t.periodo || ""} | ${t.comprobante || ""}</span>`;
             }
-            if (t.tipoTarea === "averia" && t.infoRed) extrasHtml = `<span class="cliente-info mt-1"><span class="lbl-info">RED:</span> ${t.infoRed}</span>`;
-            if (t.tipoTarea === "baja" && t.equipos) extrasHtml = `<span class="cliente-info mt-1" style="color:var(--danger)"><span class="lbl-info">RECOGER:</span> ${t.equipos}</span>`;
+            if (t.tipoTarea === "averia" && t.infoRed) extrasHtml = `<span class="cliente-info"><span class="lbl-info">RED:</span> ${t.infoRed}</span>`;
+            if ((t.tipoTarea === "baja" || esRetiroNOC) && t.equipos) extrasHtml = `<span class="cliente-info" style="color:var(--danger)"><span class="lbl-info">RECOGER:</span> ${t.equipos}</span>`;
 
             if (t.tx || t.rx) {
-                extrasHtml += `<div style="background: rgba(0,229,255,0.05); border: 1px dashed var(--accent); padding: 4px 8px; border-radius: 4px; margin-top: 6px; display: inline-block;">
-                    <span class="cliente-info m-0" style="color:var(--accent); font-size:11px;"><span class="lbl-info">📡 SEÑAL ROUTER:</span> TX: <b>${t.tx || "--"}</b> | RX: <b>${t.rx || "--"}</b></span>
-                </div>`;
+                extrasHtml += `<div style="background: rgba(0,229,255,0.05); border: 1px dashed var(--accent); padding: 4px 8px; border-radius: 4px; margin-top: 6px;"><span class="cliente-info" style="color:var(--accent)"><span class="lbl-info">📡 SEÑAL ROUTER:</span> TX: <b>${t.tx || "--"}</b> | RX: <b>${t.rx || "--"}</b></span></div>`;
             }
             if (t.senalCaja) {
-                extrasHtml += `<div style="background: rgba(245,158,11,0.05); border: 1px dashed var(--warning); padding: 4px 8px; border-radius: 4px; margin-top: 6px; display: inline-block;">
-                    <span class="cliente-info m-0" style="color:var(--warning); font-size:11px;"><span class="lbl-info">📡 SEÑAL CAJA:</span> <b>${t.senalCaja}</b></span>
-                </div>`;
+                extrasHtml += `<div style="background: rgba(245,158,11,0.05); border: 1px dashed var(--warning); padding: 4px 8px; border-radius: 4px; margin-top: 6px;"><span class="cliente-info" style="color:var(--warning)"><span class="lbl-info">📡 SEÑAL CAJA:</span> <b>${t.senalCaja}</b></span></div>`;
             }
 
             let slaHtml = "";
@@ -1137,22 +1389,19 @@ window.renderizarTabla = () => {
                 let hrInicio = new Date(t.tsInicio).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
                 let hrFin = t.tsFin ? new Date(t.tsFin).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" }) : "--:--";
                 let duracion = t.tsInicio && t.tsFin ? `(${Math.floor(Math.floor((t.tsFin - t.tsInicio) / 60000) / 60)}h ${Math.floor((t.tsFin - t.tsInicio) / 60000) % 60}m)` : "(En curso...)";
-                slaHtml = `<div style="background: rgba(0,229,255,0.05); border: 1px dashed var(--accent); padding: 8px; border-radius: 6px; margin-top: 8px;">
-                    <span class="cliente-info m-0" style="color:var(--accent)"><span class="lbl-info">⏱️ SLA:</span> Inicio: ${hrInicio} | Fin: ${hrFin} <b>${duracion}</b></span>
-                    ${t.notaCierre ? `<span class="cliente-info mt-1 m-0" style="color:var(--success)"><span class="lbl-info">📝 NOTA TEC:</span> ${t.notaCierre}</span>` : ""}
-                </div>`;
+                slaHtml = `<div style="background: rgba(0,229,255,0.05); border: 1px dashed var(--accent); padding: 8px; border-radius: 6px; margin-top: 8px;"><span class="cliente-info" style="color:var(--accent)"><span class="lbl-info">⏱️ SLA:</span> Inicio: ${hrInicio} | Fin: ${hrFin} <b>${duracion}</b></span>${t.notaCierre ? `<span class="cliente-info" style="color:var(--success)"><span class="lbl-info">📝 NOTA TEC:</span> ${t.notaCierre}</span>` : ""}</div>`;
             }
 
             let refHtml = t.referencia ? `<span class="cliente-info"><span class="lbl-info">REF:</span> ${t.referencia}</span>` : "";
             let notaEstilo = estActual === "rechazada" ? "color: var(--danger); font-weight: bold; background: rgba(239, 68, 68, 0.1); padding: 4px; border-radius: 4px;" : "color: var(--warning); font-weight:bold;";
 
             let dirH = `<span class="badge-tipo ${colorBadge}">${nombreTipo} - ${t.detalle}</span>
-                    <span class="cliente-info mt-1"><span class="lbl-info">DIR:</span> ${t.dir}</span>
+                    <span class="cliente-info"><span class="lbl-info">DIR:</span> ${t.dir}</span>
                     ${refHtml}
                     <span class="cliente-info"><span class="lbl-info">FECHA:</span> ${formatoFecha(t.fecha)} | ${t.horaInicio || "--:--"} a ${t.horaFin || "--:--"}</span>
                     <span class="cliente-info"><span class="lbl-info">TEC:</span> <b>${asig.join(", ")}</b></span>
                     ${extrasHtml}
-                    ${t.notas ? `<span class="cliente-info mt-1" style="${notaEstilo}"><span class="lbl-info">NOTA:</span> ${t.notas}</span>` : ""}
+                    ${t.notas ? `<span class="cliente-info" style="${notaEstilo}"><span class="lbl-info">NOTA:</span> ${t.notas}</span>` : ""}
                     ${slaHtml}`;
 
             let telArray = String(t.tel || "").split("/");
@@ -1167,68 +1416,55 @@ window.renderizarTabla = () => {
             let botonesHtml = ``;
 
             if (isCarlos && estActual === "por_aprobar_carlos") {
-                botonesHtml += `<div class="btn-grid-row">
-                            <button type="button" class="btn-action-ui btn-ui-estado" onclick="aprobarDirecto('${t.id}')"><i class="fa-solid fa-thumbs-up"></i> Aprobar</button>
-                            <button type="button" class="btn-action-ui btn-ui-eliminar" onclick="rechazarDirecto('${t.id}')"><i class="fa-solid fa-xmark"></i> Rechazar</button>
-                        </div>`;
+                botonesHtml += `<div class="btn-grid-row"><button class="btn-action-ui btn-ui-estado" onclick="aprobarDirecto('${t.id}')"><i class="fa-solid fa-thumbs-up"></i> Aprobar</button><button class="btn-action-ui btn-ui-eliminar" onclick="rechazarDirecto('${t.id}')"><i class="fa-solid fa-xmark"></i> Rechazar</button></div>`;
             }
 
             if ((isWilton || isAdmin || isAdminLurin) && estActual === "aprobada_wilton") {
-                botonesHtml += `<div class="btn-grid-row"><button type="button" class="btn-action-ui btn-ui-estado" onclick="editarTrabajo('${t.id}')"><i class="fa-solid fa-calendar"></i> Programar</button></div>`;
+                botonesHtml += `<div class="btn-grid-row"><button class="btn-action-ui btn-ui-estado" onclick="editarTrabajo('${t.id}')"><i class="fa-solid fa-calendar"></i> Programar</button></div>`;
             }
 
-            // ============================================================ //
-            // BOTONES DE ESTADO DUALES (RETENCIÓN vs NOC)                   //
-            // ============================================================ //
             let textoAccion = ""; let iconAccion = "";
             let mostrarBtnEstado = false;
 
-            if (esRetencion) {
-                if (estActual === "pendiente") { textoAccion = "Marcar Atendido"; iconAccion = "fa-check"; } 
-                else if (estActual === "atendido") { textoAccion = "No Atendido"; iconAccion = "fa-xmark"; } 
-                else if (estActual === "no_atendido") { textoAccion = "A Pendiente"; iconAccion = "fa-backward"; }
-                
-                if (isCarlos || isAdmin || isAdminLurin || isCobranzas) mostrarBtnEstado = true;
-            } else {
-                if (estActual === "pendiente") { textoAccion = "En Camino"; iconAccion = "fa-person-walking"; } 
-                else if (estActual === "en_camino") { textoAccion = "Finalizar"; iconAccion = "fa-check"; } 
-                else if (estActual === "atendido") { textoAccion = "No Atendido"; iconAccion = "fa-xmark"; } 
-                else if (estActual === "no_atendido") { textoAccion = "A Pendiente"; iconAccion = "fa-backward"; }
-
-                if (!isVendedor && !isCarlos && !isWilton && !isAdmin && !isAdminLurin && !esAprobacion) mostrarBtnEstado = true;
-            }
+            if (estActual === "pendiente") { textoAccion = "En Camino"; iconAccion = "fa-person-walking"; } 
+            else if (estActual === "en_camino") { textoAccion = "Finalizar"; iconAccion = "fa-check"; } 
+            else if (estActual === "atendido") { textoAccion = "No Atendido"; iconAccion = "fa-xmark"; } 
+            else if (estActual === "no_atendido") { textoAccion = "A Pendiente"; iconAccion = "fa-backward"; }
+            
+            if (!isVendedor && !isCarlos && !isWilton && !isAdmin && !isAdminLurin && !isCobranzas && !esAprobacion) mostrarBtnEstado = true;
+            if (esRetiroNOC && isWilton) mostrarBtnEstado = true;
 
             if (mostrarBtnEstado && textoAccion !== "") {
-                botonesHtml += `<div class="btn-grid-row"><button type="button" class="btn-action-ui btn-ui-estado" onclick="cambiarEstado('${t.id}', '${estActual}', ${esRetencion})"><i class="fa-solid ${iconAccion}"></i> ${textoAccion}</button></div>`;
+                botonesHtml += `<div class="btn-grid-row"><button class="btn-action-ui btn-ui-estado" onclick="cambiarEstado('${t.id}', '${estActual}', ${esRetiroNOC})"><i class="fa-solid ${iconAccion}"></i> ${textoAccion}</button></div>`;
             }
 
             let btnCajaHtml = '';
             if (t.tipoTarea === "alta" || t.tipoTarea === "otros" || t.linkCaja) {
                 if (t.linkCaja) btnCajaHtml = `<a href="${t.linkCaja}" target="_blank" class="btn-action-ui btn-ui-nap"><i class="fa-solid fa-box"></i> Ver Caja NAP</a>`;
-                else btnCajaHtml = `<button type="button" class="btn-action-ui btn-ui-nap" disabled><i class="fa-solid fa-box"></i> Sin Caja</button>`;
+                else btnCajaHtml = `<button class="btn-action-ui btn-ui-nap" disabled><i class="fa-solid fa-box"></i> Sin Caja</button>`;
             }
 
             let btnMapaHtml = '';
             if (t.mapa) {
-                let isTecnico = !isVendedor && !isCarlos && !isWilton && !isAdmin && !isAdminLurin;
+                let isTecnico = !isVendedor && !isCarlos && !isWilton && !isAdmin && !isAdminLurin && !isCobranzas;
                 let isLurinUser = zonaActual === "Lurin" || isAdminLurin;
                 if (isTecnico || isLurinUser) btnMapaHtml = `<a href="${t.mapa}" target="_blank" class="btn-action-ui btn-ui-mapa"><i class="fa-solid fa-location-dot"></i> Mapa</a>`;
-                else btnMapaHtml = `<button type="button" class="btn-action-ui btn-ui-mapa" onclick="verMapaCliente('${t.id}')"><i class="fa-solid fa-location-dot"></i> Mapa</button>`;
+                else btnMapaHtml = `<button class="btn-action-ui btn-ui-mapa" onclick="verMapaCliente('${t.id}')"><i class="fa-solid fa-location-dot"></i> Mapa</button>`;
             } else {
-                btnMapaHtml = `<button type="button" class="btn-action-ui btn-ui-mapa" disabled><i class="fa-solid fa-location-dot"></i> Mapa</button>`;
+                btnMapaHtml = `<button class="btn-action-ui btn-ui-mapa" disabled><i class="fa-solid fa-location-dot"></i> Mapa</button>`;
             }
 
             botonesHtml += `<div class="btn-grid-row">${btnMapaHtml} ${btnCajaHtml}</div>`;
 
             if (numLimpio.length > 5 && t.tipoTarea !== "otros") botonesHtml += `<div class="btn-grid-row"><a href="${linkWsp}" target="_blank" class="btn-action-ui btn-ui-wsp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a></div>`;
 
-            let isTecnico = !isVendedor && !isCarlos && !isWilton && !isAdmin && !isAdminLurin;
+            let isTecnico = !isVendedor && !isCarlos && !isWilton && !isAdmin && !isAdminLurin && !isCobranzas;
             let btnSenalHtml = "";
             let textoBtnEditar = "<i class='fa-solid fa-pen'></i> Editar";
             let permitirEditarTecnico = false;
 
             if (t.tipoTarea === "alta" || t.tipoTarea === "averia" || (t.tipoTarea === "otros" && t.detalle === "Seguimiento de fibra")) {
-                btnSenalHtml = `<button type="button" class="btn-action-ui" style="background: rgba(0, 229, 255, 0.1); border: 1px solid var(--accent); color: var(--accent);" onclick="abrirModalSenal('${t.id}', '${t.tipoTarea}', '${t.detalle}')"><i class="fa-solid fa-satellite-dish"></i> Registrar Señal</button>`;
+                btnSenalHtml = `<button class="btn-action-ui" style="background: rgba(0, 229, 255, 0.1); border: 1px solid var(--accent); color: var(--accent);" onclick="abrirModalSenal('${t.id}', '${t.tipoTarea}', '${t.detalle}')"><i class="fa-solid fa-satellite-dish"></i> Registrar Señal</button>`;
             } else if (t.tipoTarea === "otros" && t.detalle === "Limpieza de caja") {
                 permitirEditarTecnico = true; 
                 if (isTecnico) textoBtnEditar = "<i class='fa-solid fa-list-check'></i> Puertos/Señal";
@@ -1236,18 +1472,15 @@ window.renderizarTabla = () => {
 
             let btnEditGralHtml = "";
             if (isAdmin || isAdminLurin || isWilton || isCarlos || isVendedor || permitirEditarTecnico || isCobranzas) {
-                btnEditGralHtml = `<button type="button" class="btn-action-ui btn-ui-editar" onclick="editarTrabajo('${t.id}')">${textoBtnEditar}</button>`;
+                btnEditGralHtml = `<button class="btn-action-ui btn-ui-editar" onclick="editarTrabajo('${t.id}')">${textoBtnEditar}</button>`;
             }
 
             if (btnSenalHtml !== "") botonesHtml += `<div class="btn-grid-row">${btnSenalHtml}</div>`;
             
-            botonesHtml += `<div class="btn-grid-row">
-                        <button type="button" class="btn-action-ui btn-ui-copiar" onclick="copiarDatos(this)"><i class="fa-solid fa-copy"></i> Copiar</button>
-                        ${btnEditGralHtml}
-                    </div>`;
+            botonesHtml += `<div class="btn-grid-row"><button class="btn-action-ui btn-ui-copiar" onclick="copiarDatos(this)"><i class="fa-solid fa-copy"></i> Copiar</button>${btnEditGralHtml}</div>`;
 
             if (isAdmin || isAdminLurin) {
-                botonesHtml += `<div class="btn-grid-row"><button type="button" class="btn-action-ui btn-ui-eliminar" onclick="preguntarEliminar('${t.id}')"><i class="fa-solid fa-trash"></i> Eliminar</button></div>`;
+                botonesHtml += `<div class="btn-grid-row"><button class="btn-action-ui btn-ui-eliminar" onclick="preguntarEliminar('${t.id}')"><i class="fa-solid fa-trash"></i> Eliminar</button></div>`;
             }
 
             let colorEstadoTxt = clasePunto === "ep-pend" ? "var(--warning)" : clasePunto === "ep-aten" ? "var(--success)" : clasePunto === "ep-noat" ? "var(--danger)" : clasePunto === "ep-cami" ? "var(--accent)" : clasePunto === "ep-aprobar" ? "var(--purple)" : clasePunto === "ep-aprobada" ? "var(--accent)" : "var(--danger)";
@@ -1270,6 +1503,9 @@ window.renderizarTabla = () => {
     actualizarGraficosGerenciales(pGrafico);
 };
 
+// ============================================================ //
+// CAMBIO DE ESTADO Y CIERRE SLA                                //
+// ============================================================ //
 window.cambiarEstado = async (id, estadoActual, esRetencion = false) => {
     let nE = "pendiente";
     
@@ -1319,7 +1555,7 @@ window.ejecutarCierreSLA = async () => {
 // GRÁFICOS Y CALENDARIO                                        //
 // ============================================================ //
 function actualizarGraficosGerenciales(trabajosFiltrados) {
-    if (!isAdmin && !isAdminLurin && !isWilton && !isCarlos && !isVendedor) return;
+    if (!isAdmin && !isAdminLurin && !isWilton && !isCarlos && !isVendedor && !isCobranzas) return;
 
     setTimeout(() => {
         try {
@@ -1340,14 +1576,14 @@ function actualizarGraficosGerenciales(trabajosFiltrados) {
                 });
             });
 
-            document.getElementById("kpiTotal").innerText = trabajosFiltrados.length;
-            document.getElementById("kpiAtendidos").innerText = aten;
-            document.getElementById("kpiPendientes").innerText = pend;
-            document.getElementById("kpiNoAtendidos").innerText = noAten;
+            if(document.getElementById("kpiTotal")) document.getElementById("kpiTotal").innerText = trabajosFiltrados.length;
+            if(document.getElementById("kpiAtendidos")) document.getElementById("kpiAtendidos").innerText = aten;
+            if(document.getElementById("kpiPendientes")) document.getElementById("kpiPendientes").innerText = pend;
+            if(document.getElementById("kpiNoAtendidos")) document.getElementById("kpiNoAtendidos").innerText = noAten;
 
             if (typeof window.renderizarCalendario === "function") window.renderizarCalendario();
 
-            if (isAdmin || isAdminLurin || isWilton) {
+            if (isAdmin || isAdminLurin || isWilton || isCobranzas) {
                 const isDark = document.documentElement.getAttribute("data-theme") !== "light";
                 const textColor = isDark ? "#94a3b8" : "#64748b";
                 const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
@@ -1421,7 +1657,7 @@ window.renderizarCalendario = () => {
         const isActive = diaStr === diaSeleccionado;
         const isToday = diaStr === hoyStr;
 
-        htmlStrip += `<div class="cal-week-day ${isActive ? "active" : ""} ${isToday && !isActive ? "today" : ""}" onclick="seleccionarDia('${diaStr}')">
+        htmlStrip += `<div class="cal-week-day ${isActive ? "active" : ""} ${isToday && !isActive ? "today" : ""}" onclick="window.seleccionarDia('${diaStr}')">
                     <div class="cal-week-dayname">${diasSemana[i]}</div>
                     <div class="cal-week-daynum">${diaNum}</div>
                     ${trabajosDia.length > 0 ? `<div class="cal-week-daycount">${trabajosDia.length}</div>` : ""}
@@ -1441,7 +1677,7 @@ window.renderizarCalendario = () => {
     } else {
         let htmlPills = "";
         trabajosSel.forEach((t) => {
-            htmlPills += `<div class="cal-event-pill ${t.tipoTarea || "alta"}" onclick="filtrarPorCliente('${t.cliente.replace(/'/g, "\\'")}')" title="${t.cliente} | ${t.horaInicio || "--:--"} | ${t.tecnicos}">
+            htmlPills += `<div class="cal-event-pill ${t.tipoTarea || "alta"}" onclick="window.filtrarPorCliente('${t.cliente.replace(/'/g, "\\'")}')" title="${t.cliente} | ${t.horaInicio || "--:--"} | ${t.tecnicos}">
                         <span class="cal-event-dot"></span>${t.horaInicio || "--:--"} · ${t.cliente.split(" ")[0]}
                     </div>`;
         });
@@ -1454,7 +1690,7 @@ window.irAHoy = () => { semanaOffset = 0; diaSeleccionado = new Date().toISOStri
 window.seleccionarDia = (fechaStr) => { diaSeleccionado = fechaStr; window.renderizarCalendario(); };
 window.filtrarPorCliente = (nombre) => {
     const buscador = document.getElementById("buscador");
-    if (buscador) { buscador.value = nombre; renderizarTabla(); mostrarToast(`🔍 Filtrando: ${nombre}`); }
+    if (buscador) { buscador.value = nombre; window.renderizarTabla(); mostrarToast(`🔍 Filtrando: ${nombre}`); }
 };
 
 const coloresTecnicos = ["#0ea5e9", "#f43f5e", "#10b981", "#f59e0b", "#8b5cf6", "#f97316", "#06b6d4", "#14b8a6"];
@@ -1465,7 +1701,7 @@ window.abrirModalCalendario = () => {
     let htmlFiltro = `<option value="todos">Todos los Técnicos</option>`;
     listaTecnicos.forEach((t) => { htmlFiltro += `<option value="${t}">${t}</option>`; });
     document.getElementById("filtroTecnicoCalendario").innerHTML = htmlFiltro;
-    actualizarCalendarioGeneral();
+    window.actualizarCalendarioGeneral();
 };
 window.cerrarModalCalendario = () => { document.getElementById("modalCalendario").style.display = "none"; };
 
@@ -1505,7 +1741,10 @@ window.actualizarCalendarioGeneral = () => {
     });
 
     window.calendarioInstancia = new FullCalendar.Calendar(calendarEl, {
-        initialView: "timeGridWeek", locale: "es",
+        initialView: "timeGridWeek", 
+        locale: "es",
+        height: "100%",       // OBLIGA AL CALENDARIO A LLENAR EL MODAL
+        expandRows: true,     // ESTIRA LAS HORAS PARA QUE NO QUEDE ESPACIO EN BLANCO
         headerToolbar: { left: "prev,next today", center: "title", right: "timeGridDay,timeGridWeek,dayGridMonth" },
         slotMinTime: "06:00:00", slotMaxTime: "22:00:00", allDaySlot: false, events: eventos,
         eventClick: function(info) {
@@ -1533,8 +1772,10 @@ function formatoFecha(fs) {
 
 function mostrarToast(msg) {
     const t = document.getElementById("toast");
-    t.innerHTML = msg; t.className = "show";
-    setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+    if(t) {
+        t.innerHTML = msg; t.className = "show";
+        setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+    }
 }
 
 window.copiarDatos = (btn) => {
@@ -1605,7 +1846,7 @@ window.renderizarTablaPlanesConfig = () => {
                 <td style="font-weight:900; color:var(--accent);">S/ ${p.precio}</td>
                 <td style="font-weight:700;">${p.nombre}</td>
                 <td style="text-align: center;">
-                    <button class="btn-danger-outline" onclick="eliminarPlanConfig(${index})" style="padding: 4px 8px; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
+                    <button class="btn-danger-outline" onclick="window.eliminarPlanConfig(${index})" style="padding: 4px 8px; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>
         `;
@@ -1643,102 +1884,10 @@ window.eliminarPlanConfig = (index) => {
 };
 
 // ==========================================
-// MÓDULO: CRM DE COBRANZAS Y EXCEL
-// ==========================================
-
-// ==========================================
-// NUEVO MOTOR DE LECTURA DE EXCEL (Lee todo sin borrar nada)
-// ==========================================
-window.procesarExcelClientes = (event) => {
-    let file = event.target.files[0];
-    if (!file) return;
-    
-    mostrarToast("⏳ Leyendo Excel y calculando datos...");
-    
-    let reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            let data = new Uint8Array(e.target.result);
-            let workbook = XLSX.read(data, {type: 'array'});
-            let worksheet = workbook.Sheets[workbook.SheetNames[0]];
-            
-            window.bdClientesGlobal = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-            
-            // 1. CÁLCULO NUCLEAR
-            let activos = 0, suspendidos = 0, retirados = 0;
-            window.bdClientesGlobal.forEach(c => {
-                let fila = {};
-                for (let llave in c) {
-                    let llaveMilitar = llave.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
-                    fila[llaveMilitar] = c[llave];
-                }
-                let estMinus = String(fila["estadocliente"] || fila["estado"] || "").toLowerCase().trim();
-                if (estMinus.includes("activo")) activos++;
-                else if (estMinus.includes("suspendido") || estMinus.includes("cortado")) suspendidos++;
-                else if (estMinus.includes("retirado") || estMinus.includes("baja")) retirados++;
-            });
-
-            let total = activos + suspendidos + retirados;
-            if(total === 0) total = window.bdClientesGlobal.length;
-
-            // 2. ACTUALIZACIÓN VISUAL AL INSTANTE (Magia sin F5)
-            let opcionesFecha = { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' };
-            let fechaHoy = new Date().toLocaleDateString('es-PE', opcionesFecha);
-
-            document.getElementById("kpiCliActivos").innerText = activos;
-            document.getElementById("kpiCliSuspendidos").innerText = suspendidos;
-            document.getElementById("kpiCliRetirados").innerText = retirados;
-            document.getElementById("kpiCliTotal").innerText = total;
-            
-            let lblFecha = document.getElementById("lblFechaBD");
-            if(lblFecha) lblFecha.innerText = `Act: ${fechaHoy}`;
-            
-            let pctAct = Math.round((activos / total) * 100) || 0;
-            let pctSus = Math.round((suspendidos / total) * 100) || 0;
-            let pctRet = Math.round((retirados / total) * 100) || 0;
-            
-            document.getElementById("pctActivos").innerText = `(${pctAct}%)`;
-            document.getElementById("pctSuspendidos").innerText = `(${pctSus}%)`;
-            document.getElementById("pctRetirados").innerText = `(${pctRet}%)`;
-
-            // Guardar en memoria local
-            localStorage.setItem("kpi_activos", activos);
-            localStorage.setItem("kpi_suspendidos", suspendidos);
-            localStorage.setItem("kpi_retirados", retirados);
-            localStorage.setItem("kpi_total", total); 
-            localStorage.setItem("kpi_fecha", fechaHoy);
-
-            // 3. GUARDAR EN EL DISCO DURO DEL NAVEGADOR
-            const request = indexedDB.open("TEN_DB_CLIENTES", 1);
-            request.onupgradeneeded = (ev) => {
-                if (!ev.target.result.objectStoreNames.contains("clientesStore")) {
-                    ev.target.result.createObjectStore("clientesStore", { keyPath: "id" });
-                }
-            };
-            request.onsuccess = (ev) => {
-                const db = ev.target.result;
-                const tx = db.transaction("clientesStore", "readwrite");
-                tx.objectStore("clientesStore").put({ id: "bd_completa", data: window.bdClientesGlobal });
-                tx.oncomplete = () => {
-                    event.target.value = ''; 
-                    
-                    // Nota: La subida a Firebase ahora es manual
-                    mostrarToast("✅ Excel Local guardado correctamente.");
-                };
-            };
-        } catch(error) {
-            console.error(error);
-            mostrarToast("❌ Error al leer el Excel.");
-        }
-    };
-    reader.readAsArrayBuffer(file);
-};
-
-// ==========================================
-// BUSCADOR AVANZADO Y ENVIO MASIVO (CON PRE-ENVÍO)
+// BUSCADOR AVANZADO Y ENVIO MASIVO
 // ==========================================
 window.abrirModalFiltroBD = () => {
-    if (window.bdClientesGlobal.length === 0) { mostrarToast("⚠️ Debes Cargar el Excel primero."); return; }
+    if (window.bdClientesGlobal.length === 0) { mostrarToast("⚠️ Primero Sincroniza desde la Nube."); return; }
     let zonas = new Set(); let planes = new Set(); let meses = new Set(); let anios = new Set();
     
     window.bdClientesGlobal.forEach(c => { 
@@ -1748,8 +1897,8 @@ window.abrirModalFiltroBD = () => {
         if (c.anio) anios.add(c.anio);
     });
     
-    let htmlZonas = '<option value="Todas">Todas las Zonas</option>'; [...zonas].sort().forEach(z => htmlZonas += `<option value="${z}">${z}</option>`); document.getElementById('filtroBdZona').innerHTML = htmlZonas;
-    let htmlPlanes = '<option value="Todos">Todos los Planes</option>'; [...planes].sort().forEach(p => htmlPlanes += `<option value="${p}">${p}</option>`); document.getElementById('filtroBdPlan').innerHTML = htmlPlanes;
+    let htmlZonas = '<option value="Todas">Todas las Zonas</option>'; [...zonas].sort().forEach(z => htmlZonas += `<option value="${z}">${z}</option>`); if(document.getElementById('filtroBdZona')) document.getElementById('filtroBdZona').innerHTML = htmlZonas;
+    let htmlPlanes = '<option value="Todos">Todos los Planes</option>'; [...planes].sort().forEach(p => htmlPlanes += `<option value="${p}">${p}</option>`); if(document.getElementById('filtroBdPlan')) document.getElementById('filtroBdPlan').innerHTML = htmlPlanes;
     let htmlMeses = '<option value="Todos">Todos</option>'; [...meses].sort().forEach(m => { if(m) htmlMeses += `<option value="${m}">${m}</option>`; }); if (document.getElementById('filtroBdMes')) document.getElementById('filtroBdMes').innerHTML = htmlMeses;
     let htmlAnios = '<option value="Todos">Todos</option>'; [...anios].sort().forEach(a => { if(a) htmlAnios += `<option value="${a}">${a}</option>`; }); if (document.getElementById('filtroBdAnio')) document.getElementById('filtroBdAnio').innerHTML = htmlAnios;
     
@@ -1769,81 +1918,80 @@ window.ejecutarFiltroBD = () => {
 
     let html = "";
     let count = 0;
+    let totalMatches = 0;
 
-    (window.bdClientesGlobal || []).forEach(c => {
-        if (!c) return;
+    for (let i = 0; i < window.bdClientesGlobal.length; i++) {
+        let c = window.bdClientesGlobal[i];
 
-        // 🧹 ASPIRADORA: Convierte los títulos del Excel a minúsculas y les quita espacios fantasma
         let filaLimpia = {};
         for(let key in c) {
-            filaLimpia[key.toLowerCase().trim()] = c[key];
+            let cleanKey = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").trim();
+            filaLimpia[cleanKey] = c[key];
         }
 
-        // 🛡️ LECTURA PERFECTA Y BLINDADA
-        let nom = filaLimpia["apellidos y nombres"] || filaLimpia["nombre"] || "Sin Nombre";
-        let numDni = filaLimpia["n° documento"] || filaLimpia["dni"] || filaLimpia["id_cliente"] || "";
-        let tipoDoc = filaLimpia["tipo de documento"] ? filaLimpia["tipo de documento"] + " " : "DNI ";
+        let nom = filaLimpia["apellidosynombres"] || filaLimpia["nombre"] || "Sin Nombre";
+        let numDni = filaLimpia["ndocumento"] || filaLimpia["dni"] || filaLimpia["idcliente"] || "";
+        let tipoDoc = filaLimpia["tipodedocumento"] ? filaLimpia["tipodedocumento"] + " " : "DNI ";
         let dniMostrar = tipoDoc + numDni;
 
-        // ESTADO GARANTIZADO
-        let estadoReal = filaLimpia["estado cliente"] || filaLimpia["estado"] || "NO DEFINIDO";
+        let estadoReal = filaLimpia["estadocliente"] || filaLimpia["estado"] || "NO DEFINIDO";
         let est = String(estadoReal).toLowerCase().trim();
 
         let zon = filaLimpia["zona"] || filaLimpia["distrito"] || "";
-        let dir = filaLimpia["dirección"] || filaLimpia["direccion"] || "";
-        let pla = filaLimpia["tarifa de internet"] || filaLimpia["plan"] || "";
+        let dir = filaLimpia["direccion"] || filaLimpia["domicilio"] || "";
+        let pla = filaLimpia["tarifadeinternet"] || filaLimpia["plan"] || "";
         let mesC = filaLimpia["mes"] || "";
-        let anioC = filaLimpia["año"] || filaLimpia["anio"] || "";
+        let anioC = filaLimpia["ano"] || filaLimpia["anio"] || "";
 
-        // TELÉFONOS (Atrapa hasta 3 si existen)
         let listaTels = [];
-        if (filaLimpia["telefono 1"]) listaTels.push(filaLimpia["telefono 1"]);
-        if (filaLimpia["telefono 2"]) listaTels.push(filaLimpia["telefono 2"]);
-        if (filaLimpia["telefono 3"]) listaTels.push(filaLimpia["telefono 3"]);
-        
-        let tels = listaTels.length > 0 ? listaTels.join(" / ") : (c.telefonos || "");
+        if (filaLimpia["telefono1"]) listaTels.push(filaLimpia["telefono1"]);
+        if (filaLimpia["telefono2"]) listaTels.push(filaLimpia["telefono2"]);
+        if (filaLimpia["telefono3"]) listaTels.push(filaLimpia["telefono3"]);
+        let tels = listaTels.length > 0 ? listaTels.join(" / ") : (Array.isArray(c.telefonos) ? c.telefonos.join(" / ") : (c.telefonos || ""));
 
-        // Aplicar Filtros 
-        if (estadoF !== "todos" && est !== estadoF) return;
-        if (zonaF !== "Todas" && zon !== zonaF) return;
-        if (planF !== "Todos" && pla !== planF) return;
-        if (mesF !== "Todos" && String(mesC) !== mesF) return;
-        if (anioF !== "Todos" && String(anioC) !== anioF) return;
+        if (estadoF !== "todos" && est !== estadoF) continue;
+        if (zonaF !== "Todas" && zon !== zonaF) continue;
+        if (planF !== "Todos" && pla !== planF) continue;
+        if (mesF !== "Todos" && String(mesC) !== mesF) continue;
+        if (anioF !== "Todos" && String(anioC) !== anioF) continue;
         
         if (searchT !== "") {
             let textoFila = `${nom} ${numDni} ${tels} ${dir}`.toLowerCase();
-            if (!textoFila.includes(searchT)) return;
+            if (!textoFila.includes(searchT)) continue;
         }
 
-        // COLORES 
-        let colorE = est.includes('activo') ? 'var(--success)' : est.includes('suspendido') ? 'var(--warning)' : est.includes('retirado') || est.includes('baja') ? 'var(--danger)' : '#94a3b8';
+        totalMatches++;
 
-        // --- GENERAR FILA ---
-        html += `
-        <tr>
-            <td style="text-align: center;"><input type="checkbox" class="chk-bd-item" value="${numDni}"></td>
-            <td><span style="background: rgba(0,0,0,0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid ${colorE}; color: ${colorE}; font-weight: 900; text-transform: uppercase; font-size: 11px;">${estadoReal.toUpperCase()}</span></td>
-            <td><span style="font-weight: 800; font-size: 13px; display: block;">${nom}</span><span style="font-family: monospace; font-size: 11px; color: var(--text-muted)">${dniMostrar}</span></td>
-            <td style="max-width: 150px; font-size: 12px;">${tels}</td>
-            <td style="font-size: 12px;"><span style="color: #3b82f6; font-weight: bold;">${zon || 'Sin Zona'}</span><br><small>${dir}</small></td>
-            <td><strong style="color:#a855f7; font-size: 12px;">${pla}</strong></td>
-            <td>
-                <button class="btn-primary" onclick="window.crearRetencionDirecta('${numDni}')" style="padding: 4px 8px; font-size: 10px; width: 100%;"><i class="fa-solid fa-paper-plane"></i> A Bandeja</button>
-            </td>
-        </tr>`;
-        count++;
-    });
+        if (count < 100) {
+            let colorE = est.includes('activo') ? 'var(--success)' : est.includes('suspendido') ? 'var(--warning)' : est.includes('retirado') || est.includes('baja') ? 'var(--danger)' : '#94a3b8';
+            html += `
+            <tr>
+                <td style="text-align: center;"><input type="checkbox" class="chk-bd-item" value="${numDni}"></td>
+                <td><span style="background: rgba(0,0,0,0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid ${colorE}; color: ${colorE}; font-weight: 900; text-transform: uppercase; font-size: 11px;">${estadoReal.toUpperCase()}</span></td>
+                <td><span style="font-weight: 800; font-size: 13px; display: block;">${nom}</span><span style="font-family: monospace; font-size: 11px; color: var(--text-muted)">${dniMostrar}</span></td>
+                <td style="max-width: 150px; font-size: 12px;">${tels}</td>
+                <td style="font-size: 12px;"><span style="color: #3b82f6; font-weight: bold;">${zon || 'Sin Zona'}</span><br><small>${dir}</small></td>
+                <td><strong style="color:#a855f7; font-size: 12px;">${pla}</strong></td>
+                <td>
+                    <button class="btn-primary" onclick="window.crearRetencionDirecta('${numDni}')" style="padding: 4px 8px; font-size: 10px; width: 100%;"><i class="fa-solid fa-paper-plane"></i> A Bandeja</button>
+                </td>
+            </tr>`;
+            count++;
+        }
+    }
 
-    if (count === 0) {
+    if (totalMatches === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4 font-bold">No se encontraron clientes con esos filtros.</td></tr>`;
     } else {
+        if (totalMatches > 100) {
+            html += `<tr><td colspan="7" class="text-center py-4 text-muted" style="font-weight: bold; background: rgba(0,0,0,0.02);">Mostrando 100 de ${totalMatches} resultados. Usa el buscador para refinar.</td></tr>`;
+        }
         tbody.innerHTML = html;
     }
 
-    // 🔨 LIMPIEZA FINAL DEL CONTADOR
     let countEl = document.getElementById("contadorResultadosBD") || document.getElementById("contadorBD");
     if(countEl) {
-        countEl.innerText = `${count} clientes encontrados`;
+        countEl.innerText = `${totalMatches} clientes encontrados`;
         countEl.removeAttribute("style"); 
         countEl.style.fontWeight = "900";
         countEl.style.color = "var(--accent)";
@@ -1853,9 +2001,6 @@ window.ejecutarFiltroBD = () => {
 
 window.toggleAllBD = (el) => { document.querySelectorAll('.chk-bd-item').forEach(chk => chk.checked = el.checked); };
 
-// ============================================================ //
-// MOTOR PRE-ENVÍO Y CONFIRMACIÓN (PARA ENVÍOS MASIVOS)        //
-// ============================================================ //
 window.prepararEnvioBandeja = (dni = null) => {
     let seleccionados = dni ? [dni] : Array.from(document.querySelectorAll('.chk-bd-item:checked')).map(chk => chk.value);
     if(seleccionados.length === 0) { mostrarToast("⚠️ Selecciona al menos un cliente."); return; }
@@ -1876,38 +2021,44 @@ window.confirmarEnvioBandeja = async () => {
     let nota = document.getElementById("preEnvioNota").value;
     let zonaAGuardar = document.getElementById("selectorZona")?.value || "Norte";
     
-    // Agregamos esto:
     let asignado = document.getElementById("preEnvioAsignado") ? document.getElementById("preEnvioAsignado").value : "JRODRIGUEZ";
 
     mostrarToast("⏳ Enviando a bandeja...");
 
     for(let dni of seleccionados) {
-        let cliente = window.bdClientesGlobal.find(c => c.dni === dni);
+        let cliente = window.bdClientesGlobal.find(c => {
+            let nDni = c["n° documento"] || c["ndocumento"] || c.dni || c.id_cliente;
+            return String(nDni).trim() === String(dni).trim();
+        });
+        
         if(cliente) {
             let esRetiro = estado === "Retiro Definitivo";
-            let data = {
-                tipoTarea: esRetiro ? "baja" : "retencion", 
-                cliente: cliente.nombre, dni: cliente.dni, 
-                tel: cliente.telefonos.join(" / "), dir: cliente.direccion, 
-                zona: zonaAGuardar, fecha: fecha, horaInicio: hora, horaFin: "",
-                estado: 'pendiente', tecnicos: ["Sin Asignar"]
-            };
+            let telefonosSeguros = Array.isArray(cliente.telefonos) ? cliente.telefonos.join(" / ") : (cliente.telefonos || "");
 
-            if (esRetiro) {
-                data.detalle = "Retiro de Equipos"; 
-                data.notas = `[Generado desde BD] Motivo: ${nota}`;
-            } else {
-                data.estadoLlamada = estado;
-                data.detalle = "Llamada - " + estado;
-                data.notas = nota;
-                data.asignadoRetencion = asignado; // <-- AHORA SE GUARDA A QUIEN VA
-            }
+            let data = {
+                tipoTarea: "retencion",
+                cliente: cliente["apellidos y nombres"] || cliente["nombre"] || "Sin nombre", 
+                dni: dni, 
+                tel: telefonosSeguros,
+                dir: cliente["dirección"] || cliente["direccion"] || "", 
+                zona: zonaAGuardar, 
+                fecha: fecha, 
+                horaInicio: hora, 
+                horaFin: "",
+                estado: 'pendiente', 
+                tecnicos: ["Sin Asignar"],
+                estadoLlamada: estado,
+                detalle: esRetiro ? "Solicitud de Retiro" : "Llamada - " + estado,
+                notas: esRetiro ? `[Generado Masivo] Motivo: ${nota}` : nota,
+                asignadoRetencion: asignado
+            };
             await addDoc(coleccionTrabajos, data);
         }
     }
     mostrarToast(`✅ ${seleccionados.length} cliente(s) enviados.`);
-    document.getElementById("chkAllBD").checked = false; document.querySelectorAll('.chk-bd-item').forEach(chk => chk.checked = false);
-    cerrarModalGeneral('modalPreEnvioBandeja');
+    if(document.getElementById("chkAllBD")) document.getElementById("chkAllBD").checked = false; 
+    document.querySelectorAll('.chk-bd-item').forEach(chk => chk.checked = false);
+    window.cerrarModalGeneral('modalPreEnvioBandeja');
     if(window.cerrarModalGeneral) window.cerrarModalGeneral('modalFiltroBD');
 };
 
@@ -1917,13 +2068,16 @@ window.confirmarEnvioBandeja = async () => {
 window.alertasCobranzaGlobal = [];
 
 window.abrirModalGestionarCobranza = (dni) => {
-    let cliente = window.bdClientesGlobal.find(c => c.dni === dni);
+    let cliente = window.bdClientesGlobal.find(c => {
+        let nDni = c["n° documento"] || c["ndocumento"] || c.dni || c.id_cliente;
+        return String(nDni).trim() === String(dni).trim();
+    });
     if(!cliente) { mostrarToast("Error: No se encontró al cliente"); return; }
     
-    document.getElementById('cobDni').value = cliente.dni;
-    document.getElementById('cobNombre').value = cliente.nombre;
-    document.getElementById('lblCobCliente').innerText = cliente.nombre;
-    document.getElementById('lblCobDni').innerText = "DNI/ID: " + cliente.dni;
+    document.getElementById('cobDni').value = dni;
+    document.getElementById('cobNombre').value = cliente.nombre || cliente["apellidos y nombres"];
+    document.getElementById('lblCobCliente').innerText = cliente.nombre || cliente["apellidos y nombres"];
+    document.getElementById('lblCobDni').innerText = "DNI/ID: " + dni;
     
     document.getElementById('cobEstado').value = 'Promesa de Pago';
     document.getElementById('cobFecha').value = new Date().toISOString().split('T')[0];
@@ -1949,7 +2103,7 @@ window.guardarCobranza = async () => {
     try {
         await addDoc(coleccionCobranzas, data);
         mostrarToast("✅ Gestión guardada en la Nube");
-        cerrarModalGeneral('modalGestionarCobranza');
+        window.cerrarModalGeneral('modalGestionarCobranza');
     } catch(e) { console.error(e); mostrarToast("❌ Error al guardar en Firebase"); }
 };
 
@@ -1965,12 +2119,15 @@ window.iniciarEscuchaCobranzas = () => {
         });
         
         let badge = document.getElementById('badgeNotificaciones');
-        if (window.alertasCobranzaGlobal.length > 0) {
-            badge.innerText = window.alertasCobranzaGlobal.length;
-            badge.style.display = 'flex';
-        } else { badge.style.display = 'none'; }
+        if (badge) {
+            if (window.alertasCobranzaGlobal.length > 0) {
+                badge.innerText = window.alertasCobranzaGlobal.length;
+                badge.style.display = 'flex';
+            } else { badge.style.display = 'none'; }
+        }
         
-        if(document.getElementById('modalNotificaciones').style.display === 'flex') window.renderizarNotificaciones();
+        let modalNotif = document.getElementById('modalNotificaciones');
+        if(modalNotif && modalNotif.style.display === 'flex') window.renderizarNotificaciones();
     });
 };
 
@@ -1980,7 +2137,9 @@ window.abrirModalNotificaciones = () => {
 };
 
 window.renderizarNotificaciones = () => {
-    let tbody = document.getElementById('tablaNotificaciones'); tbody.innerHTML = '';
+    let tbody = document.getElementById('tablaNotificaciones'); 
+    if(!tbody) return;
+    tbody.innerHTML = '';
     if (window.alertasCobranzaGlobal.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4"><i class="fa-solid fa-mug-hot"></i> No hay recordatorios pendientes para hoy.</td></tr>`;
         return;
@@ -1992,7 +2151,7 @@ window.renderizarNotificaciones = () => {
                 <td><b style="font-size:12px; display:block;">${a.cliente}</b><span style="font-size:10px; color:var(--text-muted);">${a.nota}</span></td>
                 <td><span style="background:rgba(0,0,0,0.05); border:1px solid ${color}; color:${color}; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold;">${a.estadoLlamada}</span></td>
                 <td style="font-size:11px; font-weight:bold; color:var(--danger);">${a.fechaPromesa}</td>
-                <td style="text-align:center;"><button class="btn-success" onclick="marcarCobranzaResuelta('${a.id}')" style="padding:4px 8px; font-size:11px; border:none; border-radius:4px; cursor:pointer; background:var(--success); color:white;"><i class="fa-solid fa-check"></i> Listo</button></td>
+                <td style="text-align:center;"><button class="btn-success" onclick="window.marcarCobranzaResuelta('${a.id}')" style="padding:4px 8px; font-size:11px; border:none; border-radius:4px; cursor:pointer; background:var(--success); color:white;"><i class="fa-solid fa-check"></i> Listo</button></td>
             </tr>
         `;
     });
@@ -2012,10 +2171,9 @@ window.seleccionarTipoTarea = (tipo) => {
         if (tipoInput) tipoInput.value = tipo;
 
         document.querySelectorAll(".tab-btn").forEach((b) => {
-            b.classList.remove("active-alta", "active-averia", "active-baja", "active-otros", "active-retencion");
+            b.classList.remove("active-alta", "active-averia", "active-baja", "active-otros");
             if (b.id === "tabAveria") { b.style.color = "#8b9bb4"; b.style.borderColor = "var(--panel-border)"; }
             if (b.id === "tabOtros") { b.style.color = "#8b9bb4"; b.style.borderColor = "var(--panel-border)"; }
-            if (b.id === "tabRetencion") { b.style.color = "#8b9bb4"; b.style.borderColor = "var(--panel-border)"; }
         });
 
         let tabActiva = document.getElementById("tab" + tipo.charAt(0).toUpperCase() + tipo.slice(1));
@@ -2023,7 +2181,6 @@ window.seleccionarTipoTarea = (tipo) => {
             tabActiva.classList.add("active-" + tipo);
             if (tipo === "averia") { tabActiva.style.color = "#2979ff"; tabActiva.style.borderColor = "#2979ff"; }
             if (tipo === "otros") { tabActiva.style.color = "#f59e0b"; tabActiva.style.borderColor = "#f59e0b"; }
-            if (tipo === "retencion") { tabActiva.style.color = "#ec4899"; tabActiva.style.borderColor = "#ec4899"; }
         }
 
         let comunes = document.getElementById("camposClienteComunes");
@@ -2044,13 +2201,11 @@ window.seleccionarTipoTarea = (tipo) => {
         let grupoAveria = document.querySelector(".grupo-averia");
         let grupoBaja = document.querySelector(".grupo-baja");
         let grupoOtros = document.querySelector(".grupo-otros");
-        let grupoRetencion = document.querySelector(".grupo-retencion");
 
         if (grupoAlta) grupoAlta.style.display = tipo === "alta" ? "contents" : "none";
         if (grupoAveria) grupoAveria.style.display = tipo === "averia" ? "block" : "none";
         if (grupoBaja) grupoBaja.style.display = tipo === "baja" ? "block" : "none";
         if (grupoOtros) grupoOtros.style.display = tipo === "otros" ? "block" : "none";
-        if (grupoRetencion) grupoRetencion.style.display = tipo === "retencion" ? "block" : "none";
 
     } catch (e) {
         console.error("Error en seleccionarTipoTarea:", e);
@@ -2176,279 +2331,42 @@ window.guardarModalSenal = async () => {
     }
 };
 
-// ==========================================
-// FLUJOS DE RETENCIÓN E INTERFAZ
-// ==========================================
-
-// 1. Mostrar/Ocultar el filtro de módulo al iniciar sesión
-setTimeout(() => {
-    let fMod = document.getElementById("filtroModuloContainer");
-    let isCobranzas = (typeof nombreTecnicoLogueado !== "undefined" && (nombreTecnicoLogueado === "CALVINO" || nombreTecnicoLogueado === "OALVINO"));
-
-    if (fMod) {
-        let selectMod = document.getElementById("filtroModulo");
-        if (isAdmin || isAdminLurin || isCarlos || isCobranzas) {
-            fMod.style.display = "flex";
-            if (isCarlos) {
-                selectMod.innerHTML = `<option value="alta">🚀 Instalaciones</option><option value="retencion">📞 Retención</option>`;
-                selectMod.value = "retencion";
-            } else if (isCobranzas) {
-                selectMod.innerHTML = `<option value="noc">🌍 Operaciones NOC</option><option value="retencion">📞 Retención</option><option value="todos">👁️ Ver Todo</option>`;
-                selectMod.value = "retencion";
-            } else {
-                selectMod.innerHTML = `<option value="noc">🌍 Operaciones NOC</option><option value="retencion">📞 Retención</option><option value="todos">👁️ Ver Todo</option>`;
-                selectMod.value = "noc";
-            }
-            if(typeof window.cambiarModuloVentas === 'function') window.cambiarModuloVentas();
-        } else {
-            fMod.style.display = "none";
-        }
-    }
-}, 1500);
-
-// 2. Cambiar títulos según la selección
-window.cambiarModuloVentas = () => {
-    let mod = document.getElementById("filtroModulo") ? document.getElementById("filtroModulo").value : "noc";
-    if (mod === "alta") {
-        document.getElementById("tituloKpi").innerHTML = `<i class="fa-solid fa-chart-pie text-orange"></i> REPORTE DE VENTAS`;
-        document.getElementById("lblKpiTotal").innerText = "Registradas";
-        document.getElementById("lblKpiAtendidos").innerText = "Instaladas";
-        document.getElementById("lblKpiPendientes").innerText = "Por Instalar";
-    } else if (mod === "retencion") {
-        document.getElementById("tituloKpi").innerHTML = `<i class="fa-solid fa-headset text-pink"></i> REPORTE RETENCIÓN`;
-        document.getElementById("lblKpiTotal").innerText = "Total Casos";
-        document.getElementById("lblKpiAtendidos").innerText = "Completados";
-        document.getElementById("lblKpiPendientes").innerText = "Seguimiento";
-    } else {
-        document.getElementById("tituloKpi").innerHTML = `<i class="fa-solid fa-server text-accent"></i> OPERACIONES NOC`;
-        document.getElementById("lblKpiTotal").innerText = "Total Tareas";
-        document.getElementById("lblKpiAtendidos").innerText = "Atendidos";
-        document.getElementById("lblKpiPendientes").innerText = "Pendientes";
-    }
-    window.renderizarTabla();
-};
-
-// 3. Crear retención directamente desde la Base de Datos
 window.crearRetencionDirecta = async (dni) => {
-    window.cerrarModalGeneral('modalFiltroBD');
-    window.abrirModal();
-    document.getElementById("formIdCliente").value = dni;
-    await window.buscarCliente(); // Autocompleta los datos
-    window.seleccionarTipoTarea("retencion");
-    mostrarToast("✏️ Registra los detalles y dale a Guardar");
+    // Función delegada (el módulo de retención la maneja en su pantalla). 
+    // Aquí en NOC solo redireccionamos si un admin intenta usarlo.
+    mostrarToast("⚠️ Dirígete al Módulo de Retención en el Menú para gestionar cobros.");
 };
 
-// ==========================================
-// SINCRONIZACIÓN DE EXCEL A LA NUBE (FIREBASE)
-// ==========================================
-window.subirExcelAFirebase = async () => {
-    if(!window.bdClientesGlobal || window.bdClientesGlobal.length === 0) {
-        mostrarToast("⚠️ Primero dale a '1. Cargar Excel Local' para leer el archivo."); 
-        return;
+// ============================================================ //
+// CONTROL UNIVERSAL DE MODALES (CERRAR CON CLICK AFUERA O ESC) //
+// ============================================================ //
+
+// 1. Definimos las funciones de cierre faltantes para que la 'X' funcione siempre
+window.cerrarModal = () => { document.getElementById("modalAgregar").style.display = "none"; };
+window.cerrarModalCobertura = () => { document.getElementById("modalCobertura").style.display = "none"; };
+window.cerrarModalEliminar = () => { document.getElementById("modalEliminar").style.display = "none"; };
+window.cerrarModalCierre = () => { document.getElementById("modalCierre").style.display = "none"; };
+window.cerrarModalFiltroBD = () => { document.getElementById("modalFiltroBD").style.display = "none"; };
+window.cerrarModalRechazoRapido = () => { document.getElementById("modalRechazoRapido").style.display = "none"; };
+window.cerrarModalGeneral = (id) => { 
+    let m = document.getElementById(id); 
+    if(m) m.style.display = "none"; 
+};
+
+// 2. Cerrar modal al hacer clic en el fondo oscuro (overlay)
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal-overlay')) {
+        e.target.style.display = 'none';
     }
-    mostrarToast("⏳ Subiendo a la Nube... Esto tomará unos segundos. No cierres la página.");
-    
-    try {
-        let batches = [];
-        let batch = writeBatch(db);
-        let count = 0;
+});
 
-        for (let i = 0; i < window.bdClientesGlobal.length; i++) {
-            let c = window.bdClientesGlobal[i];
-            if (!c.dni) continue; // Saltar si no tiene DNI
-            
-            let docRef = doc(coleccionClientes, c.dni);
-            batch.set(docRef, {
-                nombre: c.nombre, dni: c.dni, id_cliente: c.dni,
-                telefonos: c.telefonos ? c.telefonos.join(" / ") : "",
-                zona: c.zona || "", direccion: c.direccion || "",
-                plan: c.plan || "", mes: c.mes || "", anio: c.anio || "",
-                ubicacion: c.linkMapa || "", estado: c.estado || "Activo"
-            }, { merge: true });
-
-            count++;
-            if (count === 400) { // Firebase permite subir de 400 en 400
-                batches.push(batch.commit());
-                batch = writeBatch(db);
-                count = 0;
-            }
-        }
-        if (count > 0) batches.push(batch.commit());
-
-        await Promise.all(batches);
-        mostrarToast("✅ Excel guardado en la Nube. Ya está disponible en todos los celulares.");
-    } catch (e) {
-        console.error(e);
-        mostrarToast("❌ Error al subir a la Nube.");
-    }
-};
-
-// ==========================================
-// DESCARGAR EXCEL DESDE LA NUBE AL DISPOSITIVO
-// ==========================================
-window.descargarExcelDeFirebase = async () => {
-    mostrarToast("⏳ Descargando base de datos desde la Nube... Por favor espera.");
-    try {
-        const querySnapshot = await getDocs(coleccionClientes);
-        let clientesDescargados = [];
-        let activos = 0, suspendidos = 0, retirados = 0;
-
-        querySnapshot.forEach((doc) => {
-            let c = doc.data();
-            
-            // MAGIA ANTICHOQUES: Traducir los teléfonos de texto a lista para que no se rompa el buscador
-            if (typeof c.telefonos === "string") {
-                c.telefonos = c.telefonos.split(" / ").filter(t => t.trim() !== "");
-            } else if (!c.telefonos) {
-                c.telefonos = [];
-            }
-
-            clientesDescargados.push(c);
-            
-            let estMinus = (c.estado || "").toLowerCase();
-            if (estMinus === "activo") activos++;
-            else if (estMinus === "suspendido" || estMinus === "cortado") suspendidos++;
-            else if (estMinus === "retirado" || estMinus === "baja") retirados++;
-        });
-
-        if (clientesDescargados.length === 0) {
-            mostrarToast("⚠️ La Nube está vacía. Un administrador debe subir el Excel primero.");
-            return;
-        }
-
-        // 1. Guardar en la variable global
-        window.bdClientesGlobal = clientesDescargados;
-
-        // 2. Actualizar los contadores (KPIs) locales
-        let total = activos + suspendidos + retirados;
-        let opcionesFecha = { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' };
-        let fechaHoy = new Date().toLocaleDateString('es-PE', opcionesFecha);
-
-        localStorage.setItem("kpi_activos", activos);
-        localStorage.setItem("kpi_suspendidos", suspendidos);
-        localStorage.setItem("kpi_retirados", retirados);
-        localStorage.setItem("kpi_total", total);
-        localStorage.setItem("kpi_fecha", fechaHoy);
-
-        // 3. Guardar en la memoria profunda (IndexedDB) del nuevo dispositivo
-        const request = indexedDB.open("TEN_DB_CLIENTES", 1);
-        request.onsuccess = (e) => {
-            const db = e.target.result;
-            const tx = db.transaction("clientesStore", "readwrite");
-            tx.objectStore("clientesStore").put({ id: "bd_completa", data: window.bdClientesGlobal });
-            tx.oncomplete = () => {
-                window.cargarKpisGuardados(); // Refrescar los gráficos
-                mostrarToast(`✅ ¡Listo! ${clientesDescargados.length} clientes guardados en este dispositivo.`);
-            };
-        };
-    } catch (e) {
-        console.error(e);
-        mostrarToast("❌ Error al descargar. Revisa tu conexión a internet.");
-    }
-};
-window.descargarExcelDeFirebase = descargarExcelDeFirebase;
-
-// ==========================================
-// CONTROLADORES DE CIERRE INTELIGENTE
-// ==========================================
-window.cerrarModalGeneral = (modalId) => { 
-    let m = document.getElementById(modalId); 
-    if(m) m.style.display = 'none'; 
-};
-
-window.cerrarModal = () => window.cerrarModalGeneral('modalAgregar');
-window.cerrarModalEliminar = () => window.cerrarModalGeneral('modalEliminar');
-window.cerrarModalCierre = () => window.cerrarModalGeneral('modalCierre');
-window.cerrarModalCobertura = () => window.cerrarModalGeneral('modalCobertura');
-window.cerrarModalRechazoRapido = () => window.cerrarModalGeneral('modalRechazoRapido');
-window.cerrarModalSenal = () => window.cerrarModalGeneral('modalSenal');
-window.cerrarModalFiltroBD = () => window.cerrarModalGeneral('modalFiltroBD');
-window.cerrarModalCalendario = () => window.cerrarModalGeneral('modalCalendario');
-window.abrirModalConfiguracion = () => { let m = document.getElementById('modalConfiguracion'); if(m) m.style.display = 'flex'; };
-
+// 3. Cerrar modal al presionar la tecla Escape
 document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") { 
-        const modalesAbiertos = Array.from(document.querySelectorAll('.modal-overlay')).filter(m => m.style.display === 'flex');
-        if (modalesAbiertos.length > 0) modalesAbiertos[modalesAbiertos.length - 1].style.display = 'none';
-    }
-});
-
-document.querySelectorAll(".modal-overlay").forEach((overlay) => {
-    overlay.onclick = function(e) {
-        if (e.target === overlay) {
-            overlay.style.display = 'none';
-        }
-    };
-});
-
-// ==========================================
-// CONTROL DEL MENÚ MÓVIL
-// ==========================================
-window.toggleSidebar = () => {
-    const sidebar = document.querySelector('.app-sidebar');
-    const overlay = document.querySelector('.sidebar-overlay');
-    if (sidebar && overlay) {
-        sidebar.classList.toggle('show');
-        overlay.classList.toggle('show');
-    }
-};
-
-// Cerrar el menú automáticamente si se hace clic en un botón del menú (solo en móvil)
-setTimeout(() => {
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (window.innerWidth <= 900) {
-                document.querySelector('.app-sidebar').classList.remove('show');
-                document.querySelector('.sidebar-overlay').classList.remove('show');
+        document.querySelectorAll('.modal-overlay').forEach(m => {
+            if(m.style.display === 'flex' || m.style.display === 'block') {
+                m.style.display = 'none';
             }
         });
-    });
-}, 1000);
-
-// ==========================================
-// CARGAR DATOS EN MEMORIA (INDEXEDDB)
-// ==========================================
-window.cargarKpisGuardados = async () => {
-    if (localStorage.getItem("kpi_total")) {
-        let activos = parseInt(localStorage.getItem("kpi_activos")) || 0;
-        let suspendidos = parseInt(localStorage.getItem("kpi_suspendidos")) || 0;
-        let retirados = parseInt(localStorage.getItem("kpi_retirados")) || 0;
-        let total = parseInt(localStorage.getItem("kpi_total")) || 0;
-        let fecha = localStorage.getItem("kpi_fecha") || "Desconocida";
-
-        let pctAct = total > 0 ? Math.round((activos / total) * 100) : 0;
-        let pctSus = total > 0 ? Math.round((suspendidos / total) * 100) : 0;
-        let pctRet = total > 0 ? Math.round((retirados / total) * 100) : 0;
-
-        let elAct = document.getElementById("kpiCliActivos"); if(elAct) elAct.innerText = activos;
-        let elSus = document.getElementById("kpiCliSuspendidos"); if(elSus) elSus.innerText = suspendidos;
-        let elRet = document.getElementById("kpiCliRetirados"); if(elRet) elRet.innerText = retirados;
-        let elTot = document.getElementById("kpiCliTotal"); if(elTot) elTot.innerText = total;
-        
-        let elPctAct = document.getElementById("pctActivos"); if(elPctAct) elPctAct.innerText = `(${pctAct}%)`;
-        let elPctSus = document.getElementById("pctSuspendidos"); if(elPctSus) elPctSus.innerText = `(${pctSus}%)`;
-        let elPctRet = document.getElementById("pctRetirados"); if(elPctRet) elPctRet.innerText = `(${pctRet}%)`;
-        let elLblFecha = document.getElementById("lblFechaBD"); if(elLblFecha) elLblFecha.innerText = `Act: ${fecha}`;
     }
-    
-    // ============================================================ //
-    // RECUPERAR EXCEL DESDE INDEXEDDB                               //
-    // ============================================================ //
-    const request = indexedDB.open("TEN_DB_CLIENTES", 1);
-    request.onsuccess = (e) => {
-        const db = e.target.result;
-        if(db.objectStoreNames.contains("clientesStore")) {
-            const tx = db.transaction("clientesStore", "readonly");
-            const getReq = tx.objectStore("clientesStore").get("bd_completa");
-            getReq.onsuccess = () => {
-                if(getReq.result) {
-                    window.bdClientesGlobal = getReq.result.data;
-                }
-            };
-        }
-    };
-    
-    if(typeof window.renderizarTablaPlanesConfig === 'function') window.renderizarTablaPlanesConfig();
-};
-
-window.cargarKpisGuardados();
+});

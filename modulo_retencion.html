@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEN - Módulo de Retención y Cobranzas</title>
+    <meta name="theme-color" content="#0f172a">
+    
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app-layout">
+    <!-- ================= SIDEBAR ================= -->
+    <div class="sidebar-overlay" onclick="window.toggleSidebar()"></div>
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <img src="logo.png" alt="TEN Logo" class="sidebar-logo" onerror="this.style.display='none'">
+            <span class="sidebar-brand">TEN <b>COMERCIAL</b></span>
+        </div>
+        
+        <div class="sidebar-user">
+            <div class="avatar" style="background: rgba(236, 72, 153, 0.1); color: #ec4899;">
+                <i class="fa-solid fa-headset"></i>
+            </div>
+            <div class="user-details">
+                <span class="user-role" id="lblUsuarioActivo">Cargando...</span>
+                <span class="user-status"><i class="fa-solid fa-circle text-success"></i> Área de Retención</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <p class="nav-section">GESTIÓN DE CARTERA</p>
+            <button type="button" class="nav-btn active" style="background: #ec4899; color: white;">
+                <i class="fa-solid fa-phone-volume"></i> Panel de Llamadas
+            </button>
+            <button type="button" class="nav-btn" onclick="window.abrirModalFiltroCobranzas()">
+                <i class="fa-solid fa-users-viewfinder"></i> Minería de Datos (BD)
+            </button>
+            
+            <div class="nav-btn" style="pointer-events: none; cursor: default; background: rgba(0,0,0,0.02); margin-bottom: 5px;">
+                <i class="fa-solid fa-database"></i>
+                <span id="lblEstadoBDRet" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 800;">Verificando...</span>
+            </div>
+            
+            <button type="button" class="nav-btn" onclick="window.sincronizarBDLocal()">
+                <i class="fa-solid fa-cloud-arrow-down"></i> Sincronizar Nube (BD)
+            </button>
+
+            <input type="file" id="fileNuevoExcel" accept=".xlsx, .xls" style="display:none;" onchange="procesarExcelClientes(event)">
+            
+            <button type="button" class="nav-btn" onclick="document.getElementById('fileNuevoExcel').click()">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Actualizar BD (Subir Excel)
+            </button>
+
+            <p class="nav-section">NAVEGACIÓN</p>
+            <button type="button" class="nav-btn" onclick="window.location.href='index.html'">
+                <i class="fa-solid fa-arrow-left"></i> Volver al NOC
+            </button>
+        </nav>
+    </aside>
+
+    <!-- ================= MAIN CONTENT ================= -->
+    <main class="app-main">
+        <header class="app-topbar">
+            <div class="topbar-left">
+                <button type="button" class="topbar-btn mobile-menu-btn" onclick="window.toggleSidebar()">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <h2 style="font-size: 1.2rem; font-weight: 900; color: var(--text-main); margin-left: 10px;">
+                    <i class="fa-solid fa-sack-dollar text-success"></i> Control de Cobranzas y Retención
+                </h2>
+            </div>
+            <div class="topbar-right">
+                <button type="button" class="topbar-btn" style="position: relative;" onclick="window.abrirModalNotificaciones()" title="Alertas de Cobranza">
+                    <i class="fa-solid fa-bell text-warning"></i>
+                    <span id="badgeNotificaciones" style="position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; font-size: 10px; font-weight: bold; border-radius: 50%; width: 18px; height: 18px; display: none; align-items: center; justify-content: center;">0</span>
+                </button>
+                
+                <button type="button" class="topbar-btn" onclick="window.toggleTema()" title="Cambiar Tema">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <button type="button" class="topbar-btn btn-logout" onclick="window.cerrarSesion()" title="Cerrar Sesión">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="app-content">
+            <!-- KPIs COMPACTOS Y GRÁFICOS -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                
+                <!-- Tarjeta 1: KPIs (Diseño 2x2 + 1) -->
+                <div class="stat-card" style="padding: 15px; display: flex; flex-direction: column;">
+                    <div class="card-header" style="margin-bottom: 10px;">
+                        <h3 style="font-size: 0.8rem;"><i class="fa-solid fa-chart-pie" style="color: #ec4899;"></i> RESUMEN DE GESTIÓN</h3>
+                    </div>
+                    <div class="kpi-grid" style="gap: 10px; display: grid; grid-template-columns: 1fr 1fr;">
+                        <div class="kpi-box" style="padding: 8px; border-left: 4px solid var(--warning);">
+                            <div class="kpi-data">
+                                <span class="kpi-num" id="kpiSeguimiento" style="font-size: 1.1rem;">0</span>
+                                <span class="kpi-label" style="font-size: 0.65rem;">Seguimiento</span>
+                            </div>
+                        </div>
+                        <div class="kpi-box" style="padding: 8px; border-left: 4px solid var(--success);">
+                            <div class="kpi-data">
+                                <span class="kpi-num" id="kpiPromesas" style="font-size: 1.1rem;">0</span>
+                                <span class="kpi-label" style="font-size: 0.65rem;">Promesas</span>
+                            </div>
+                        </div>
+                        <div class="kpi-box" style="padding: 8px; border-left: 4px solid var(--orange);">
+                            <div class="kpi-data">
+                                <span class="kpi-num" id="kpiRetiros" style="font-size: 1.1rem;">0</span>
+                                <span class="kpi-label" style="font-size: 0.65rem;">Retiros Solic.</span>
+                            </div>
+                        </div>
+                        <div class="kpi-box" style="padding: 8px; border-left: 4px solid #0ea5e9;">
+                            <div class="kpi-data">
+                                <span class="kpi-num" id="kpiPagados" style="font-size: 1.1rem;">0</span>
+                                <span class="kpi-label" style="font-size: 0.65rem;">Pagos Efect.</span>
+                            </div>
+                        </div>
+                        <div class="kpi-box" style="grid-column: span 2; padding: 10px; border-left: 4px solid var(--danger); background: rgba(239, 68, 68, 0.1); justify-content: center;">
+                            <div class="kpi-data" style="text-align: center; align-items: center;">
+                                <span class="kpi-num" id="kpiVencidas" style="font-size: 1.3rem; color: var(--danger);">0</span>
+                                <span class="kpi-label" style="font-size: 0.75rem; color: var(--danger); font-weight: 900;">¡PROMESAS VENCIDAS!</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarjeta 2: Gráfico Circular -->
+                <div class="stat-card" style="padding: 15px;">
+                    <div class="card-header" style="margin-bottom: 10px;">
+                        <h3 style="font-size: 0.8rem;"><i class="fa-solid fa-chart-doughnut" style="color: #ec4899;"></i> RESULTADOS GENERALES</h3>
+                    </div>
+                    <div class="chart-container" style="height: 200px;"><canvas id="graficoRetencion"></canvas></div>
+                </div>
+
+                <!-- Tarjeta 3: Rendimiento Gestores -->
+                <div class="stat-card" style="padding: 15px;">
+                    <div class="card-header" style="margin-bottom: 10px;">
+                        <h3 style="font-size: 0.8rem;"><i class="fa-solid fa-ranking-star text-accent"></i> GESTORES (ÉXITOS)</h3>
+                    </div>
+                    <div class="chart-container" style="height: 200px;"><canvas id="graficoGestores"></canvas></div>
+                </div>
+
+            </div>
+
+            <!-- TABLA PRINCIPAL Y FILTROS -->
+            <div class="control-panel">
+                <div class="filtros-grupo">
+                    
+                    <!-- 1. FILTRO DE RESULTADO DE LLAMADA -->
+                    <div class="filtro-item">
+                        <label><i class="fa-solid fa-phone"></i> RESULTADO LLAMADA</label>
+                        <select id="filtroLlamada" onchange="window.renderizarTablaCobranzas()">
+                            <option value="todos">Todos los Resultados</option>
+                            <option value="vencidas" style="color:red; font-weight:bold;">⚠️ SOLO PROMESAS VENCIDAS</option>
+                            <option value="En Seguimiento">En Seguimiento</option>
+                            <option value="Promesa de Pago">Promesas de Pago</option>
+                            <option value="Pago Efectuado">Pago Efectuado</option>
+                            <option value="Retiro Definitivo">Retiros Solicitados</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. FILTRO POR ESTADO DEL CASO -->
+                    <div class="filtro-item">
+                        <label><i class="fa-solid fa-clipboard-check"></i> ESTADO DEL CASO</label>
+                        <select id="filtroCaso" onchange="window.renderizarTablaCobranzas()" style="border-color: var(--accent);">
+                            <option value="todos">Todos los Casos</option>
+                            <option value="pendiente">⏳ Pendientes</option>
+                            <option value="atendido">✅ Atendidos</option>
+                            <option value="no_atendido">❌ No Atendidos</option>
+                        </select>
+                    </div>
+
+                    <!-- 3. FILTRO GESTOR -->
+                    <div class="filtro-item">
+                        <label><i class="fa-solid fa-user-tie"></i> GESTOR ASIGNADO</label>
+                        <select id="filtroGestor" onchange="window.renderizarTablaCobranzas()">
+                            <option value="todos">Todos (Visión Global)</option>
+                            <option value="MVENTOCILLA">Mili (MVENTOCILLA)</option>
+                            <option value="JRODRIGUEZ">Carlos (JRODRIGUEZ)</option>
+                            <option value="CPACOTAIPE">C. Pacotaipe (CPACOTAIPE)</option>
+                            <option value="CALVINO">Cobranzas (CALVINO)</option>
+                            <option value="OALVINO">Cobranzas (OALVINO)</option>
+                        </select>
+                    </div>
+
+                    <!-- 4. BUSCADOR -->
+                    <div class="filtro-item flex-2">
+                        <label><i class="fa-solid fa-magnifying-glass"></i> BUSCAR CLIENTE</label>
+                        <input type="text" id="buscadorCobranzas" placeholder="DNI, nombre o teléfono..." onkeyup="window.renderizarTablaCobranzas()">
+                    </div>
+                    
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">Estado / Gestor</th>
+                            <th style="width: 25%;">Cliente y Contacto</th>
+                            <th style="width: 35%;">Acuerdo y Notas</th>
+                            <th style="width: 25%; text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaRetencion">
+                        <tr><td colspan="4" class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Cargando cartera de clientes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ================= MODALES ================= -->
+
+<!-- Modal Gestión de Cliente -->
+<div class="modal-overlay" id="modalGestionLlamada">
+    <div class="modal-content modal-v2 max-w-md" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModalGestion()">×</button>
+        <h3 class="modal-title mb-4"><i class="fa-solid fa-phone-volume" style="color: #ec4899;"></i> Registrar Llamada</h3>
+        
+        <input type="hidden" id="gestionTrabajoId">
+        <input type="hidden" id="gestionDni">
+        <input type="hidden" id="gestionNombre">
+        <input type="hidden" id="gestionTel">
+        <input type="hidden" id="gestionDir">
+
+        <div style="background: rgba(236, 72, 153, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px dashed #ec4899;">
+            <strong id="lblClienteGestion" style="font-size: 1.1rem; display: block; color: var(--text-main);">Cargando...</strong>
+            <span id="lblDniGestion" style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem;"></span>
+        </div>
+
+        <div class="form-group">
+            <label>Asignado A (Gestor):</label>
+            <select id="gestionAsignado" class="form-control highlight-border-accent">
+                <option value="MVENTOCILLA">Mili (MVENTOCILLA)</option>
+                <option value="JRODRIGUEZ">Carlos (JRODRIGUEZ)</option>
+                <option value="CPACOTAIPE">C. Pacotaipe (CPACOTAIPE)</option>
+                <option value="CALVINO">Cobranzas (CALVINO)</option>
+                <option value="OALVINO">Cobranzas (OALVINO)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Resultado de la Gestión:</label>
+            <select id="gestionEstado" class="form-control highlight-border-accent">
+                <option value="En Seguimiento">⏳ En Seguimiento</option>
+                <option value="Promesa de Pago">✅ Promesa de Pago</option>
+                <option value="Pago Efectuado">💰 Pago Efectuado</option>
+                <option value="Retiro Definitivo">🚨 Transformar a: RETIRO DE EQUIPOS</option>
+            </select>
+        </div>
+        
+        <div class="horario-container">
+            <div class="form-group">
+                <label>Programar Fecha:</label>
+                <input type="date" id="gestionFecha" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Hora Aprox:</label>
+                <input type="time" id="gestionHora" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Notas de la conversación:</label>
+            <textarea id="gestionNotas" class="form-control" rows="3" placeholder="Ej: Cliente indica que pagará el viernes en la tarde..."></textarea>
+        </div>
+
+        <div class="modal-buttons mt-6">
+            <button type="button" class="btn-cancelar" onclick="window.cerrarModalGestion()">Cancelar</button>
+            <button type="button" class="btn-guardar" onclick="window.guardarGestionLlamada()" style="background: #ec4899; color: white;">Guardar Gestión</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Enviar a NOC (Desde Comercial) -->
+<div class="modal-overlay" id="modalEnvioNoc">
+    <div class="modal-content modal-v2 max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModalEnvioNoc()">×</button>
+        <h3 class="modal-title mb-4"><i class="fa-solid fa-paper-plane" style="color: #8b5cf6;"></i> Generar Tarea al NOC</h3>
+        
+        <input type="hidden" id="nocTrabajoId">
+
+        <div class="form-group">
+            <label>Selecciona la orden para Soporte Técnico:</label>
+            <select id="nocTipoTarea" class="form-control" style="border-color: #8b5cf6;">
+                <option value="reconexion">🟢 Reconexión (El cliente canceló deuda)</option>
+                <option value="averia">🛠️ Revisión Técnica / Avería reportada</option>
+                <option value="baja">🔴 Retiro Urgente de Equipos (Baja)</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Instrucciones exactas para el NOC:</label>
+            <textarea id="nocNotas" class="form-control" rows="3" placeholder="Ej: Cliente ya pagó, por favor ir a reconectar a la caja NAP..."></textarea>
+        </div>
+
+        <div class="modal-buttons mt-6">
+            <button type="button" class="btn-cancelar" onclick="window.cerrarModalEnvioNoc()">Cancelar</button>
+            <button type="button" class="btn-guardar" onclick="window.confirmarEnvioNoc()" style="background: #8b5cf6; color: white;">Enviar Orden a NOC</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Notificaciones (Retención) -->
+<div class="modal-overlay" id="modalNotificaciones">
+    <div class="modal-content modal-v2" style="max-width: 600px;" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModalGeneral('modalNotificaciones')">×</button>
+        <h3 class="modal-title mb-4"><i class="fa-solid fa-bell text-warning"></i> Promesas para Hoy y Vencidas</h3>
+        
+        <div class="table-wrapper" style="max-height: 300px; overflow-y: auto;">
+            <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                <thead style="position: sticky; top: 0; background: var(--bg-panel); z-index: 10;">
+                    <tr>
+                        <th style="width: 40%; padding: 12px; border-bottom: 2px solid var(--border);">Cliente y Gestor</th>
+                        <th style="width: 30%; padding: 12px; border-bottom: 2px solid var(--border);">Teléfono</th>
+                        <th style="width: 30%; padding: 12px; border-bottom: 2px solid var(--border);">Fecha Acordada</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaNotificaciones">
+                    <!-- Se inyecta con JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Eliminar Caso -->
+<div class="modal-overlay" id="modalEliminar">
+    <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModalEliminar()">×</button>
+        <h3 class="mb-4" style="color: var(--danger); font-size: 1.4rem; font-weight: 900;"><i class="fa-solid fa-trash-can text-3xl block mb-2" style="font-size: 2.5rem;"></i> Eliminar Caso</h3>
+        <p class="text-sm mb-6" style="color: var(--text-muted);">¿Estás seguro que deseas eliminar este registro permanentemente de la bandeja? Esta acción no se puede deshacer.</p>
+        <div class="modal-buttons" style="justify-content: center; gap: 15px;">
+            <button type="button" class="btn-cancelar" onclick="window.cerrarModalEliminar()">Cancelar</button>
+            <button type="button" style="background: var(--danger); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 800; cursor: pointer;" onclick="window.ejecutarEliminacion()">Sí, Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Minería BD -->
+<div class="modal-overlay" id="modalFiltroBD">
+    <div class="modal-content modal-v2" style="max-width: 95vw !important; width: 95vw !important; height: 95vh !important; display: flex; flex-direction: column; overflow: hidden !important;" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalFiltroBD').style.display='none'">×</button>
+        
+        <div style="flex-shrink: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
+                <h3 class="modal-title m-0"><i class="fa-solid fa-users-viewfinder text-accent"></i> Minería de Base de Datos</h3>
+            </div>
+            
+            <div class="control-panel" style="margin-bottom: 20px; background: rgba(245, 158, 11, 0.05); border-color: rgba(245, 158, 11, 0.3);">
+                <div class="filtros-grupo">
+                    <div class="filtro-item">
+                        <label>ESTADO DEL SERVICIO (Prioridad Suspendidos):</label>
+                        <select id="filtroBdEstado" class="form-control highlight-border-warning" onchange="window.ejecutarFiltroBD()">
+                            <option value="suspendido">🟡 Suspendidos / Cortados</option>
+                            <option value="activo">🟢 Activos</option>
+                            <option value="retirado">🔴 Retirados / Bajas</option>
+                            <option value="todos">👁️ Ver Todos</option>
+                        </select>
+                    </div>
+                    <div class="filtro-item flex-2">
+                        <label>BUSCAR EN EXCEL LOCAL (Memoria):</label>
+                        <input type="text" id="filtroBdTexto" class="form-control" placeholder="Escribe DNI o Nombre..." onkeyup="window.ejecutarFiltroBD()">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-wrapper" style="flex: 1; overflow-y: auto !important; overflow-x: auto; min-height: 0; border-radius: 8px; border: 1px solid var(--border);">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead style="position: sticky; top: 0; background: var(--bg-app); z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    <tr>
+                        <th style="padding: 12px;">Estado</th>
+                        <th style="padding: 12px;">Cliente</th>
+                        <th style="padding: 12px;">Teléfonos</th>
+                        <th style="padding: 12px;">Dirección</th>
+                        <th style="padding: 12px;">Plan Contratado</th>
+                        <th style="padding: 12px; text-align:center;">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaResultadosBD">
+                    <tr><td colspan="6" class="text-center text-muted py-8">Buscando datos en la memoria del navegador...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="flex-shrink: 0; margin-top: 15px; padding: 12px; background: rgba(0, 229, 255, 0.05); border: 1px solid var(--accent); border-radius: 8px; text-align: center;">
+            <span id="contadorResultadosBD" style="font-weight: 900; color: var(--accent); font-size: 1.1rem;">0 clientes encontrados</span>
+        </div>
+    </div>
+</div>
+
+<div id="toast">Mensaje</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, updateDoc, doc, onSnapshot, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+    authDomain: "ten-soporte.firebaseapp.com",
+    projectId: "ten-soporte",
+    storageBucket: "ten-soporte.firebasestorage.app",
+    messagingSenderId: "498950424371",
+    appId: "1:498950424371:web:fce299a98cf8e57f822046",
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
+const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4");
+const coleccionClientes = collection(db, "artifacts", appId, "public", "data", "clientes_base");
+
+let dbRetencion = [];
+window.bdClientesGlobal = [];
+let nombreGestorLogueado = "";
+let graficoRetencionObj = null;
+let graficoGestoresObj = null;
+let notificacionesGlobal = [];
+let idRetencionAEliminar = null;
+
+// ==========================================
+// 1. INICIO Y SEGURIDAD
+// ==========================================
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        const email = user.email.toLowerCase();
+        const coordinadoresVentas = ["carlos@ten.com", "jrodriguez@ten.com", "mventocilla@ten.com", "cpacotaipe@ten.com"];
+        const areaCobranzas = ["calvino@ten.com", "oalvino@ten.com"];
+        const correosAdmin = ["admin@ten.com", "rpacotaipe@ten.com", "eolortegui@ten.com", "jpalomino@ten.com", "dpacotaipe@ten.com"];
+
+        let esAutorizado = coordinadoresVentas.includes(email) || areaCobranzas.includes(email) || correosAdmin.includes(email);
+        
+        if (!esAutorizado) {
+            alert("No tienes permisos para ver el área comercial.");
+            window.location.href = "index.html";
+            return;
+        }
+
+        const mapaGestores = {
+            "carlos@ten.com": "JRODRIGUEZ",
+            "jrodriguez@ten.com": "JRODRIGUEZ",
+            "mventocilla@ten.com": "MVENTOCILLA",
+            "cpacotaipe@ten.com": "CPACOTAIPE",
+            "calvino@ten.com": "CALVINO",
+            "oalvino@ten.com": "OALVINO"
+        };
+        nombreGestorLogueado = mapaGestores[email] || email.split("@")[0].toUpperCase();
+
+        document.getElementById("lblUsuarioActivo").innerText = nombreGestorLogueado;
+        
+        const savedTheme = localStorage.getItem("temaTen") || "light";
+        document.documentElement.setAttribute("data-theme", savedTheme);
+
+        cargarBDLocal();
+        cargarCarteraFirebase();
+    } else {
+        window.location.href = "index.html";
+    }
+});
+
+window.cerrarSesion = () => { 
+    localStorage.removeItem('ten_rol'); 
+    localStorage.removeItem('ten_email'); 
+    signOut(auth); 
+};
+
+window.toggleTema = () => {
+    const currentTheme = document.documentElement.getAttribute("data-theme");
+    const newTheme = currentTheme === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", newTheme);
+    localStorage.setItem("temaTen", newTheme);
+    if (graficoRetencionObj) window.renderizarTablaCobranzas();
+};
+
+window.toggleSidebar = () => {
+    const sidebar = document.querySelector('.app-sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    if (sidebar && overlay) {
+        sidebar.classList.toggle('show');
+        overlay.classList.toggle('show');
+    }
+};
+
+// ==========================================
+// 2. RECUPERAR LOS CLIENTES DE INDEXEDDB (VERSIÓN 2)
+// ==========================================
+function cargarBDLocal() {
+    const request = indexedDB.open("TEN_DB_CLIENTES", 2);
+    
+    request.onupgradeneeded = (ev) => {
+        if (!ev.target.result.objectStoreNames.contains("clientesStore")) {
+            ev.target.result.createObjectStore("clientesStore", { keyPath: "id" });
+        }
+    };
+
+    request.onsuccess = (e) => {
+        const db = e.target.result;
+        if(db.objectStoreNames.contains("clientesStore")) {
+            const tx = db.transaction("clientesStore", "readonly");
+            const getReq = tx.objectStore("clientesStore").get("bd_completa");
+            getReq.onsuccess = () => {
+                if(getReq.result && getReq.result.data) {
+                    window.bdClientesGlobal = getReq.result.data;
+                    actualizarEstadoBDRet();
+                } else {
+                    mostrarToast("⚠️ Base de datos local vacía. Dale clic en 'Sincronizar Nube'.");
+                    actualizarEstadoBDRet();
+                }
+            };
+        }
+    };
+    request.onerror = () => {
+        mostrarToast("❌ Error al leer la base de datos local.");
+        actualizarEstadoBDRet();
+    };
+}
+
+window.sincronizarBDLocal = async () => {
+    mostrarToast("⏳ Descargando base de datos desde la Nube... Por favor espera.");
+    try {
+        const querySnapshot = await getDocs(coleccionClientes);
+        let clientesDescargados = [];
+        querySnapshot.forEach((doc) => {
+            let c = doc.data();
+            if (typeof c.telefonos === "string") {
+                c.telefonos = c.telefonos.split(" / ").filter(t => t.trim() !== "");
+            } else if (!c.telefonos) {
+                c.telefonos = [];
+            }
+            clientesDescargados.push(c);
+        });
+
+        if (clientesDescargados.length === 0) {
+            mostrarToast("⚠️ La Nube está vacía. Debes subir el Excel primero.");
+            actualizarEstadoBDRet();
+            return;
+        }
+
+        window.bdClientesGlobal = clientesDescargados;
+
+        const request = indexedDB.open("TEN_DB_CLIENTES", 2);
+        
+        request.onupgradeneeded = (ev) => {
+            if (!ev.target.result.objectStoreNames.contains("clientesStore")) {
+                ev.target.result.createObjectStore("clientesStore", { keyPath: "id" });
+            }
+        };
+
+        request.onsuccess = (e) => {
+            const db = e.target.result;
+            const tx = db.transaction("clientesStore", "readwrite");
+            tx.objectStore("clientesStore").put({ id: "bd_completa", data: window.bdClientesGlobal });
+            tx.oncomplete = () => {
+                actualizarEstadoBDRet();
+                mostrarToast(`✅ ¡Listo! ${clientesDescargados.length} clientes sincronizados.`);
+            };
+        };
+        
+        request.onerror = () => {
+            mostrarToast("❌ Error al guardar en el navegador.");
+            actualizarEstadoBDRet();
+        };
+
+    } catch (e) {
+        console.error(e);
+        mostrarToast("❌ Error al descargar. Revisa tu conexión a internet.");
+        actualizarEstadoBDRet();
+    }
+};
+
+window.procesarExcelClientes = (event) => {
+    let file = event.target.files[0];
+    if (!file) { actualizarEstadoBDRet(); return; }
+    
+    mostrarToast("⏳ Leyendo Excel... (No cierres la página)");
+    
+    let reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            let data = new Uint8Array(e.target.result);
+            let workbook = XLSX.read(data, {type: 'array'});
+            let worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            
+            window.bdClientesGlobal = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+            
+            const request = indexedDB.open("TEN_DB_CLIENTES", 2);
+            request.onupgradeneeded = (ev) => {
+                if (!ev.target.result.objectStoreNames.contains("clientesStore")) {
+                    ev.target.result.createObjectStore("clientesStore", { keyPath: "id" });
+                }
+            };
+            request.onsuccess = async (ev) => {
+                const db = ev.target.result;
+                const tx = db.transaction("clientesStore", "readwrite");
+                tx.objectStore("clientesStore").put({ id: "bd_completa", data: window.bdClientesGlobal });
+                tx.oncomplete = async () => {
+                    event.target.value = ''; 
+                    actualizarEstadoBDRet();
+                    mostrarToast("✅ Excel Local guardado. Subiendo a la nube automáticamente...");
+                    
+                    // SUBIDA A LA NUBE AUTOMÁTICA
+                    try {
+                        const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                        let batches = [];
+                        let batch = writeBatch(db);
+                        let count = 0;
+
+                        for (let i = 0; i < window.bdClientesGlobal.length; i++) {
+                            let c = window.bdClientesGlobal[i];
+                            let fila = {};
+                            for(let key in c) {
+                                let cleanKey = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").trim();
+                                fila[cleanKey] = c[key];
+                            }
+                            let dniSeguro = fila["ndocumento"] || fila["dni"] || fila["idcliente"];
+                            
+                            if (!dniSeguro) continue;
+                            
+                            let docRef = doc(coleccionClientes, String(dniSeguro));
+                            batch.set(docRef, {
+                                nombre: fila["apellidosynombres"] || fila["nombre"] || "Sin Nombre", 
+                                dni: String(dniSeguro), 
+                                id_cliente: String(dniSeguro),
+                                telefonos: c.telefonos ? (Array.isArray(c.telefonos) ? c.telefonos.join(" / ") : c.telefonos) : "",
+                                zona: fila["zona"] || fila["distrito"] || "", 
+                                direccion: fila["direccion"] || fila["domicilio"] || "",
+                                plan: fila["tarifadeinternet"] || fila["plan"] || "", 
+                                estado: fila["estadocliente"] || fila["estado"] || "Activo"
+                            }, { merge: true });
+
+                            count++;
+                            if (count === 400) {
+                                batches.push(batch.commit());
+                                batch = writeBatch(db);
+                                count = 0;
+                            }
+                        }
+                        if (count > 0) batches.push(batch.commit());
+                        await Promise.all(batches);
+                        mostrarToast("🚀 ¡Excel subido a la nube correctamente para todos los usuarios!");
+                    } catch (errNube) {
+                        console.error(errNube);
+                        mostrarToast("❌ Guardado local, pero error al subir a la Nube.");
+                    }
+                };
+            };
+        } catch(error) {
+            console.error(error);
+            mostrarToast("❌ Error al leer el Excel.");
+            actualizarEstadoBDRet();
+        }
+    };
+    reader.readAsArrayBuffer(file);
+};
+
+function actualizarEstadoBDRet() {
+    const lbl = document.getElementById('lblEstadoBDRet');
+    if (lbl) {
+        const total = window.bdClientesGlobal ? window.bdClientesGlobal.length : 0;
+        if (total > 0) {
+            lbl.innerHTML = `✅ ${total} clientes`;
+            lbl.style.color = 'var(--success)';
+        } else {
+            lbl.innerHTML = '⚠️ Sin datos';
+            lbl.style.color = 'var(--warning)';
+        }
+    }
+}
+
+// ==========================================
+// 3. MINERÍA DE DATOS
+// ==========================================
+window.abrirModalFiltroCobranzas = () => {
+    if (!window.bdClientesGlobal || window.bdClientesGlobal.length === 0) {
+        mostrarToast("⚠️ No hay clientes guardados. Haz clic en 'Sincronizar Nube (BD)' en el menú izquierdo.");
+        return;
+    }
+    document.getElementById('modalFiltroBD').style.display = 'flex';
+    window.ejecutarFiltroBD();
+};
+
+window.ejecutarFiltroBD = () => {
+    let tbody = document.getElementById("tablaResultadosBD");
+    if (!tbody) return;
+
+    let estadoF = document.getElementById("filtroBdEstado").value.toLowerCase();
+    let searchT = document.getElementById("filtroBdTexto").value.toLowerCase().trim();
+    
+    let html = ""; 
+    let count = 0;
+    let totalMatches = 0;
+
+    for (let i = 0; i < window.bdClientesGlobal.length; i++) {
+        let c = window.bdClientesGlobal[i];
+
+        let filaLimpia = {};
+        for(let key in c) {
+            let cleanKey = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").trim();
+            filaLimpia[cleanKey] = c[key];
+        }
+
+        let nom = filaLimpia["apellidosynombres"] || filaLimpia["nombre"] || "Sin Nombre";
+        let numDni = filaLimpia["ndocumento"] || filaLimpia["dni"] || filaLimpia["idcliente"] || "";
+        
+        let estadoReal = filaLimpia["estadocliente"] || filaLimpia["estado"] || "NO DEFINIDO";
+        let est = String(estadoReal).toLowerCase().trim();
+        
+        let tels = [];
+        if (filaLimpia["telefono1"]) tels.push(filaLimpia["telefono1"]);
+        if (filaLimpia["telefono2"]) tels.push(filaLimpia["telefono2"]);
+        
+        let telFinal = "";
+        if (tels.length > 0) {
+            telFinal = tels.join(" / ");
+        } else {
+            telFinal = Array.isArray(c.telefonos) ? c.telefonos.join(" / ") : (c.telefonos || "");
+        }
+        
+        let dir = filaLimpia["direccion"] || filaLimpia["domicilio"] || "";
+        let pla = filaLimpia["tarifadeinternet"] || filaLimpia["plan"] || "";
+
+        if (estadoF !== "todos" && !est.includes(estadoF)) continue;
+        if (searchT && !`${nom} ${numDni} ${telFinal}`.toLowerCase().includes(searchT)) continue;
+
+        totalMatches++;
+
+        if (count < 100) {
+            let colorE = est.includes('activo') ? 'var(--success)' : est.includes('suspendido') ? 'var(--warning)' : est.includes('retirado') || est.includes('baja') ? 'var(--danger)' : '#94a3b8';
+
+            html += `
+            <tr>
+                <td><span style="background: rgba(0,0,0,0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid ${colorE}; color: ${colorE}; font-weight: 900; text-transform: uppercase; font-size: 11px;">${estadoReal.toUpperCase()}</span></td>
+                <td><span style="font-weight: 800; font-size: 13px; display: block;">${nom}</span><span style="font-family: monospace; font-size: 11px; color: var(--text-muted)">DNI: ${numDni}</span></td>
+                <td style="font-size: 12px;">${telFinal}</td>
+                <td style="font-size: 12px;"><small>${dir}</small></td>
+                <td><strong style="color:#a855f7; font-size: 12px;">${pla}</strong></td>
+                <td style="text-align:center;">
+                    <button class="btn-primary" onclick="window.iniciarLlamadaNueva('${numDni}')" style="background:#ec4899; padding: 6px 12px; width:100%;"><i class="fa-solid fa-phone"></i> Llamar</button>
+                </td>
+            </tr>`;
+            count++;
+        }
+    }
+
+    if (totalMatches === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4 font-bold">No hay resultados.</td></tr>`;
+    } else {
+        if (totalMatches > 100) {
+            html += `<tr><td colspan="6" class="text-center py-4 text-muted" style="font-weight: bold; background: rgba(0,0,0,0.02);">Mostrando 100 de ${totalMatches} resultados. Usa el buscador para encontrar un cliente específico.</td></tr>`;
+        }
+        tbody.innerHTML = html;
+    }
+    
+    document.getElementById("contadorResultadosBD").innerText = `${totalMatches} clientes encontrados`;
+};
+
+// ==========================================
+// 4. CARTERA Y NUBE
+// ==========================================
+function cargarCarteraFirebase() {
+    const qRetencion = query(coleccionTrabajos, where("tipoTarea", "==", "retencion"));
+    
+    onSnapshot(qRetencion, (snapshot) => {
+        dbRetencion = [];
+        snapshot.forEach((doc) => {
+            dbRetencion.push({ id: doc.id, ...doc.data() });
+        });
+        window.renderizarTablaCobranzas();
+    }, (error) => {
+        mostrarToast("❌ Error conectando a la Nube.");
+        console.error("Error onSnapshot:", error);
+    });
+}
+
+// ==========================================
+// 5. RENDERIZADO DE TABLA (CON DOS FILTROS SEPARADOS Y ESTADO DEL CASO)
+// ==========================================
+window.renderizarTablaCobranzas = () => {
+    let tbody = document.getElementById("tablaRetencion");
+    
+    // Capturamos los 4 filtros
+    let filtroLlamada = document.getElementById("filtroLlamada").value;
+    let filtroCaso = document.getElementById("filtroCaso").value;
+    let filtroGestor = document.getElementById("filtroGestor").value;
+    let txtBuscar = document.getElementById("buscadorCobranzas").value.toLowerCase();
+    
+    tbody.innerHTML = "";
+    
+    let seguimientos = 0, promesas = 0, retiros = 0, pagados = 0, vencidas = 0;
+    const hoyStr = new Date().toISOString().split("T")[0]; 
+
+    let dataOrdenada = [...dbRetencion].sort((a, b) => {
+        let res = (b.fecha || "").localeCompare(a.fecha || "");
+        if (res !== 0) return res;
+        return (b.horaInicio || "00:00").localeCompare(a.horaInicio || "00:00");
+    });
+
+    dataOrdenada.forEach(t => {
+        let estLl = t.estadoLlamada || "En Seguimiento";
+        if (estLl === "Ya pagó") estLl = "Pago Efectuado"; 
+        
+        let estCaso = t.estado || "pendiente"; 
+        let gestor = (t.asignadoRetencion || "").toUpperCase();
+        let esVencida = (estLl === "Promesa de Pago" && t.fecha && t.fecha < hoyStr);
+        
+        if (filtroGestor === "todos" || gestor === filtroGestor) {
+            if (estLl === "En Seguimiento") seguimientos++;
+            else if (estLl === "Promesa de Pago") promesas++;
+            else if (estLl === "Retiro Definitivo") retiros++;
+            else if (estLl === "Pago Efectuado") pagados++;
+            if (esVencida) vencidas++;
+        }
+
+        // ===========================================
+        // LÓGICA DE LOS DOS FILTROS SEPARADOS APLICADA
+        // ===========================================
+        if (filtroGestor !== "todos" && gestor !== filtroGestor) return;
+        
+        // 1. Validar Filtro de Caso (Pendiente, Atendido, No Atendido)
+        if (filtroCaso !== "todos" && estCaso !== filtroCaso) return;
+
+        // 2. Validar Filtro de Llamada (Seguimiento, Promesa, Vencidas, etc)
+        if (filtroLlamada === "vencidas" && !esVencida) return;
+        if (filtroLlamada !== "todos" && filtroLlamada !== "vencidas" && estLl !== filtroLlamada) return;
+        
+        // Validar Búsqueda por texto
+        if (txtBuscar && !`${t.cliente} ${t.dni} ${t.tel} ${t.notas}`.toLowerCase().includes(txtBuscar)) return;
+
+        // BUSCAR ESTADO DE INTERNET EN LA MEMORIA LOCAL
+        let estadoInternet = "DESCONOCIDO";
+        let colorInternet = "var(--text-muted)";
+        if (window.bdClientesGlobal && window.bdClientesGlobal.length > 0) {
+            let clienteBD = window.bdClientesGlobal.find(c => {
+                let nDni = c["n° documento"] || c["ndocumento"] || c.dni || c.id_cliente || "";
+                return String(nDni).trim() === String(t.dni).trim();
+            });
+            if (clienteBD) {
+                estadoInternet = String(clienteBD["estadocliente"] || clienteBD["estado"] || "DESCONOCIDO").toUpperCase().trim();
+                colorInternet = estadoInternet.includes("ACTIVO") ? "var(--success)" : estadoInternet.includes("SUSPENDIDO") ? "var(--warning)" : "var(--danger)";
+            }
+        }
+
+        // CONFIGURACIÓN DE ETIQUETAS Y BOTONES
+        let badgeColor = estLl === "Promesa de Pago" ? "success" : estLl === "Retiro Definitivo" ? "danger" : estLl === "Pago Efectuado" ? "accent" : "warning";
+        let alertaHtml = esVencida ? `<div style="background: var(--danger); color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 8px; display: inline-block; box-shadow: 0 0 10px rgba(239,68,68,0.5);"><i class="fa-solid fa-triangle-exclamation"></i> ¡PROMESA VENCIDA!</div>` : "";
+
+        // Botón y Badge del Estado del Caso
+        let iconEstado = estCaso === "pendiente" ? "fa-clock" : estCaso === "atendido" ? "fa-check-double" : "fa-user-xmark";
+        let textoEstadoBtn = estCaso === "pendiente" ? "Marcar Atendido" : estCaso === "atendido" ? "Marcar No Atendido" : "Marcar Pendiente";
+        let colorEstadoBtn = estCaso === "pendiente" ? "var(--success)" : estCaso === "atendido" ? "var(--danger)" : "var(--warning)";
+        let badgeCaso = estCaso === "pendiente" ? `<span style="background:var(--warning); color:white; padding:3px 6px; border-radius:4px; font-size:9px; font-weight:900;"><i class="fa-solid fa-clock"></i> PENDIENTE</span>` : estCaso === "atendido" ? `<span style="background:var(--success); color:white; padding:3px 6px; border-radius:4px; font-size:9px; font-weight:900;"><i class="fa-solid fa-check"></i> ATENDIDO</span>` : `<span style="background:var(--danger); color:white; padding:3px 6px; border-radius:4px; font-size:9px; font-weight:900;"><i class="fa-solid fa-xmark"></i> NO ATENDIDO</span>`;
+
+        let numLimpio = String(t.tel || "").replace(/\D/g, "");
+        let linkWsp = numLimpio.length > 5 ? `https://wa.me/51${numLimpio}` : "#";
+        let btnWspHtml = numLimpio.length > 5 ? `<a href="${linkWsp}" target="_blank" style="margin-left: 8px; color: #25D366; font-size: 16px;" title="Contactar por WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>` : "";
+
+        let tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>
+                <div style="display:flex; flex-direction:column; gap:6px; align-items: flex-start;">
+                    ${badgeCaso}
+                    <span style="border: 1px solid var(--${badgeColor}); color: var(--${badgeColor}); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase;">${estLl}</span>
+                </div>
+                <small style="color:var(--text-muted); font-weight:bold; margin-top:10px; display:block;"><i class="fa-solid fa-user-tag"></i> Gestor: ${gestor || "N/A"}</small>
+            </td>
+            <td>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <b style="color:var(--text-main); font-size: 13px;">${t.cliente}</b>
+                    <span style="border: 1px solid ${colorInternet}; color: ${colorInternet}; padding: 2px 5px; font-size: 8px; border-radius: 4px; font-weight: 900; letter-spacing: 0.5px;">${estadoInternet}</span>
+                </div>
+                <div style="font-size: 11px; margin-top: 6px; color: var(--text-muted); display: flex; flex-direction: column; gap: 3px;">
+                    <span><i class="fa-solid fa-id-card"></i> DNI: ${t.dni}</span>
+                    <span style="display: flex; align-items: center;"><i class="fa-solid fa-phone" style="margin-right: 4px;"></i> Tel: <strong style="color:var(--text-main); margin-left: 3px;">${t.tel}</strong> ${btnWspHtml}</span>
+                </div>
+            </td>
+            <td>
+                ${alertaHtml}
+                <div style="background: rgba(0,0,0,0.02); border: 1px solid var(--border); padding: 8px; border-radius: 6px;">
+                    <span style="font-size:12px; display:block; color: ${esVencida ? 'var(--danger)' : 'var(--accent)'}; margin-bottom: 4px;"><b><i class="fa-solid fa-calendar"></i> Fecha Agendada:</b> ${t.fecha || "--"} ${t.horaInicio ? `a las ${t.horaInicio}` : ""}</span>
+                    <span style="font-size:12px; color:var(--text-main); line-height: 1.4;"><b>Notas:</b> ${t.notas || "Sin notas adicionales."}</span>
+                </div>
+            </td>
+            <td style="text-align: center;">
+                <button class="btn-primary" onclick="window.cambiarEstadoCaso('${t.id}', '${estCaso}')" style="background:${colorEstadoBtn}; color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer; font-weight: bold; font-size: 11px; width: 100%; margin-bottom: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><i class="fa-solid ${iconEstado}"></i> ${textoEstadoBtn}</button>
+                
+                <button class="btn-primary" onclick="window.editarGestion('${t.id}')" style="background:var(--bg-app); color:var(--text-main); border:1px solid var(--border); padding:6px 15px; border-radius:6px; cursor:pointer; font-weight: bold; font-size: 10px; width: 100%; margin-bottom: 6px;"><i class="fa-solid fa-pen" style="color: #ec4899;"></i> Editar Llamada</button>
+                
+                <button class="btn-primary" onclick="window.abrirModalEnvioNoc('${t.id}')" style="background:transparent; color:#8b5cf6; border:1px solid #8b5cf6; padding:6px 15px; border-radius:6px; cursor:pointer; font-weight: bold; font-size: 10px; width: 100%; margin-bottom: 6px;"><i class="fa-solid fa-paper-plane"></i> Acción a NOC</button>
+                
+                <!-- NUEVO BOTÓN DE ELIMINAR -->
+                <button class="btn-primary" onclick="window.preguntarEliminar('${t.id}')" style="background:transparent; color:var(--danger); border:1px solid var(--danger); padding:6px 15px; border-radius:6px; cursor:pointer; font-weight: bold; font-size: 10px; width: 100%;"><i class="fa-solid fa-trash"></i> Eliminar Caso</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    if (tbody.innerHTML === "") tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-muted"><i class="fa-solid fa-mug-hot text-2xl mb-2 block"></i><br>No hay registros en tu bandeja con estos filtros.</td></tr>`;
+
+    document.getElementById("kpiSeguimiento").innerText = seguimientos;
+    document.getElementById("kpiPromesas").innerText = promesas;
+    document.getElementById("kpiVencidas").innerText = vencidas;
+    document.getElementById("kpiRetiros").innerText = retiros;
+    document.getElementById("kpiPagados").innerText = pagados;
+
+    actualizarGraficoRetencion(seguimientos, promesas, retiros, pagados, dataOrdenada);
+    if(typeof window.actualizarCampanaNotificaciones === 'function') window.actualizarCampanaNotificaciones(dataOrdenada);
+};
+
+// ==========================================
+// 6. CREAR Y EDITAR CASOS
+// ==========================================
+window.iniciarLlamadaNueva = (dni) => {
+    if (!window.bdClientesGlobal || window.bdClientesGlobal.length === 0) {
+        mostrarToast("⚠️ Debes sincronizar la BD primero desde el botón del menú lateral.");
+        return;
+    }
+
+    let cliente = window.bdClientesGlobal.find(c => {
+        let filaTemporal = {};
+        for(let key in c) {
+            let cleanKey = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+            filaTemporal[cleanKey] = c[key];
+        }
+        let nDni = filaTemporal["ndocumento"] || filaTemporal["dni"] || filaTemporal["idcliente"] || "";
+        return String(nDni).trim() === String(dni).trim();
+    });
+    
+    if(!cliente) { mostrarToast("Error: No se encontró al cliente en la memoria."); return; }
+    
+    document.getElementById("modalFiltroBD").style.display = 'none';
+    document.getElementById("modalGestionLlamada").style.display = 'flex';
+
+    document.getElementById("gestionTrabajoId").value = "";
+    document.getElementById("gestionDni").value = dni;
+    
+    let filaLimpia = {};
+    for(let key in cliente) {
+        let cleanKey = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+        filaLimpia[cleanKey] = cliente[key];
+    }
+    
+    let nom = filaLimpia["apellidosynombres"] || filaLimpia["nombre"] || "Cliente Desconocido";
+    document.getElementById("gestionNombre").value = nom;
+    document.getElementById("lblClienteGestion").innerText = nom;
+    document.getElementById("lblDniGestion").innerText = "DNI: " + dni;
+    
+    let tels = [];
+    if (filaLimpia["telefono1"]) tels.push(filaLimpia["telefono1"]);
+    if (filaLimpia["telefono2"]) tels.push(filaLimpia["telefono2"]);
+    
+    let telFinal = "";
+    if (tels.length > 0) telFinal = tels.join(" / ");
+    else telFinal = Array.isArray(cliente.telefonos) ? cliente.telefonos.join(" / ") : (cliente.telefonos || "");
+    
+    document.getElementById("gestionTel").value = telFinal;
+    document.getElementById("gestionDir").value = filaLimpia["direccion"] || filaLimpia["domicilio"] || "";
+    
+    let zonaExcel = String(filaLimpia["zona"] || filaLimpia["distrito"] || "Norte").toLowerCase();
+    let zonaMapeada = zonaExcel.includes("lurin") ? "Lurin" : "Norte";
+    document.getElementById("gestionDir").dataset.zona = zonaMapeada;
+    
+    document.getElementById("gestionEstado").value = "En Seguimiento";
+    document.getElementById("gestionFecha").value = new Date().toISOString().split("T")[0];
+    document.getElementById("gestionHora").value = "";
+    document.getElementById("gestionNotas").value = "";
+    
+    let selectAsig = document.getElementById("gestionAsignado");
+    if (selectAsig) {
+        let opcionExiste = Array.from(selectAsig.options).some(opt => opt.value === nombreGestorLogueado);
+        selectAsig.value = opcionExiste ? nombreGestorLogueado : "MVENTOCILLA";
+    }
+};
+
+window.editarGestion = (id) => {
+    let t = dbRetencion.find(x => x.id === id);
+    if(!t) return;
+    
+    document.getElementById("gestionTrabajoId").value = t.id;
+    document.getElementById("lblClienteGestion").innerText = t.cliente;
+    document.getElementById("lblDniGestion").innerText = "DNI: " + t.dni;
+    
+    document.getElementById("gestionEstado").value = t.estadoLlamada || "En Seguimiento";
+    document.getElementById("gestionFecha").value = t.fecha || "";
+    document.getElementById("gestionHora").value = t.horaInicio || "";
+    document.getElementById("gestionNotas").value = t.notas || "";
+    
+    let selectAsig = document.getElementById("gestionAsignado");
+    if (selectAsig && t.asignadoRetencion) selectAsig.value = t.asignadoRetencion.toUpperCase();
+    
+    document.getElementById("modalGestionLlamada").style.display = 'flex';
+};
+
+window.cerrarModalGestion = () => { document.getElementById("modalGestionLlamada").style.display = 'none'; };
+
+window.guardarGestionLlamada = async () => {
+    let btnGuardar = document.querySelector("#modalGestionLlamada .btn-guardar");
+    if(btnGuardar) { btnGuardar.disabled = true; btnGuardar.innerHTML = "⏳ Guardando..."; }
+    
+    let id = document.getElementById("gestionTrabajoId").value;
+    let estado = document.getElementById("gestionEstado").value;
+    let fecha = document.getElementById("gestionFecha").value;
+    let hora = document.getElementById("gestionHora").value;
+    let notas = document.getElementById("gestionNotas").value;
+    
+    let selectAsig = document.getElementById("gestionAsignado");
+    let gestor = selectAsig ? selectAsig.value.toUpperCase() : nombreGestorLogueado;
+    
+    let detalle = estado === "Retiro Definitivo" ? "Solicitud de Retiro" : "Llamada - " + estado;
+    
+    let data = {
+        tipoTarea: "retencion",
+        estadoLlamada: estado,
+        detalle: detalle,
+        fecha: fecha,
+        horaInicio: hora,
+        horaFin: "", 
+        notas: notas,
+        asignadoRetencion: gestor
+    };
+
+    try {
+        if (id) {
+            await updateDoc(doc(coleccionTrabajos, id), data);
+        } else {
+            data.cliente = document.getElementById("gestionNombre").value;
+            data.dni = document.getElementById("gestionDni").value;
+            data.tel = document.getElementById("gestionTel").value;
+            data.dir = document.getElementById("gestionDir").value;
+            data.zona = document.getElementById("gestionDir").dataset.zona || "Norte";
+            data.estado = "pendiente";
+            data.tecnicos = ["Sin Asignar"];
+            await addDoc(coleccionTrabajos, data);
+        }
+        window.cerrarModalGestion();
+        mostrarToast("✅ Gestión registrada con éxito.");
+    } catch (e) {
+        mostrarToast("❌ Error al guardar.");
+        console.error(e);
+    } finally {
+        if(btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerText = "Guardar Gestión"; }
+    }
+};
+
+// ==========================================
+// 7. GRÁFICOS Y UTILIDADES
+// ==========================================
+function actualizarGraficoRetencion(seg, prom, ret, pag, dataCartera) {
+    const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+    const colorTxt = isDark ? "#94a3b8" : "#64748b";
+    const colorGrid = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+    
+    // 1. DIBUJAR GRÁFICO CIRCULAR COMPACTO
+    const ctxDoughnut = document.getElementById("graficoRetencion");
+    if (ctxDoughnut) {
+        if (graficoRetencionObj) graficoRetencionObj.destroy();
+        graficoRetencionObj = new Chart(ctxDoughnut.getContext("2d"), {
+            type: "doughnut",
+            data: {
+                labels: ["Seguimiento", "Promesas", "Retiros", "Pago Efectuado"],
+                datasets: [{
+                    data: [seg, prom, ret, pag],
+                    backgroundColor: ["#fbbf24", "#10b981", "#ef4444", "#0ea5e9"],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: { 
+                    legend: { position: 'right', labels: { color: colorTxt, boxWidth: 12, font: {size: 10} } } 
+                }
+            }
+        });
+    }
+
+    // 2. CALCULAR Y DIBUJAR RANKING DE GESTORES (Promesas + Pagos Efectuados)
+    let conteoGestores = {};
+    dataCartera.forEach(t => {
+        let estadoLl = t.estadoLlamada === "Ya pagó" ? "Pago Efectuado" : t.estadoLlamada;
+        if (estadoLl === "Promesa de Pago" || estadoLl === "Pago Efectuado") {
+            let g = (t.asignadoRetencion || "Sin Asignar").toUpperCase();
+            conteoGestores[g] = (conteoGestores[g] || 0) + 1;
+        }
+    });
+
+    const ctxBarras = document.getElementById("graficoGestores");
+    if (ctxBarras) {
+        if (graficoGestoresObj) graficoGestoresObj.destroy();
+        graficoGestoresObj = new Chart(ctxBarras.getContext("2d"), {
+            type: "bar",
+            data: {
+                labels: Object.keys(conteoGestores),
+                datasets: [{
+                    label: "Éxitos (Promesas/Pagos)",
+                    data: Object.values(conteoGestores),
+                    backgroundColor: "#ec4899",
+                    borderRadius: 4,
+                    maxBarThickness: 25
+                }]
+            },
+            options: {
+                indexAxis: 'y', // Horizontal para mejor lectura
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: colorGrid }, ticks: { stepSize: 1, color: colorTxt } },
+                    y: { grid: { display: false }, ticks: { color: colorTxt, font: { size: 10 } } }
+                }
+            }
+        });
+    }
+}
+
+function mostrarToast(msg) {
+    const t = document.getElementById("toast");
+    t.innerHTML = msg; t.className = "show";
+    setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+}
+
+// ==========================================
+// FUNCIONES DE ENVÍO DIRECTO A NOC
+// ==========================================
+window.abrirModalEnvioNoc = (id) => {
+    document.getElementById("nocTrabajoId").value = id;
+    document.getElementById("nocTipoTarea").value = "reconexion";
+    document.getElementById("nocNotas").value = "";
+    document.getElementById("modalEnvioNoc").style.display = "flex";
+};
+
+window.cerrarModalEnvioNoc = () => {
+    document.getElementById("modalEnvioNoc").style.display = "none";
+};
+
+window.confirmarEnvioNoc = async () => {
+    let idRetencion = document.getElementById("nocTrabajoId").value;
+    let tipoEnvio = document.getElementById("nocTipoTarea").value;
+    let notas = document.getElementById("nocNotas").value.trim();
+
+    if (!notas) {
+        mostrarToast("⚠️ Debes escribir una instrucción clara para los técnicos.");
+        return;
+    }
+
+    let ticketActual = dbRetencion.find(x => x.id === idRetencion);
+    if(!ticketActual) return;
+
+    let nuevoTicket = {
+        cliente: ticketActual.cliente,
+        dni: ticketActual.dni,
+        tel: ticketActual.tel,
+        dir: ticketActual.dir,
+        zona: ticketActual.zona || "Norte",
+        fecha: new Date().toISOString().split("T")[0],
+        estado: "pendiente",
+        tecnicos: ["Sin Asignar"],
+        vendedor: nombreGestorLogueado
+    };
+
+    if (tipoEnvio === "reconexion") {
+        nuevoTicket.tipoTarea = "otros";
+        nuevoTicket.detalle = "Reconexión de Servicio";
+        nuevoTicket.notas = `[ENVIADO POR COBRANZAS]: ${notas}`;
+    } else if (tipoEnvio === "averia") {
+        nuevoTicket.tipoTarea = "averia";
+        nuevoTicket.detalle = "Avería Post-Llamada";
+        nuevoTicket.notas = `[REPORTADO EN LLAMADA]: ${notas}`;
+    } else if (tipoEnvio === "baja") {
+        nuevoTicket.tipoTarea = "baja";
+        nuevoTicket.detalle = "Retiro de Equipos";
+        nuevoTicket.notas = `[RETIRO CONFIRMADO]: ${notas}`;
+        nuevoTicket.equipos = "Validar equipos con cliente";
+    }
+
+    try {
+        await addDoc(coleccionTrabajos, nuevoTicket);
+        window.cerrarModalEnvioNoc();
+        mostrarToast("🚀 ¡Orden enviada exitosamente a la pantalla de Soporte Técnico!");
+    } catch (e) {
+        console.error(e);
+        mostrarToast("❌ Error al enviar al NOC.");
+    }
+};
+
+// ==========================================
+// CAMBIO RÁPIDO DE ESTADO EN BANDEJA
+// ==========================================
+window.cambiarEstadoCaso = async (id, estadoActual) => {
+    let nuevoEstado = "pendiente";
+    if (estadoActual === "pendiente") nuevoEstado = "atendido";
+    else if (estadoActual === "atendido") nuevoEstado = "no_atendido";
+    else if (estadoActual === "no_atendido") nuevoEstado = "pendiente";
+
+    try {
+        await updateDoc(doc(coleccionTrabajos, id), { estado: nuevoEstado });
+        mostrarToast(`✅ Caso marcado como: ${nuevoEstado.replace("_", " ").toUpperCase()}`);
+    } catch (error) {
+        console.error(error);
+        mostrarToast("❌ Error al cambiar el estado.");
+    }
+};
+
+// ==========================================
+// FUNCIÓN PARA ELIMINAR CASOS
+// ==========================================
+window.preguntarEliminar = (id) => {
+    idRetencionAEliminar = id;
+    document.getElementById("modalEliminar").style.display = "flex";
+};
+
+window.cerrarModalEliminar = () => {
+    document.getElementById("modalEliminar").style.display = "none";
+};
+
+window.ejecutarEliminacion = async () => {
+    if (idRetencionAEliminar) {
+        try {
+            await deleteDoc(doc(coleccionTrabajos, idRetencionAEliminar));
+            mostrarToast("🗑️ Caso eliminado correctamente de la bandeja.");
+            window.cerrarModalEliminar();
+        } catch (error) {
+            console.error(error);
+            mostrarToast("❌ Error al intentar eliminar el caso.");
+        }
+    }
+};
+
+// ==========================================
+// NOTIFICACIONES Y ALERTAS (LA CAMPANA)
+// ==========================================
+window.actualizarCampanaNotificaciones = (dataCartera) => {
+    const hoyStr = new Date().toISOString().split("T")[0];
+    
+    notificacionesGlobal = dataCartera.filter(t => {
+        return t.estadoLlamada === "Promesa de Pago" && t.fecha && t.fecha <= hoyStr;
+    });
+
+    let badge = document.getElementById('badgeNotificaciones');
+    if (badge) {
+        if (notificacionesGlobal.length > 0) {
+            badge.innerText = notificacionesGlobal.length;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+};
+
+window.abrirModalNotificaciones = () => {
+    let tbody = document.getElementById('tablaNotificaciones');
+    if(!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (notificacionesGlobal.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-8"><i class="fa-solid fa-mug-hot text-2xl mb-2 block"></i><br>Todo al día. No hay alertas críticas.</td></tr>`;
+    } else {
+        const hoyStr = new Date().toISOString().split("T")[0];
+        
+        notificacionesGlobal.forEach(a => {
+            let estaVencida = a.fecha < hoyStr;
+            let color = estaVencida ? "var(--danger)" : "var(--warning)";
+            let textoFecha = estaVencida ? `¡VENCIDA! (${a.fecha})` : `PARA HOY (${a.fecha})`;
+            
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 12px;">
+                        <b style="font-size:12px; display:block; color: var(--text-main);">${a.cliente}</b>
+                        <span style="font-size:10px; color:var(--text-muted);"><i class="fa-solid fa-user-tag"></i> Gestor: ${a.asignadoRetencion || 'N/A'}</span>
+                    </td>
+                    <td style="padding: 12px; font-size: 11px; color: var(--text-main); font-weight: bold;">
+                        <i class="fa-solid fa-phone"></i> ${a.tel}
+                    </td>
+                    <td style="padding: 12px;">
+                        <span style="background:rgba(0,0,0,0.05); border:1px solid ${color}; color:${color}; font-size:10px; padding:4px 8px; border-radius:4px; font-weight:bold;">${textoFecha}</span>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    document.getElementById('modalNotificaciones').style.display = 'flex';
+};
+
+// ==========================================
+// CONTROL UNIVERSAL DE MODALES
+// ==========================================
+window.cerrarModalGeneral = (id) => { 
+    let m = document.getElementById(id); 
+    if(m) m.style.display = "none"; 
+};
+
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal-overlay')) {
+        e.target.style.display = 'none';
+    }
+});
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { 
+        document.querySelectorAll('.modal-overlay').forEach(m => {
+            if(m.style.display === 'flex' || m.style.display === 'block') {
+                m.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+</body>
+</html>

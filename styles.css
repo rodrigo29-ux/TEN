@@ -40,41 +40,137 @@
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
 body { background: var(--bg-app); color: var(--text-main); height: 100vh; overflow: hidden; }
 
-/* ================= LOGIN ================= */
-.login-split { display: flex; height: 100vh; width: 100vw; }
-.login-left { flex: 1; position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.login-bg-img { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
-.login-overlay { position: absolute; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(15,23,42,0.9) 0%, rgba(15,23,42,0.4) 100%); z-index: 1; }
-.login-branding { position: relative; z-index: 2; text-align: center; color: white; padding: 40px; max-width: 500px; }
-.login-logo-big { width: 180px; margin-bottom: 20px; filter: drop-shadow(0 0 10px rgba(0,229,255,0.5)); }
-.login-branding h2 { font-size: 2.5rem; font-weight: 900; margin-bottom: 15px; }
-.login-branding p { font-size: 1.1rem; color: #cbd5e1; line-height: 1.6; }
-
-.login-right { width: 450px; background: var(--bg-panel); display: flex; align-items: center; justify-content: center; box-shadow: -10px 0 30px rgba(0,0,0,0.1); z-index: 3; }
-.login-box { width: 100%; padding: 40px; }
-.login-header-mobile { display: none; text-align: center; margin-bottom: 30px; }
-.login-box h3 { font-size: 1.8rem; font-weight: 800; margin-bottom: 5px; color: var(--text-main); }
-.login-subtitle { color: var(--text-muted); margin-bottom: 30px; font-size: 0.95rem; }
-
-.input-group { position: relative; margin-bottom: 20px; }
-.input-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
-.input-group input { width: 100%; padding: 14px 14px 14px 45px; border: 1px solid var(--border); background: var(--bg-app); border-radius: 8px; color: var(--text-main); font-size: 1rem; transition: 0.3s; }
-.input-group input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px rgba(0,229,255,0.1); }
-
-.btn-login { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-weight: 800; font-size: 1rem; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-.btn-login:hover { background: var(--accent-hover); transform: translateY(-2px); }
-.error-msg { color: var(--danger); font-size: 0.85rem; font-weight: bold; margin-top: 10px; text-align: center; }
-.login-footer { margin-top: 25px; text-align: center; }
-.login-footer a { color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-decoration: none; transition: 0.2s; }
-.login-footer a:hover { color: var(--accent); }
-
-@media (max-width: 900px) {
-    .login-left { display: none; }
-    .login-right { width: 100%; }
-    .login-header-mobile { display: block; }
-    .login-header-mobile img { width: 120px; }
+/* ================= LOGIN V2 (TEMA CORPORATIVO NARANJA/NEGRO) ================= */
+#login-view { 
+    display: flex; height: 100vh; width: 100vw; background: var(--bg-app); 
+}
+.login-wrapper { 
+    display: flex; width: 100%; height: 100%; 
 }
 
+/* Lado Izquierdo: Visual y Marca */
+.login-visual { 
+    flex: 1; 
+    background: #111111; /* Color base por si la imagen no carga */
+    position: relative; 
+    overflow: hidden; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+}
+
+/* ==================================================
+   CONFIGURACIÓN DE LA IMAGEN DE FONDO Y CAPA OSCURA
+   ================================================== */
+.login-bg-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Hace que la imagen llene todo el espacio sin deformarse */
+    z-index: 1;
+    opacity: 0.6; /* Le bajamos la opacidad para que no compita con los textos */
+}
+
+.login-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Un degradado oscuro para que el lado derecho se funda con el formulario blanco */
+    background: linear-gradient(135deg, rgba(17, 17, 17, 0.8) 0%, rgba(17, 17, 17, 0.95) 100%);
+    z-index: 2;
+}
+
+/* Luces de fondo (Efecto Aurora Naranja) - Aseguramos el z-index */
+.visual-glow-1 { position: absolute; top: -10%; left: -10%; width: 500px; height: 500px; background: rgba(249, 115, 22, 0.15); filter: blur(100px); border-radius: 50%; z-index: 3; }
+.visual-glow-2 { position: absolute; bottom: -10%; right: -10%; width: 600px; height: 600px; background: rgba(255, 255, 255, 0.05); filter: blur(120px); border-radius: 50%; z-index: 3; }
+
+.visual-content { 
+    position: relative; z-index: 10; /* Z-index 10 asegura que esté por encima de la imagen y la capa */
+    text-align: center; color: white; max-width: 550px; padding: 40px; 
+    display: flex; flex-direction: column; align-items: center; 
+    justify-content: center; gap: 25px; height: 100%; 
+}
+
+.login-logo { height: 55px; margin: 0; }
+.visual-content h1 { font-size: 2.8rem; font-weight: 900; margin: 0; letter-spacing: -1px; line-height: 1.1; }
+.visual-content h1 span { color: #f97316; } /* Color Naranja TEN */
+.visual-content p { font-size: 1.1rem; color: #a1a1aa; line-height: 1.5; margin: 0; max-width: 460px; }
+
+/* Contenedor del Círculo Perfecto (Foto más arriba y unida al texto) */
+.hero-image-container { 
+    position: relative; 
+    width: 280px;       /* Tamaño del círculo */
+    height: 280px;      /* Debe ser igual al ancho */
+    margin: 10px auto 0; /* Margen pequeño para no separarse mucho del texto */
+    border-radius: 50%; 
+    overflow: hidden; 
+    border: 4px solid #f97316; /* Borde Naranja TEN */
+    box-shadow: 0 15px 35px rgba(249, 115, 22, 0.25); /* Sombra Naranja */
+    background: #fff;
+}
+.hero-tecnico { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+}
+
+/* Lado Derecho: Formulario */
+.login-form-container { 
+    width: 550px; background: var(--bg-panel); display: flex; flex-direction: column; justify-content: center; padding: 60px; box-shadow: -20px 0 50px rgba(0,0,0,0.05); z-index: 20; 
+}
+.login-form { width: 100%; max-width: 400px; margin: 0 auto; }
+
+.login-header-mobile { display: none; text-align: center; margin-bottom: 40px; }
+.logo-mobile { height: 45px; }
+
+.form-header { margin-bottom: 40px; }
+.form-header h2 { font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px; }
+.form-header p { color: var(--text-muted); font-size: 0.95rem; }
+
+.input-group-v2 { margin-bottom: 25px; }
+.input-group-v2 label { display: block; font-size: 0.8rem; font-weight: 800; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Iconos del Input */
+.input-wrapper { position: relative; }
+.input-wrapper .icon-left { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 1.1rem; transition: 0.3s; z-index: 2; pointer-events: none; }
+.input-wrapper .icon-right { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 1.1rem; cursor: pointer; transition: 0.3s; z-index: 2; }
+.input-wrapper .icon-right:hover { color: #f97316; } /* Hover Naranja en el ojito */
+
+.input-wrapper input { 
+    width: 100%; padding: 16px 16px 16px 45px; border: 2px solid var(--border); background: var(--bg-app); border-radius: 12px; color: var(--text-main); font-size: 1rem; font-weight: 600; outline: none; transition: 0.3s; position: relative; z-index: 1;
+}
+
+/* Efectos Naranjas al hacer clic (Focus) */
+.input-wrapper input:focus { border-color: #f97316; background: var(--bg-panel); box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1); }
+.input-wrapper:focus-within .icon-left { color: #f97316; }
+
+.form-options { display: flex; justify-content: space-between; align-items: center; margin-bottom: 35px; font-size: 0.85rem; font-weight: 600; }
+.remember-me { color: var(--text-muted); display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.form-options a { color: #f97316; text-decoration: none; transition: 0.2s; }
+.form-options a:hover { color: #ea580c; text-decoration: underline; }
+
+/* Botón Principal (Gradiente Naranja) */
+.btn-login-v2 { 
+    width: 100%; padding: 16px; 
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); 
+    color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: 800; cursor: pointer; transition: 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px; 
+    box-shadow: 0 10px 20px rgba(249, 115, 22, 0.3); 
+}
+.btn-login-v2:hover { transform: translateY(-3px); box-shadow: 0 15px 25px rgba(249, 115, 22, 0.4); }
+
+.error-msg-v2 { background: rgba(239, 68, 68, 0.1); color: var(--danger); padding: 12px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+/* Responsive Mobile para el Login */
+@media (max-width: 900px) {
+    .login-visual { display: none; }
+    .login-form-container { width: 100%; padding: 30px; box-shadow: none; align-items: center; }
+    .login-header-mobile { display: block; }
+    .login-form { max-width: 100%; }
+}
 /* ================= APP LAYOUT ================= */
 .app-layout { display: flex; height: 100vh; width: 100vw; }
 
@@ -289,56 +385,18 @@ tbody tr:last-child td { border-bottom: none; }
 .fc .fc-button-primary { background-color: var(--bg-panel) !important; border: 1px solid var(--border) !important; color: var(--text-muted) !important; font-weight: bold; text-transform: uppercase; transition: 0.2s; }
 .fc .fc-button-primary:not(:disabled):hover, .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: var(--orange) !important; color: white !important; border-color: var(--orange) !important; }
 
-/* ================= RESPONSIVE / VISTA MÓVIL ================= */
-.mobile-menu-btn { display: none; }
-.sidebar-overlay { display: none; }
-
-@media (max-width: 900px) {
-    /* Mostrar botón hamburguesa */
-    .mobile-menu-btn { display: flex; margin-right: 10px; }
-    
-    /* Convertir el Sidebar en un menú lateral flotante */
-    .app-sidebar { position: fixed; left: -300px; height: 100vh; box-shadow: 5px 0 15px rgba(0,0,0,0.5); z-index: 1000; transition: left 0.3s ease; }
-    .app-sidebar.show { left: 0; }
-    
-    /* Capa oscura que tapa el fondo al abrir el menú */
-    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 999; }
-    .sidebar-overlay.show { display: block; }
-    
-    /* Ajustar espacios de la pantalla principal */
-    .app-topbar { padding: 0 15px; }
-    .app-content { padding: 15px; gap: 15px; -webkit-overflow-scrolling: touch; padding-bottom: 80px; }
-    
-    /* Hacer que los filtros se apilen uno debajo del otro */
-    .filtros-grupo { flex-direction: column; align-items: stretch; gap: 10px; }
-    .filtro-item { min-width: 100%; }
-    
-    /* Ajustes menores de tamaños */
-    .zone-selector-container { padding: 5px 10px; }
-    
-    /* Liberar el scroll en móviles */
-    .table-wrapper { max-height: none !important; overflow-y: visible !important; overflow-x: auto !important; }
-    .show-admin-grid { grid-template-columns: 1fr !important; }
-}
-
 /* ==========================================
    SCROLL PRINCIPAL (TIPO PÁGINA WEB)
    ========================================== */
-
-/* 1. Liberamos la tabla para que no tenga doble scroll */
 .table-wrapper {
     max-height: none !important;
     overflow: visible !important;
 }
-
-/* 2. Le damos el poder de bajar a toda la parte derecha de la pantalla */
 .app-content {
     height: 100vh !important;
     overflow-y: auto !important; 
-    padding-bottom: 150px !important; /* Espacio extra abajo */
+    padding-bottom: 150px !important;
 }
-
-/* 3. Aseguramos que la ventana negra del Excel mantenga su propio límite */
 .modal-body .table-wrapper {
     max-height: 60vh !important;
     overflow-y: auto !important;
@@ -351,11 +409,9 @@ thead th {
     position: sticky !important;
     top: 0 !important;
     z-index: 50 !important;
-    background-color: #f8fafc !important; /* Color gris clarito para tapar los datos que pasan por debajo */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Sombrita elegante */
+    background-color: #f8fafc !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
-
-/* Excepción: Si tienes la pantalla oscura, usa este color para que no se vea blanco feo */
 .dark-mode thead th, body[data-theme="dark"] thead th {
     background-color: #1e293b !important;
 }
@@ -373,4 +429,181 @@ thead th {
     border: 1px solid #e2e8f0 !important;
     border-radius: 6px !important;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ==========================================
+   AJUSTES PARA EL CALENDARIO GLOBAL
+   ========================================== */
+.fc-event {
+    cursor: pointer;
+    border-radius: 4px;
+}
+.fc-event-main {
+    white-space: normal !important;
+    overflow: hidden;
+    font-size: 0.75rem;
+    padding: 4px;
+    line-height: 1.2;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.fc-h-event .fc-event-title {
+    font-weight: 800;
+}
+
+/* ================= RESPONSIVE / VISTA MÓVIL (TIPO APP) ================= */
+.mobile-menu-btn { display: none; }
+.sidebar-overlay { display: none; }
+
+@media (max-width: 900px) {
+    /* 1. Arreglar el Menú Hamburguesa y Sidebar */
+    .mobile-menu-btn { display: flex; margin-right: 10px; z-index: 1001; }
+    
+    .app-sidebar { 
+        position: fixed; 
+        left: -300px; 
+        top: 0;
+        height: 100vh; 
+        box-shadow: 5px 0 15px rgba(0,0,0,0.5); 
+        z-index: 1005; /* Muy alto para que pase por encima de todo */
+        transition: left 0.3s ease; 
+    }
+    .app-sidebar.show { left: 0; }
+    
+    .sidebar-overlay { 
+        display: none; 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100vw; 
+        height: 100vh; 
+        background: rgba(0,0,0,0.6); 
+        backdrop-filter: blur(2px); 
+        z-index: 1004; /* Justo debajo del sidebar */
+    }
+    .sidebar-overlay.show { display: block; }
+
+        /* ===================================================
+       BLINDAJE ANTI-DESBORDAMIENTO (VISTA MÓVIL ESTRICTA)
+       =================================================== */
+    html, body {
+        max-width: 100vw;
+        overflow-x: hidden !important; /* Bloquea el scroll horizontal hacia la derecha */
+    }
+    
+    .app-layout, .app-main, .app-content {
+        max-width: 100vw;
+        box-sizing: border-box;
+    }
+    
+    .app-topbar {
+        width: 100vw;
+        max-width: 100vw;
+        box-sizing: border-box;
+        padding: 0 15px;
+    }
+
+    /* Obligamos a que cualquier texto largo o correo baje a la siguiente línea */
+    .table-wrapper, tbody tr, td, .cliente-nombre, .cliente-info, span, b, small {
+        max-width: 100%;
+        word-break: break-word !important; 
+        overflow-wrap: break-word !important;
+        white-space: normal !important;
+    }
+    
+    /* 2. Ajustes de la Barra Superior */
+    .app-topbar { padding: 0 15px; position: sticky; top: 0; z-index: 1000; }
+    .topbar-right { gap: 8px; }
+    .topbar-btn { width: 35px; height: 35px; } /* Botones un poco más chicos */
+    
+    /* 3. Ajustes del Contenedor Principal */
+    .app-content { padding: 10px; gap: 15px; padding-bottom: 100px !important; }
+    
+    /* 4. Convertir Filtros en una columna */
+    .filtros-grupo { flex-direction: column; align-items: stretch; gap: 10px; }
+    .filtro-item { min-width: 100%; }
+    .zone-selector-container { padding: 5px 10px; }
+    
+    /* 5. Ocultar Gráficos para los Técnicos (Para que cargue más rápido) */
+    .show-admin-grid { grid-template-columns: 1fr !important; }
+
+    /* 6. CONVERTIR TABLA EN TARJETAS (MOBILE FIRST) */
+    .table-wrapper {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+    }
+    
+    table, thead, tbody, th, td, tr { 
+        display: block; 
+    }
+    
+    /* Ocultamos los encabezados de la tabla original */
+    thead tr { 
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+    
+    tbody tr {
+        background: var(--bg-panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        padding: 15px;
+        position: relative;
+    }
+    
+    /* Removemos los bordes de las celdas y las alineamos */
+    td {
+        border: none !important;
+        padding: 5px 0 !important;
+        position: relative;
+        text-align: left;
+    }
+
+    /* Reducimos el tamaño de la fuente para que quepa más texto */
+    .cliente-nombre { font-size: 1.1rem; }
+    .cliente-info { font-size: 0.8rem; margin-bottom: 5px; }
+    
+    /* Acomodamos los botones de acción al final de la tarjeta */
+    .btn-acciones-grid {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--border);
+        display: grid;
+        grid-template-columns: 1fr 1fr; /* 2 botones por fila */
+        gap: 8px;
+    }
+    .btn-grid-row { display: contents; } /* Rompemos las filas originales de botones */
+    
+    .btn-action-ui {
+        width: 100%;
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+    
+    /* Hacemos que el botón principal de estado (En camino, Finalizar) ocupe todo el ancho */
+    .btn-ui-estado {
+        grid-column: span 2;
+        padding: 12px;
+        font-size: 1rem;
+    }
+    
+    /* El indicador de estado (circulito rojo/verde) lo movemos a la esquina superior derecha */
+    tbody tr td:first-child {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        padding: 0 !important;
+        text-align: right;
+    }
+    /* Ocultamos el texto del estado ("NO ATENDIDO") y dejamos solo el circulito o el badge para ahorrar espacio */
+    tbody tr td:first-child span:not(.estado-punto) {
+        display: none; 
+    }
 }

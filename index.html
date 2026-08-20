@@ -17,44 +17,78 @@
 </head>
 <body>
 
-<!-- ================= LOGIN VIEW ================= -->
+<!-- ================= LOGIN VIEW V2 (MODERNO) ================= -->
 <div id="login-view">
-    <div class="login-split">
-        <div class="login-left">
+    <div class="login-wrapper">
+        
+        <!-- Lado Visual (Izquierda) -->
+        <div class="login-visual">
+            
+            <!-- NUEVO: IMAGEN DE FONDO Y CAPA OSCURA -->
             <div class="login-overlay"></div>
-            <img src="fondo.png" alt="Fondo" class="login-bg-img">
-            <div class="login-branding">
-                <img src="logo.png" alt="TEN" class="login-logo-big">
-                <h2>Plataforma de Operaciones FIBRA</h2>
-                <p>Gestión inteligente para el Centro de Operaciones de Red (NOC) y control de cuadrillas técnicas.</p>
+            <img src="fondo.png" alt="Fondo" class="login-bg-img" onerror="this.style.display='none'">
+            
+            <div class="visual-glow-1"></div>
+            <div class="visual-glow-2"></div>
+            
+            <div class="visual-content">
+                <img src="logo.png" alt="TEN Logo" class="login-logo" onerror="this.style.display='none'">
+                <h1>SISTEMA ERP <span>FIBRA</span></h1>
+                <p>Gestión inteligente para el Centro de Operaciones de Red (NOC) y control de cuadrillas de campo.</p>
+                
+                <div class="hero-image-container">
+                    <img src="tecnico.png" alt="Equipo Técnico" class="hero-tecnico" onerror="this.style.display='none'">
+                </div>
             </div>
         </div>
-        <div class="login-right">
-            <form class="login-box" onsubmit="event.preventDefault(); iniciarSesion();">
+
+        <!-- Lado Formulario (Derecha) -->
+        <div class="login-form-container">
+            <form class="login-form" onsubmit="event.preventDefault(); iniciarSesion();">
+                
                 <div class="login-header-mobile">
-                    <img src="logo.png" alt="Logo TEN" class="logo-oficial">
-                </div>
-                <h3>Bienvenido al Sistema</h3>
-                <p class="login-subtitle">Ingresa tus credenciales corporativas</p>
-                
-                <div class="input-group">
-                    <i class="fa-solid fa-envelope input-icon"></i>
-                    <input type="email" id="txtEmail" placeholder="Correo Electrónico" required>
+                    <img src="logo.png" alt="Logo TEN" class="logo-mobile" onerror="this.style.display='none'">
                 </div>
                 
-                <div class="input-group">
-                    <i class="fa-solid fa-lock input-icon"></i>
-                    <input type="password" id="txtPassword" placeholder="Contraseña" required>
+                <div class="form-header">
+                    <h2>¡Bienvenido al sistema! 👋</h2>
+                    <p>Ingresa tus credenciales corporativas para continuar</p>
                 </div>
                 
-                <button type="submit" class="btn-login">INGRESAR <i class="fa-solid fa-arrow-right ml-2"></i></button>
-                <p id="login-error" class="error-msg" style="display: none;">Error: Verifica tus credenciales.</p>
+                <div class="input-group-v2">
+                    <label>Correo Electrónico</label>
+                    <div class="input-wrapper">
+                        <!-- Le agregamos la clase 'icon-left' -->
+                        <i class="fa-solid fa-envelope icon-left"></i>
+                        <input type="email" id="txtEmail" placeholder="ejemplo@ten.com" required>
+                    </div>
+                </div>
                 
-                <div class="login-footer">
-                    <a href="#" onclick="window.recuperarContrasena();">¿Olvidaste tu contraseña?</a>
+                <div class="input-group-v2">
+                    <label>Contraseña de Acceso</label>
+                    <div class="input-wrapper">
+                        <!-- Le agregamos la clase 'icon-left' -->
+                        <i class="fa-solid fa-lock icon-left"></i>
+                        <!-- Agregamos padding-right para que el texto no pise el ojito -->
+                        <input type="password" id="txtPassword" placeholder="••••••••" style="padding-right: 45px;" required>
+                        <!-- NUEVO: El botón del ojito -->
+                        <i class="fa-solid fa-eye icon-right" id="togglePassword" onclick="window.togglePasswordVisibility()" title="Mostrar contraseña"></i>
+                    </div>
+                </div>
+                
+                <div class="form-options">
+                    <label class="remember-me"><input type="checkbox" checked> Recordar mi usuario</label>
+                    <a href="#" onclick="window.recuperarContrasena();">¿Olvidaste tu clave?</a>
+                </div>
+                
+                <button type="submit" class="btn-login-v2">Iniciar Sesión <i class="fa-solid fa-arrow-right"></i></button>
+                
+                <div id="login-error-container" style="display: none; margin-top: 20px;">
+                    <p id="login-error" class="error-msg-v2"><i class="fa-solid fa-circle-exclamation"></i> Error: Verifica tus credenciales.</p>
                 </div>
             </form>
         </div>
+        
     </div>
 </div>
 
@@ -100,19 +134,30 @@
                     <i class="fa-solid fa-gear"></i> Configuración
                 </button>
 
-                <p class="nav-section admin-only admin-carlos-only">BASE DE DATOS EXCEL</p>
-                <label class="nav-btn admin-only admin-carlos-only cursor-pointer" id="btnSubirBdAdmin">
-                    <i class="fa-solid fa-file-excel"></i> 1. Cargar Excel Local
-                    <input type="file" accept=".xlsx, .xls" style="display: none;" onchange="procesarExcelClientes(event)">
-                </label>
-                <button type="button" class="nav-btn admin-only admin-carlos-only" onclick="window.subirExcelAFirebase()">
-                    <i class="fa-solid fa-cloud-arrow-up"></i> 2. Subir a la Nube
+                <p class="nav-section admin-only admin-carlos-only">BASE DE DATOS CLIENTES</p>
+                
+                <div class="nav-btn admin-only admin-carlos-only cursor-default" style="cursor: default; pointer-events: none; background: rgba(0,0,0,0.02);">
+                    <i class="fa-solid fa-database"></i> 
+                    <span id="lblEstadoBD" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 800;">Verificando...</span>
+                </div>
+
+                <input type="file" id="fileNuevoExcel" accept=".xlsx, .xls" style="display:none;" onchange="procesarExcelClientes(event)">
+                
+                <button type="button" class="nav-btn admin-only admin-carlos-only" onclick="window.mostrarModalActualizarBD()">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Actualizar BD (Subir Excel)
                 </button>
+                
                 <button type="button" class="nav-btn admin-only admin-carlos-only" onclick="window.descargarExcelDeFirebase()">
-                    <i class="fa-solid fa-cloud-arrow-down"></i> 3. Bajar de la Nube
+                    <i class="fa-solid fa-cloud-arrow-down"></i> Sincronizar desde Nube
                 </button>
+
                 <button type="button" class="nav-btn admin-only admin-carlos-only" onclick="abrirModalFiltroBD()">
-                    <i class="fa-solid fa-filter"></i> 4. Filtrar Clientes
+                    <i class="fa-solid fa-filter"></i> Buscador Avanzado
+                </button>
+
+                <p class="nav-section admin-only admin-carlos-only btn-cobranzas">ÁREA COMERCIAL</p>
+                <button type="button" class="nav-btn admin-only admin-carlos-only btn-cobranzas" onclick="window.location.href='modulo_retencion.html'" style="color: #ec4899;">
+                    <i class="fa-solid fa-headset"></i> Módulo Retención
                 </button>
 
                 <p class="nav-section">RECURSOS HUMANOS</p>
@@ -124,7 +169,6 @@
 
         <!-- MAIN CONTENT -->
         <main class="app-main">
-            <!-- TOPBAR -->
             <header class="app-topbar">
                 <div class="topbar-left">
                     <button type="button" class="topbar-btn mobile-menu-btn" onclick="window.toggleSidebar()">
@@ -184,41 +228,40 @@
 
                     <div class="stat-card" id="cardKpis">
                         <div class="card-header">
-                            <h3 id="tituloKpi"><i class="fa-solid fa-chart-pie text-orange"></i> TOTALES</h3>
+                            <h3><i class="fa-solid fa-chart-pie text-orange"></i> TOTALES</h3>
                         </div>
                         <div class="kpi-grid">
                             <div class="kpi-box box-total">
                                 <div class="kpi-icon"><i class="fa-solid fa-layer-group"></i></div>
                                 <div class="kpi-data">
                                     <span class="kpi-num" id="kpiTotal">0</span>
-                                    <span class="kpi-label" id="lblKpiTotal">Total</span>
+                                    <span class="kpi-label">Total</span>
                                 </div>
                             </div>
                             <div class="kpi-box box-success">
                                 <div class="kpi-icon"><i class="fa-solid fa-check-double"></i></div>
                                 <div class="kpi-data">
                                     <span class="kpi-num" id="kpiAtendidos">0</span>
-                                    <span class="kpi-label" id="lblKpiAtendidos">Atendidos</span>
+                                    <span class="kpi-label">Atendidos</span>
                                 </div>
                             </div>
                             <div class="kpi-box box-danger">
                                 <div class="kpi-icon"><i class="fa-solid fa-xmark"></i></div>
                                 <div class="kpi-data">
                                     <span class="kpi-num" id="kpiNoAtendidos">0</span>
-                                    <span class="kpi-label" id="lblKpiNoAtendidos">No Atendidos</span>
+                                    <span class="kpi-label">No Atendidos</span>
                                 </div>
                             </div>
                             <div class="kpi-box box-warning">
                                 <div class="kpi-icon"><i class="fa-solid fa-clock"></i></div>
                                 <div class="kpi-data">
                                     <span class="kpi-num" id="kpiPendientes">0</span>
-                                    <span class="kpi-label" id="lblKpiPendientes">Pendientes</span>
+                                    <span class="kpi-label">Pendientes</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- KPIs Estado Clientes -->
                     <div class="stat-card" id="cardKpisClientes">
                         <div class="card-header">
                             <h3><i class="fa-solid fa-users text-success"></i> ESTADO CLIENTES</h3>
@@ -260,11 +303,6 @@
 
                 <div class="control-panel" id="panelFiltros">
                     <div class="filtros-grupo">
-                        <div class="filtro-item" id="filtroModuloContainer" style="display: none;">
-                            <label><i class="fa-solid fa-layer-group"></i> MÓDULO</label>
-                            <select id="filtroModulo" class="highlight-border-accent" style="color: var(--accent); font-weight: 900;" onchange="window.cambiarModuloVentas()">
-                            </select>
-                        </div>
                         
                         <div class="filtro-item">
                             <label><i class="fa-regular fa-calendar"></i> FECHA</label>
@@ -317,6 +355,7 @@
 
 <!-- ================= MODALES ================= -->
 
+<!-- Modal Agregar/Editar Tarea (Sin Retención) -->
 <div class="modal-overlay" id="modalAgregar">
     <div class="modal-content modal-v2" id="modalContentCaja" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModal()">×</button>
@@ -330,7 +369,6 @@
             <button type="button" class="tab-btn" id="tabAveria" onclick="seleccionarTipoTarea('averia')" style="color: var(--info); border-color: var(--info);"><i class="fa-solid fa-screwdriver-wrench"></i> AVERÍA</button>
             <button type="button" class="tab-btn" id="tabBaja" onclick="seleccionarTipoTarea('baja')"><i class="fa-solid fa-ban"></i> BAJA (Retiro)</button>
             <button type="button" class="tab-btn" id="tabOtros" onclick="seleccionarTipoTarea('otros')" style="color: var(--warning); border-color: var(--border);"><i class="fa-solid fa-gear"></i> OTROS TRABAJOS</button>
-            <button type="button" class="tab-btn" id="tabRetencion" onclick="seleccionarTipoTarea('retencion')" style="color: #ec4899; border-color: var(--border);"><i class="fa-solid fa-headset"></i> RETENCIÓN</button>
         </div>
 
         <div class="search-box" id="cajaBuscador" style="display: none;">
@@ -604,34 +642,6 @@
             </div>
         </div>
 
-        <!-- PASO 1: SELECTOR DE CARLOS/MILI DENTRO DE RETENCIÓN -->
-        <div class="grupo-retencion" style="display: none;">
-            <!-- NUEVO: Selector de Gestor -->
-            <div class="form-group">
-                <label style="color: var(--accent);"><i class="fa-solid fa-user-tag"></i> Asignar a (Bandeja):</label>
-                <select id="formAsignadoRetencion" class="form-control highlight-border-accent">
-                    <option value="JRODRIGUEZ">Carlos (jrodriguez)</option>
-                    <option value="MVENTOCILLA">Mili (mventocilla)</option>
-                    <option value="CPACOTAIPE">C. Pacotaipe (cpacotaipe)</option>
-                    <option value="CALVINO">Cobranzas (calvino)</option>
-                    <option value="OALVINO">Cobranzas (oalvino)</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label style="color: var(--accent);">Estado de Llamada / Acción:</label>
-                <select id="formEstadoLlamada" class="form-control highlight-border-accent">
-                    <option value="En Seguimiento">📞 Llamar / En Seguimiento</option>
-                    <option value="Promesa de Pago">✅ Promesa de Pago</option>
-                    <option value="Retiro Definitivo">🚨 Transformar a: RETIRO DE EQUIPOS (Baja)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Notas / Observaciones del Cliente:</label>
-                <textarea id="formNotasRetencion" class="form-control" rows="3" placeholder="Ej: Cliente indica que pagará el viernes a las 4pm..."></textarea>
-            </div>
-        </div>
-
         <div id="camposCajaComunes" style="display: block;">
             <div class="horario-container" style="margin-top: 20px; padding-top: 15px; border-top: 1px dashed var(--border);">
                 <div class="form-group">
@@ -656,6 +666,7 @@
     </div>
 </div>
 
+<!-- Modal Cobertura -->
 <div class="modal-overlay" id="modalCobertura">
     <div class="modal-content modal-v2 modal-fullscreen" style="display: flex; flex-direction: column;" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalCobertura()">×</button>
@@ -693,6 +704,7 @@
     </div>
 </div>
 
+<!-- Modal Eliminar -->
 <div class="modal-overlay" id="modalEliminar">
     <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModalEliminar()">×</button>
@@ -705,6 +717,7 @@
     </div>
 </div>
 
+<!-- Modal Cierre -->
 <div class="modal-overlay" id="modalCierre">
     <div class="modal-content modal-v2 max-w-md" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModalCierre()">×</button>
@@ -721,6 +734,7 @@
     </div>
 </div>
 
+<!-- Modal Calendario -->
 <div class="modal-overlay" id="modalCalendario">
     <div class="modal-content modal-v2 modal-fullscreen" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalCalendario()">×</button>
@@ -735,6 +749,7 @@
     </div>
 </div>
 
+<!-- Modal Rechazo Rápido -->
 <div class="modal-overlay" id="modalRechazoRapido">
     <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalRechazoRapido()">×</button>
@@ -750,6 +765,7 @@
     </div>
 </div>
 
+<!-- Modal Señal -->
 <div class="modal-overlay" id="modalSenal" style="display: none;">
     <div class="modal-content modal-v2 max-w-sm" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModalSenal()">×</button>
@@ -780,15 +796,11 @@
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- MODAL: FILTRO AVANZADO DE BASE DE DATOS EXCEL                -->
-<!-- ============================================================ -->
+<!-- Modal Filtro BD -->
 <div class="modal-overlay" id="modalFiltroBD">
-    <!-- Le forzamos overflow: hidden para que el modal NO genere scroll externo -->
     <div class="modal-content modal-v2" style="max-width: 95vw !important; width: 95vw !important; height: 95vh !important; display: flex; flex-direction: column; overflow: hidden !important;" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalFiltroBD()">×</button>
         
-        <!-- ENCABEZADO FIJO (flex-shrink: 0 impide que se aplaste) -->
         <div style="flex-shrink: 0;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
                 <h3 class="modal-title m-0"><i class="fa-solid fa-database text-accent"></i> Buscador Avanzado de Clientes</h3>
@@ -827,7 +839,6 @@
             </div>
         </div>
         
-        <!-- CENTRO MÓVIL: Aquí va la tabla. min-height: 0 es el truco vital de Flexbox -->
         <div class="table-wrapper" style="flex: 1; overflow-y: auto !important; overflow-x: auto; min-height: 0; border-radius: 8px; border: 1px solid var(--border);">
             <table style="width: 100%; border-collapse: collapse;">
                 <thead style="position: sticky; top: 0; background: var(--bg-app); z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
@@ -847,14 +858,13 @@
             </table>
         </div>
         
-        <!-- PIE FIJO (Contador de clientes siempre visible al fondo) -->
         <div style="flex-shrink: 0; margin-top: 15px; padding: 12px; background: rgba(0, 229, 255, 0.05); border: 1px solid var(--accent); border-radius: 8px; text-align: center; box-shadow: 0 -2px 10px rgba(0,0,0,0.02);">
             <span id="contadorResultadosBD" style="font-weight: 900; color: var(--accent); font-size: 1.1rem;">0 clientes encontrados</span>
         </div>
     </div>
 </div>
 
-<!-- ================= MODALES DE COBRANZAS ================= -->
+<!-- Modal Gestión Cobranza -->
 <div class="modal-overlay" id="modalGestionarCobranza">
     <div class="modal-content modal-v2 max-w-md" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalGeneral('modalGestionarCobranza')">×</button>
@@ -895,6 +905,7 @@
     </div>
 </div>
 
+<!-- Modal Notificaciones -->
 <div class="modal-overlay" id="modalNotificaciones">
     <div class="modal-content modal-v2" style="max-width: 600px;" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalGeneral('modalNotificaciones')">×</button>
@@ -919,7 +930,7 @@
     </div>
 </div>
 
-<!-- Módulo de Configuración (DINÁMICO) -->
+<!-- Modal Configuración -->
 <div class="modal-overlay" id="modalConfiguracion">
     <div class="modal-content modal-v2" style="max-width: 600px;" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalGeneral('modalConfiguracion')">×</button>
@@ -955,14 +966,13 @@
     </div>
 </div>
 
-<!-- MODAL DE PRE-ENVÍO A BANDEJA (PARA ENVÍOS MASIVOS) -->
+<!-- Modal Pre-Envío a Bandeja -->
 <div class="modal-overlay" id="modalPreEnvioBandeja">
     <div class="modal-content modal-v2 max-w-sm" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="cerrarModalGeneral('modalPreEnvioBandeja')">×</button>
         <h3 class="text-accent mb-4"><i class="fa-solid fa-paper-plane"></i> Enviar a Bandeja</h3>
         <input type="hidden" id="preEnvioDni"> 
         
-        <!-- NUEVO SELECTOR PARA ENVÍO MASIVO -->
         <div class="form-group">
             <label style="color: var(--accent);"><i class="fa-solid fa-user-tag"></i> Asignar a:</label>
             <select id="preEnvioAsignado" class="form-control highlight-border-accent">
