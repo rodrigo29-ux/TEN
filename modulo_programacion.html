@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TEN | Cronograma Operativo</title>
-    
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+        
     <!-- Librerías y Frameworks -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script> tailwind.config = { darkMode: 'class' } </script>
@@ -331,6 +332,35 @@
                     type: 'doughnut', data: { labels: (gm||fm||dm)?['Guardias','Faltas','Desc./Permisos']:['Sin Datos'], datasets: [{ data: (gm||fm||dm)?[gm,fm,dm]:[1], backgroundColor: (gm||fm||dm)?['#4f46e5','#ef4444','#10b981']:['#64748b'], borderWidth:0 }] },
                     options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', labels:{color:textGraphColor, usePointStyle:true} } } }
                 });
+
+                // =========================================================
+                // RANKINGS DEL DASHBOARD (TÉCNICOS MÁS ACTIVOS)
+                // =========================================================
+                let tTec = Object.values(conteoTecnicos);
+                function genRank(arr, prop, colBase) {
+                    let f = arr.filter(t => t[prop] > 0).sort((a,b) => b[prop] - a[prop]).slice(0, 5); // Top 5
+                    if(f.length===0) return `<div class="text-center py-4 text-gray-400 dark:text-gray-500 text-xs md:text-sm">Sin registros suficientes.</div>`;
+                    
+                    let html = '';
+                    f.forEach(t => {
+                        let pct = (t[prop] / f[0][prop]) * 100;
+                        html += `
+                        <div class="bg-gray-50 dark:bg-slate-700/50 p-2 md:p-3 rounded-lg border border-gray-100 dark:border-slate-700 mb-2 md:mb-3">
+                            <div class="flex justify-between items-center text-xs md:text-sm mb-2">
+                                <span class="font-bold text-gray-700 dark:text-gray-200">${t.nombre}</span>
+                                <span class="font-black text-${colBase}-600 dark:text-${colBase}-400">${t[prop]}</span>
+                            </div>
+                            <div class="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-1.5">
+                                <div class="bg-${colBase}-500 h-1.5 rounded-full" style="width: ${pct}%"></div>
+                            </div>
+                        </div>`;
+                    });
+                    return html;
+                }
+                
+                document.getElementById('ranking-guardias').innerHTML = genRank(tTec, 'guardias', 'indigo');
+                document.getElementById('ranking-faltas').innerHTML = genRank(tTec, 'faltas', 'red');
+                document.getElementById('ranking-descansos').innerHTML = genRank(tTec, 'descansos', 'emerald');
             }
 
             // =========================================================
