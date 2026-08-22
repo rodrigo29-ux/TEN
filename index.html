@@ -25,7 +25,7 @@
         <!-- Lado Visual (Izquierda) -->
         <div class="login-visual">
             
-            <!-- NUEVO: IMAGEN DE FONDO Y CAPA OSCURA -->
+            <!-- IMAGEN DE FONDO Y CAPA OSCURA -->
             <div class="login-overlay"></div>
             <img src="fondo.png" alt="Fondo" class="login-bg-img" onerror="this.style.display='none'">
             
@@ -59,7 +59,6 @@
                 <div class="input-group-v2">
                     <label>Correo Electrónico</label>
                     <div class="input-wrapper">
-                        <!-- Le agregamos la clase 'icon-left' -->
                         <i class="fa-solid fa-envelope icon-left"></i>
                         <input type="email" id="txtEmail" placeholder="ejemplo@ten.com" required>
                     </div>
@@ -68,11 +67,8 @@
                 <div class="input-group-v2">
                     <label>Contraseña de Acceso</label>
                     <div class="input-wrapper">
-                        <!-- Le agregamos la clase 'icon-left' -->
                         <i class="fa-solid fa-lock icon-left"></i>
-                        <!-- Agregamos padding-right para que el texto no pise el ojito -->
                         <input type="password" id="txtPassword" placeholder="••••••••" style="padding-right: 45px;" required>
-                        <!-- NUEVO: El botón del ojito -->
                         <i class="fa-solid fa-eye icon-right" id="togglePassword" onclick="window.togglePasswordVisibility()" title="Mostrar contraseña"></i>
                     </div>
                 </div>
@@ -326,6 +322,34 @@
                                 <option value="no_atendido">No Atendidos</option>
                             </select>
                         </div>
+                        <div class="filtro-item admin-only">
+                            <label><i class="fa-solid fa-calendar-days"></i> MES</label>
+                            <select id="filtroMesNoc" onchange="renderizarTabla()">
+                                <option value="todos">Todos los Meses</option>
+                                <option value="01">Enero</option>
+                                <option value="02">Febrero</option>
+                                <option value="03">Marzo</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Mayo</option>
+                                <option value="06">Junio</option>
+                                <option value="07">Julio</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="filtro-item admin-only">
+                            <label><i class="fa-solid fa-calendar-check"></i> AÑO</label>
+                            <select id="filtroAnioNoc" onchange="renderizarTabla()">
+                                <option value="todos">Todos los Años</option>
+                                <option value="2024">2024</option>
+                                <option value="2025">2025</option>
+                                <option value="2026" selected>2026</option>
+                                <option value="2027">2027</option>
+                            </select>
+                        </div>
                         <div class="filtro-item flex-2">
                             <label><i class="fa-solid fa-magnifying-glass"></i> BUSCAR CLIENTE</label>
                             <input type="text" id="buscador" placeholder="Escribe DNI, nombre, tipo..." onkeyup="renderizarTabla()">
@@ -356,7 +380,7 @@
 
 <!-- ================= MODALES ================= -->
 
-<!-- Modal Agregar/Editar Tarea (Sin Retención) -->
+<!-- Modal Agregar/Editar Tarea -->
 <div class="modal-overlay" id="modalAgregar">
     <div class="modal-content modal-v2" id="modalContentCaja" onclick="event.stopPropagation()">
         <button type="button" class="btn-close-x" onclick="window.cerrarModal()">×</button>
@@ -537,6 +561,7 @@
             </div>
         </div>
 
+        <!-- ============ NUEVO BLOQUE DE AVERÍAS ============ -->
         <div class="grupo-averia" style="display: none;">
             <div class="form-group">
                 <label style="color: var(--accent);">Info de Red (Auto-Cargado):</label>
@@ -544,11 +569,17 @@
             </div>
             <div class="form-group">
                 <label>Tipo de Problema:</label>
-                <select id="formProblemaAveria" class="form-control">
-                    <option value="Punto rojo">Punto rojo</option>
-                    <option value="Problemas con el IPTV">Problemas con el IPTV</option>
-                    <option value="Sin Internet">Sin Internet</option>
+                <select id="formProblemaAveria" class="form-control" onchange="window.cambiarProblemaAveria()">
+                    <option value="Punto rojo">🔴 Punto rojo (LOS)</option>
+                    <option value="Sin Internet">🌐 Sin Internet</option>
+                    <option value="Internet lento">🐢 Internet lento</option>
+                    <option value="Problemas con el IPTV">📺 Problemas con el IPTV</option>
+                    <option value="Problemas con el cable">📡 Problemas con el cable (CATV)</option>
+                    <option value="Cambio de equipo">🛜 Cambio de equipo (Router)</option>
+                    <option value="Otros">✍️ Otros (Especificar)</option>
                 </select>
+                <!-- NUEVA CAJA DE TEXTO OCULTA PARA "OTROS" -->
+                <input type="text" id="formProblemaOtros" class="form-control highlight-border-accent" placeholder="Escribe aquí el problema exacto..." style="display: none; margin-top: 10px;">
             </div>
             <div class="form-group">
                 <label>Diagnóstico Inicial (Notas):</label>

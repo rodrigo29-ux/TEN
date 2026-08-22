@@ -36,6 +36,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
 // ============================================================ //
 // ACTIVAR PERSISTENCIA OFFLINE FIREBASE                        //
 // ============================================================ //
@@ -50,6 +51,7 @@ enableIndexedDbPersistence(db)
           console.warn("⚠️ Este navegador no soporta persistencia offline.");
       }
   });
+
 const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
 
 const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4");
@@ -177,11 +179,11 @@ window.togglePasswordVisibility = () => {
     if (passInput.type === "password") {
         passInput.type = "text";
         toggleIcon.classList.remove("fa-eye");
-        toggleIcon.classList.add("fa-eye-slash"); // Cambia al ícono de ojito tachado
+        toggleIcon.classList.add("fa-eye-slash");
     } else {
         passInput.type = "password";
         toggleIcon.classList.remove("fa-eye-slash");
-        toggleIcon.classList.add("fa-eye"); // Vuelve al ojito normal
+        toggleIcon.classList.add("fa-eye");
     }
 };
 
@@ -198,7 +200,6 @@ onAuthStateChanged(auth, (user) => {
 
         const email = user.email.toLowerCase();
 
-        // 1. LOS NUEVOS USUARIOS Y ROLES
         const correosAdminGlobal = ["admin@ten.com", "rpacotaipe@ten.com", "eolortegui@ten.com", "jpalomino@ten.com", "dpacotaipe@ten.com"];
         const correosAdminLurin = ["ecuta@ten.com", "strujillo@ten.com"];
         const coordinadoresVentas = ["carlos@ten.com", "jrodriguez@ten.com", "mventocilla@ten.com", "cpacotaipe@ten.com"];
@@ -211,7 +212,6 @@ onAuthStateChanged(auth, (user) => {
         isVendedor = email.includes("ventas");
         isCobranzas = areaCobranzas.includes(email); 
 
-        // Diccionario para normalizar los nombres internos
         const mapaGestores = {
             "carlos@ten.com": "JRODRIGUEZ",
             "jrodriguez@ten.com": "JRODRIGUEZ",
@@ -291,31 +291,26 @@ onAuthStateChanged(auth, (user) => {
             if (document.getElementById("cardGraficoTecnicos")) document.getElementById("cardGraficoTecnicos").style.display = "none";
             if (document.getElementById("cardKpisClientes")) document.getElementById("cardKpisClientes").style.display = "none";
 
-            // Ocultar selector de zona (Forzar Cono Norte)
             const contZona = document.getElementById("contenedorSelectorZona");
             if (contZona) contZona.style.display = "none";
             zonaActual = "Norte";
 
-            // Ocultar el botón de Recursos Humanos (Programación/Turnos)
             const navBtnHr = document.querySelector(".btn-hr");
             if (navBtnHr) {
                 navBtnHr.style.display = "none";
-                const navSecHr = navBtnHr.previousElementSibling; // Oculta el título "RECURSOS HUMANOS"
+                const navSecHr = navBtnHr.previousElementSibling;
                 if(navSecHr && navSecHr.tagName === 'P') navSecHr.style.display = "none";
             }
 
             if (isCarlos) {
-                // LOS COORDINADORES SÍ VEN LA BASE DE DATOS Y RETENCIÓN
                 document.querySelectorAll(".admin-carlos-only, .btn-cobranzas").forEach((el) => el.classList.add("show-admin-flex"));
                 configurarGraficosBase("REPORTE DE VENTAS", "Total Registradas", "Instaladas", "Por Instalar");
             } else if (isVendedor) {
-                // LOS VENDEDORES ESTRICTOS NO VEN NADA DE ESO
                 document.querySelectorAll(".admin-carlos-only, .btn-cobranzas").forEach((el) => {
                     el.classList.remove("show-admin-flex");
                     el.style.display = "none";
                 });
                 
-                // Ocultamos los subtítulos del menú izquierdo que quedan vacíos
                 document.querySelectorAll(".nav-section").forEach(sec => {
                     if (sec.innerText.includes("BASE DE DATOS") || sec.innerText.includes("ÁREA COMERCIAL")) {
                         sec.style.display = "none";
@@ -351,7 +346,6 @@ onAuthStateChanged(auth, (user) => {
         if (isAdmin || isWilton || isCarlos || isCobranzas) {
             if (typeof window.iniciarEscuchaCobranzas === 'function') window.iniciarEscuchaCobranzas();
             
-            // VERIFICACIÓN INTELIGENTE DE BASE DE DATOS (PROMESA)
             window.cargarBDLocalYActualizarUI().then((hayDatos) => {
                 if (!hayDatos) {
                     console.log("Sin BD local. Descargando desde Firebase...");
@@ -365,7 +359,7 @@ onAuthStateChanged(auth, (user) => {
 
     } else {
         if (unsubscribeTrabajos) unsubscribeTrabajos();
-        if (unsubscribeCobranzas) unsubscribeCobranzas(); // APAGAR COBRANZAS AL SALIR
+        if (unsubscribeCobranzas) unsubscribeCobranzas();
         dbTrabajos = [];
         document.getElementById("login-view").style.display = "flex";
         document.getElementById("dashboard-view").style.display = "none";
@@ -420,7 +414,6 @@ window.actualizarEstadoBD = () => {
         }
     }
     
-    // Actualiza los KPIs visuales si la pantalla de NOC los tiene
     if (localStorage.getItem("kpi_total")) {
         let activos = parseInt(localStorage.getItem("kpi_activos")) || 0;
         let suspendidos = parseInt(localStorage.getItem("kpi_suspendidos")) || 0;
@@ -576,9 +569,6 @@ window.subirExcelAFirebase = async () => {
     }
 };
 
-// ============================================================ //
-// FUNCIÓN CORREGIDA: window.descargarExcelDeFirebase            //
-// ============================================================ //
 window.descargarExcelDeFirebase = async () => {
     mostrarToast("⏳ Descargando base de datos desde la Nube... Por favor espera.");
     try {
@@ -777,6 +767,23 @@ window.calcularPrecioTotal = () => {
 };
 
 // ============================================================ //
+// FUNCIÓN PARA EL SELECT DE AVERÍAS                            //
+// ============================================================ //
+window.cambiarProblemaAveria = () => {
+    const select = document.getElementById("formProblemaAveria");
+    const inputOtros = document.getElementById("formProblemaOtros");
+    if(select && inputOtros) {
+        if(select.value === "Otros") {
+            inputOtros.style.display = "block";
+            inputOtros.focus();
+        } else {
+            inputOtros.style.display = "none";
+            inputOtros.value = "";
+        }
+    }
+};
+
+// ============================================================ //
 // MODALES TAREAS                                               //
 // ============================================================ //
 window.abrirModal = () => {
@@ -836,7 +843,6 @@ window.abrirModal = () => {
             if (otros) otros.disabled = true; 
             document.getElementById("modalTitulo").innerHTML = "⚙️ Completar Datos";
         } else if (isVendedor) {
-            // REGLAS ESTRICTAS PARA VENDEDORES
             let tabs = document.querySelector(".modal-tabs");
             if (tabs) tabs.style.display = "none";
             let asignacion = document.getElementById("grupoAsignacionTecnico");
@@ -847,7 +853,6 @@ window.abrirModal = () => {
             if (otrosInput) otrosInput.disabled = true;
             document.getElementById("modalTitulo").innerHTML = "<i class='fa-solid fa-rocket'></i> Registrar Nueva Venta";
         } else if (isCarlos) {
-            // REGLAS PARA COORDINADORES
             let tabs = document.querySelector(".modal-tabs");
             if (tabs) tabs.style.display = "flex";
             let asignacion = document.getElementById("grupoAsignacionTecnico");
@@ -973,7 +978,22 @@ window.editarTrabajo = (id) => {
             document.getElementById("formObsAlta").value = t.notasBase || t.notas || "";
             window.calcularPrecioTotal();
         } else if (t.tipoTarea === "averia") {
-            document.getElementById("formProblemaAveria").value = t.detalle || "";
+            const selectAveria = document.getElementById("formProblemaAveria");
+            const inputOtros = document.getElementById("formProblemaOtros");
+            
+            let opcionesValidas = Array.from(selectAveria.options).map(opt => opt.value);
+            
+            if (opcionesValidas.includes(t.detalle)) {
+                selectAveria.value = t.detalle;
+                if(inputOtros) inputOtros.style.display = "none";
+            } else {
+                selectAveria.value = "Otros";
+                if(inputOtros) {
+                    inputOtros.style.display = "block";
+                    inputOtros.value = t.detalle || "";
+                }
+            }
+            
             document.getElementById("formNotasAveria").value = t.notas || "";
             document.getElementById("formInfoRedAveria").value = t.infoRed || "";
         } else if (t.tipoTarea === "baja") {
@@ -1079,7 +1099,15 @@ window.guardarTrabajo = async () => {
             data.notas = `💰 Cobrar: ${precio} | ${extraTxt}${obsBase}`;
         } else if (tipo === "averia") {
             data.idCliente = document.getElementById("formIdCliente").value;
-            data.detalle = document.getElementById("formProblemaAveria").value;
+            
+            // LÓGICA INTELIGENTE PARA CAPTURAR "OTROS"
+            let problemaSeleccionado = document.getElementById("formProblemaAveria").value;
+            if (problemaSeleccionado === "Otros") {
+                let textoOtros = document.getElementById("formProblemaOtros").value.trim();
+                problemaSeleccionado = textoOtros !== "" ? textoOtros : "Avería no especificada";
+            }
+            data.detalle = problemaSeleccionado;
+            
             data.notas = document.getElementById("formNotasAveria").value;
             data.infoRed = document.getElementById("formInfoRedAveria").value;
         } else if (tipo === "baja") {
@@ -1301,6 +1329,8 @@ window.renderizarTabla = () => {
     const filtroFecha = document.getElementById("filtroFecha").value;
     const filtroEstado = document.getElementById("filtroEstado").value;
     const txtBuscar = document.getElementById("buscador").value.toLowerCase();
+    const filtroMes = document.getElementById("filtroMesNoc") ? document.getElementById("filtroMesNoc").value : "todos";
+    const filtroAnio = document.getElementById("filtroAnioNoc") ? document.getElementById("filtroAnioNoc").value : "todos";
 
     tbody.innerHTML = "";
     let pGrafico = [];
@@ -1332,6 +1362,13 @@ window.renderizarTabla = () => {
 
             let esRetencion = (t.tipoTarea === "retencion");
             let esRetiroNOC = esRetencion && t.estadoLlamada === "Retiro Definitivo";
+
+            let fechaObj = t.fecha ? t.fecha.split("-") : null;
+            let anioT = fechaObj ? fechaObj[0] : "";
+            let mesT = fechaObj ? fechaObj[1] : "";
+
+            if (filtroAnio !== "todos" && anioT !== filtroAnio) return;
+            if (filtroMes !== "todos" && mesT !== filtroMes) return;
 
             if (esRetencion && !esRetiroNOC) return;
 
@@ -1758,8 +1795,8 @@ window.actualizarCalendarioGeneral = () => {
     window.calendarioInstancia = new FullCalendar.Calendar(calendarEl, {
         initialView: "timeGridWeek", 
         locale: "es",
-        height: "100%",       // OBLIGA AL CALENDARIO A LLENAR EL MODAL
-        expandRows: true,     // ESTIRA LAS HORAS PARA QUE NO QUEDE ESPACIO EN BLANCO
+        height: "100%",
+        expandRows: true,
         headerToolbar: { left: "prev,next today", center: "title", right: "timeGridDay,timeGridWeek,dayGridMonth" },
         slotMinTime: "06:00:00", slotMaxTime: "22:00:00", allDaySlot: false, events: eventos,
         eventClick: function(info) {
@@ -2347,16 +2384,12 @@ window.guardarModalSenal = async () => {
 };
 
 window.crearRetencionDirecta = async (dni) => {
-    // Función delegada (el módulo de retención la maneja en su pantalla). 
-    // Aquí en NOC solo redireccionamos si un admin intenta usarlo.
     mostrarToast("⚠️ Dirígete al Módulo de Retención en el Menú para gestionar cobros.");
 };
 
 // ============================================================ //
 // CONTROL UNIVERSAL DE MODALES (CERRAR CON CLICK AFUERA O ESC) //
 // ============================================================ //
-
-// 1. Definimos las funciones de cierre faltantes para que la 'X' funcione siempre
 window.cerrarModal = () => { document.getElementById("modalAgregar").style.display = "none"; };
 window.cerrarModalCobertura = () => { document.getElementById("modalCobertura").style.display = "none"; };
 window.cerrarModalEliminar = () => { document.getElementById("modalEliminar").style.display = "none"; };
@@ -2368,14 +2401,12 @@ window.cerrarModalGeneral = (id) => {
     if(m) m.style.display = "none"; 
 };
 
-// 2. Cerrar modal al hacer clic en el fondo oscuro (overlay)
 document.addEventListener('click', (e) => {
     if (e.target.classList.contains('modal-overlay')) {
         e.target.style.display = 'none';
     }
 });
 
-// 3. Cerrar modal al presionar la tecla Escape
 document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") { 
         document.querySelectorAll('.modal-overlay').forEach(m => {

@@ -195,6 +195,36 @@
                         </select>
                     </div>
 
+                    <!-- NUEVOS FILTROS: MES Y AÑO -->
+                    <div class="filtro-item">
+                        <label><i class="fa-solid fa-calendar-days"></i> MES</label>
+                        <select id="filtroMes" onchange="window.renderizarTablaCobranzas()">
+                            <option value="todos">Todos los Meses</option>
+                            <option value="01">Enero</option>
+                            <option value="02">Febrero</option>
+                            <option value="03">Marzo</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Mayo</option>
+                            <option value="06">Junio</option>
+                            <option value="07">Julio</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                    </div>
+                    <div class="filtro-item">
+                        <label><i class="fa-solid fa-calendar-check"></i> AÑO</label>
+                        <select id="filtroAnio" onchange="window.renderizarTablaCobranzas()">
+                            <option value="todos">Todos los Años</option>
+                            <option value="2024">2024</option>
+                            <option value="2025">2025</option>
+                            <option value="2026" selected>2026</option>
+                            <option value="2027">2027</option>
+                        </select>
+                    </div>
+
                     <!-- 4. BUSCADOR -->
                     <div class="filtro-item flex-2">
                         <label><i class="fa-solid fa-magnifying-glass"></i> BUSCAR CLIENTE</label>
@@ -811,6 +841,8 @@ window.renderizarTablaCobranzas = () => {
     let filtroCaso = document.getElementById("filtroCaso").value;
     let filtroGestor = document.getElementById("filtroGestor").value;
     let txtBuscar = document.getElementById("buscadorCobranzas").value.toLowerCase();
+    let filtroMes = document.getElementById("filtroMes") ? document.getElementById("filtroMes").value : "todos";
+    let filtroAnio = document.getElementById("filtroAnio") ? document.getElementById("filtroAnio").value : "todos";
     
     tbody.innerHTML = "";
     
@@ -843,6 +875,15 @@ window.renderizarTablaCobranzas = () => {
         // LÓGICA DE LOS DOS FILTROS SEPARADOS APLICADA
         // ===========================================
         if (filtroGestor !== "todos" && gestor !== filtroGestor) return;
+        
+        // --- NUEVO: FILTRO DE MES Y AÑO ---
+        let fechaObj = t.fecha ? t.fecha.split("-") : null; // Corta el "2026-08-22"
+        let anioT = fechaObj ? fechaObj[0] : "";
+        let mesT = fechaObj ? fechaObj[1] : "";
+        
+        if (filtroAnio !== "todos" && anioT !== filtroAnio) return;
+        if (filtroMes !== "todos" && mesT !== filtroMes) return;
+        // ----------------------------------
         
         // 1. Validar Filtro de Caso (Pendiente, Atendido, No Atendido)
         if (filtroCaso !== "todos" && estCaso !== filtroCaso) return;
