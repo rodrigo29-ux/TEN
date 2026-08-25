@@ -9,6 +9,45 @@ import {
     onAuthStateChanged,
     sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+// ==========================================
+// 🚀 MOTOR DE NOTIFICACIONES PUSH (ONESIGNAL) - VERSIÓN 2
+// ==========================================
+window.dispararAlertaCelular = async (titulo, mensaje) => {
+    const APP_ID = "fe57a0bf-5554-430d-a1ea-0eecbc2d0310";
+    const API_KEY = "os_v2_app_7zl2bp2vkrbq3ipkb3wlylidcdbt5ih3xhweuq55mltvkibkkjt4m7peuspl6hplimmlinq577x4ghhrwxlre6afnabm3indfdrq5ma";
+
+    const body = {
+        app_id: APP_ID,
+        target_channel: "push", // 👈 ¡ESTE ES EL CAMBIO CLAVE!
+        included_segments: ["Total Subscriptions"], // 👈 Segmento por defecto infalible
+        headings: { es: titulo, en: titulo },
+        contents: { es: mensaje, en: mensaje }
+    };
+
+    try {
+        const respuesta = await fetch("https://onesignal.com/api/v1/notifications", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json; charset=utf-8",
+                "Authorization": `Basic ${API_KEY}`
+            },
+            body: JSON.stringify(body)
+        });
+        
+        const resultado = await respuesta.json();
+        console.log("📡 Respuesta de OneSignal:", resultado);
+        
+        if (resultado.errors) {
+            console.error("❌ OneSignal rechazó el envío:", resultado.errors);
+        } else {
+            console.log("✅ ¡Alerta Push disparada con éxito!");
+        }
+    } catch (error) {
+        console.error("❌ Error de conexión al disparar:", error);
+    }
+};
+
 import {
     getFirestore,
     collection,
@@ -2106,6 +2145,10 @@ window.confirmarEnvioBandeja = async () => {
             };
             await addDoc(coleccionTrabajos, data);
         }
+
+        // Disparamos la notificación al celular
+        window.dispararAlertaCelular("¡NUEVO TRABAJO ASIGNADO!", `Revisa tu bandeja, tienes una nueva orden pendiente.`);
+
     }
     mostrarToast(`✅ ${seleccionados.length} cliente(s) enviados.`);
     if(document.getElementById("chkAllBD")) document.getElementById("chkAllBD").checked = false; 
@@ -2416,3 +2459,134 @@ document.addEventListener("keydown", (e) => {
         });
     }
 });
+
+// ==========================================
+// 🚨 SISTEMA DE ALERTAS INTELIGENTE (ADMIN Y TÉCNICOS)
+// ==========================================
+setTimeout(() => {
+    let rolUsuario = localStorage.getItem('ten_rol');
+    let emailUsuario = localStorage.getItem('ten_email') || '';
+    let nombreTecnicoNOC = localStorage.getItem('ten_nombre_tecnico') || '';
+
+    // 1. CREADOR DE VENTANAS MODERNAS
+    window.mostrarAlertaNOC = (titulo, mensaje, icono, color) => {
+        let overlay = document.createElement("div");
+        overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:9999; display:flex; align-items:center; justify-content:center;";
+        overlay.innerHTML = `
+            <div style="background:var(--bg-panel, #1e293b); border:1px solid var(--border, #334155); padding:25px; border-radius:15px; text-align:center; max-width:320px; width:90%; box-shadow:0 15px 30px rgba(0,0,0,0.5); animation: fadeIn 0.3s ease-out;">
+                <i class="fa-solid ${icono}" style="font-size:3.5rem; color:${color}; margin-bottom:15px; display:block;"></i>
+                <h3 style="color:var(--text-main, white); font-size:1.2rem; font-weight:900; margin-bottom:10px;">${titulo}</h3>
+                <p style="color:var(--text-muted, #94a3b8); font-size:0.9rem; margin-bottom:20px; white-space:pre-wrap; line-height:1.4;">${mensaje}</p>
+                <button onclick="this.parentElement.parentElement.remove()" style="background:${color}; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer; width:100%; transition:0.2s;">Entendido</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    };
+
+    let campana = document.getElementById("btn-notificaciones");
+    if (!campana) return; // Si no existe, no hace nada
+
+    // Reproductor de Sonido
+    if (!document.getElementById("audioNotificacion")) {
+        let audio = document.createElement("audio");
+        audio.id = "audioNotificacion";
+        audio.src = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+        audio.preload = "auto";
+        document.body.appendChild(audio);
+    }
+
+    // =====================================
+    // 🧠 LÓGICA PARA ADMINISTRADORES
+    // =====================================
+    if (rolUsuario === 'admin' || rolUsuario === 'ventas') {
+        campana.onclick = () => { window.mostrarAlertaNOC("Bandeja NOC", "✅ Todos los trabajos han sido atendidos o asignados. No hay pendientes.", "fa-circle-check", "#10b981"); };
+        
+        onSnapshot(query(coleccionTrabajos, where("estado", "==", "pendiente")), (snapshot) => {
+            let pendientesTotales = snapshot.size;
+            if (pendientesTotales > 0) {
+                campana.innerHTML = `<i class="fa-solid fa-bell"></i><span style="position:absolute; top:-2px; right:-2px; background:var(--warning); color:white; font-size:9px; border-radius:50%; padding:2px 5px; font-weight:bold; border:2px solid var(--bg-panel);">${pendientesTotales}</span>`;
+                campana.style.color = "var(--warning)";
+                campana.onclick = () => { window.mostrarAlertaNOC("Bandeja NOC", `Tienes ${pendientesTotales} trabajo(s) en estado PENDIENTE en el sistema.\n\nPor favor, revísalos en la tabla.`, "fa-clipboard-list", "#f59e0b"); };
+            } else {
+                campana.innerHTML = `<i class="fa-solid fa-bell"></i>`;
+                campana.style.color = "";
+                campana.onclick = () => { window.mostrarAlertaNOC("Bandeja NOC", "✅ Todo limpio. No hay trabajos pendientes en el NOC.", "fa-circle-check", "#10b981"); };
+            }
+        });
+    } 
+    // =====================================
+    // 🧠 LÓGICA PARA TÉCNICOS
+    // =====================================
+    else if (rolUsuario === 'tecnico' && nombreTecnicoNOC) {
+        campana.onclick = () => { window.mostrarAlertaNOC("Todo al día", "☕ No tienes novedades en RRHH ni guardias pendientes para hoy o mañana.", "fa-circle-check", "#10b981"); };
+
+        let primeraCarga = true; 
+        onSnapshot(query(coleccionTrabajos), (snapshot) => {
+            if (!primeraCarga) {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added") {
+                        let d = change.doc.data();
+                        if (d.tecnicos && d.tecnicos.includes(nombreTecnicoNOC) && d.estado === "pendiente") {
+                            let audio = document.getElementById("audioNotificacion");
+                            if(audio) audio.play().catch(e => console.log("Sonido bloqueado"));
+                            let tipoMsg = (d.tipoTarea || "TRABAJO").toUpperCase();
+                            window.mostrarAlertaNOC(`¡NUEVO ${tipoMsg}!`, `Cliente: ${d.cliente}\nZona: ${d.zona || "N/A"}\n\nRevisa tu bandeja.`, "fa-clipboard-list", "#3b82f6");
+                        }
+                    }
+                });
+            }
+            primeraCarga = false;
+        });
+
+        const verificarRRHH = async () => {
+            try {
+                // Traductor de nombres para que Firebase entienda a Supabase
+                const diccionarioTecnicos = {
+                    'MPACOTAIPE': 'Marcelino', 'RPACOTAIPE': 'Rodrigo', 'CALARCON': 'Clever',
+                    'JPATRICIO': 'Juan', 'JCORDOVA': 'Cordova', 'RRONDON': 'Renzo',
+                    'RLEON': 'Ricardo', 'JLOLI': 'Josue', 'JFERNANDEZ': 'Jesus',
+                    'EOLORTEGUI': 'Eber', 'JPALOMINO': 'Javier', 'DPACOTAIPE': 'Diego'
+                };
+                
+                let prefix = emailUsuario.split('@')[0].toUpperCase();
+                let nombreBusqueda = diccionarioTecnicos[prefix] || nombreTecnicoNOC.split(" ")[0];
+
+                let hoyObj = new Date();
+                let hoyStr = hoyObj.getFullYear() + "-" + String(hoyObj.getMonth() + 1).padStart(2, '0') + "-" + String(hoyObj.getDate()).padStart(2, '0');
+                let mananaObj = new Date(); mananaObj.setDate(mananaObj.getDate() + 1);
+                let mananaStr = mananaObj.getFullYear() + "-" + String(mananaObj.getMonth() + 1).padStart(2, '0') + "-" + String(mananaObj.getDate()).padStart(2, '0');
+                
+                const SUPABASE_URL = 'https://wtmmwcawkokceefkqiqf.supabase.co';
+                const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0bW13Y2F3a29rY2VlZmtxaXFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzOTk0MDgsImV4cCI6MjEwMTk3NTQwOH0.HUd6Vymh4NI_dmT20acpV7k3fTK0Ob91-uqwYpAAdp4';
+                
+                const resTec = await fetch(`${SUPABASE_URL}/rest/v1/tecnicos?nombre=ilike.%25${nombreBusqueda}%25&select=id`, {
+                    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+                });
+                const dTec = await resTec.json();
+                
+                if (dTec && dTec.length > 0) {
+                    let idTecnico = dTec[0].id;
+                    const resTurno = await fetch(`${SUPABASE_URL}/rest/v1/registros_soporte?tecnico_id=eq.${idTecnico}&fecha=in.(${hoyStr},${mananaStr})&select=*`, {
+                        headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+                    });
+                    const dTurno = await resTurno.json();
+                    
+                    if (dTurno && dTurno.length > 0) {
+                        campana.innerHTML = `<i class="fa-solid fa-bell"></i><span style="position:absolute; top:-2px; right:-2px; background:var(--danger); color:white; font-size:9px; border-radius:50%; padding:2px 5px; font-weight:bold; border:2px solid var(--bg-panel);">!</span>`;
+                        campana.style.color = "var(--danger)";
+                        
+                        let mensaje = `Hola ${nombreBusqueda}, tienes novedades en RRHH:\n\n`;
+                        dTurno.forEach(t => {
+                            let diaTxt = (t.fecha === hoyStr) ? "HOY" : "MAÑANA";
+                            mensaje += `📌 ${diaTxt} (${t.fecha}): ${t.tipo}\n`;
+                        });
+                        mensaje += `\nPor favor, tómalo en cuenta.`;
+
+                        campana.onclick = () => { window.mostrarAlertaNOC("Aviso de RRHH", mensaje, "fa-calendar-day", "#ef4444"); };
+                    }
+                }
+            } catch (error) { console.error("Error al verificar RRHH:", error); }
+        };
+        setTimeout(verificarRRHH, 2000);
+    }
+}, 2000);
