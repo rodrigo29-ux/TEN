@@ -356,6 +356,8 @@ onAuthStateChanged(auth, (user) => {
                     }
                 });
                 configurarGraficosBase("MIS VENTAS", "Total Registradas", "Instaladas", "Por Instalar");
+                const campanaVentas = document.getElementById("btn-notificaciones");
+                if (campanaVentas) campanaVentas.style.display = "none";
             }
 
         } else {
@@ -381,6 +383,8 @@ onAuthStateChanged(auth, (user) => {
 
         actualizarFiltroTecnicos();
         cargarTrabajosEnVivo();
+
+        if(typeof window.renderizarTablaPlanesConfig === 'function') window.renderizarTablaPlanesConfig();
 
         if (isAdmin || isWilton || isCarlos || isCobranzas) {
             if (typeof window.iniciarEscuchaCobranzas === 'function') window.iniciarEscuchaCobranzas();
@@ -1562,7 +1566,7 @@ window.renderizarTabla = () => {
             }
 
             let btnEditGralHtml = "";
-            if (isAdmin || isAdminLurin || isWilton || isCarlos || isVendedor || permitirEditarTecnico || isCobranzas) {
+            if (isAdmin || isAdminLurin || isWilton || isCarlos || permitirEditarTecnico || isCobranzas) {
                 btnEditGralHtml = `<button class="btn-action-ui btn-ui-editar" onclick="editarTrabajo('${t.id}')">${textoBtnEditar}</button>`;
             }
 
@@ -2590,3 +2594,27 @@ setTimeout(() => {
         setTimeout(verificarRRHH, 2000);
     }
 }, 2000);
+
+// ==========================================
+// AUTO-CALCULAR HORA FIN (+1 HORA)
+// ==========================================
+document.getElementById("formHoraInicio").addEventListener("change", function() {
+    let horaSeleccionada = this.value;
+    if (horaSeleccionada) {
+        let partes = horaSeleccionada.split(":");
+        let horas = parseInt(partes[0]);
+        let minutos = partes[1];
+
+        // Le sumamos 1 hora
+        horas = horas + 1;
+        
+        // Si la hora pasa de 23, se reinicia a 00 (medianoche)
+        if (horas === 24) horas = 0;
+
+        // Le ponemos un 0 a la izquierda si es menor a 10 (ej: 09:30)
+        let horasStr = horas < 10 ? "0" + horas : horas;
+
+        // Lo inyectamos en la casilla de Hora Fin
+        document.getElementById("formHoraFin").value = `${horasStr}:${minutos}`;
+    }
+});
