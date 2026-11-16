@@ -566,7 +566,7 @@
                                 </div>
                             </div>
                             
-                            <!-- NUEVA TARJETA: NO REALIZADOS -->
+                            <!-- TARJETA: NO REALIZADOS -->
                             <div class="kpi-box" style="background: rgba(100, 116, 139, 0.05); border: 1px solid rgba(100, 116, 139, 0.15); border-radius: 8px; display: flex; align-items: center; padding: 15px; gap: 15px;">
                                 <div class="kpi-icon" style="color: #64748b; background: rgba(100, 116, 139, 0.15); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;"><i class="fa-solid fa-ban"></i></div>
                                 <div class="kpi-data" style="display: flex; flex-direction: column;">
@@ -575,11 +575,21 @@
                                 </div>
                             </div>
 
+                            <!-- TARJETA ORIGINAL PENDIENTES -->
                             <div class="kpi-box box-warning">
                                 <div class="kpi-icon"><i class="fa-solid fa-clock"></i></div>
                                 <div class="kpi-data">
                                     <span class="kpi-num" id="kpiPendientes">0</span>
                                     <span class="kpi-label">Pendientes</span>
+                                </div>
+                            </div>
+
+                            <!-- 🔥 NUEVA TARJETA: RECHAZADAS (Especial para Ventas sin cobertura) -->
+                            <div class="kpi-box" style="background: rgba(220, 38, 38, 0.05); border: 1px solid rgba(220, 38, 38, 0.15); border-radius: 8px; display: flex; align-items: center; padding: 15px; gap: 15px;">
+                                <div class="kpi-icon" style="color: #dc2626; background: rgba(220, 38, 38, 0.15); width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;"><i class="fa-solid fa-thumbs-down"></i></div>
+                                <div class="kpi-data" style="display: flex; flex-direction: column;">
+                                    <span class="kpi-num" id="kpiRechazados" style="font-size: 1.5rem; font-weight: 900; color: #dc2626; line-height: 1;">0</span>
+                                    <span class="kpi-label" style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase; margin-top: 4px;">Rechazadas</span>
                                 </div>
                             </div>
                         </div>

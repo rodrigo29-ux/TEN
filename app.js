@@ -4095,16 +4095,18 @@ function actualizarGraficosGerenciales(trabajosFiltrados) {
 
     setTimeout(() => {
         try {
-            // Añadimos la variable "noReal" para contar los cancelados
-            let pend = 0, aten = 0, noAten = 0, noReal = 0;
+            // 🔥 Añadimos la variable "rech" para contar los rechazados por separado
+            let pend = 0, aten = 0, noAten = 0, noReal = 0, rech = 0;
             let cTech = {};
 
             trabajosFiltrados.forEach((t) => {
                 let est = String(t.estado || "pendiente").toLowerCase();
+                
                 if (est === "atendido") aten++;
                 else if (est === "no_atendido") noAten++;
-                else if (est === "no_realizado") noReal++; // La nueva regla
-                else pend++;
+                else if (est === "no_realizado") noReal++; 
+                else if (est === "rechazada") rech++; // 👈 ¡Atrapamos a los rechazados aquí!
+                else pend++; // Ahora solo quedan los verdaderos pendientes (por_aprobar_carlos, pendiente, en_camino, etc)
 
                 let asig = t.tecnicos || [];
                 if (typeof asig === "string") asig = [asig];
@@ -4119,7 +4121,8 @@ function actualizarGraficosGerenciales(trabajosFiltrados) {
             if(document.getElementById("kpiAtendidos")) document.getElementById("kpiAtendidos").innerText = aten;
             if(document.getElementById("kpiPendientes")) document.getElementById("kpiPendientes").innerText = pend;
             if(document.getElementById("kpiNoAtendidos")) document.getElementById("kpiNoAtendidos").innerText = noAten;
-            if(document.getElementById("kpiNoRealizados")) document.getElementById("kpiNoRealizados").innerText = noReal; // Actualiza la tarjeta gris
+            if(document.getElementById("kpiNoRealizados")) document.getElementById("kpiNoRealizados").innerText = noReal; 
+            if(document.getElementById("kpiRechazados")) document.getElementById("kpiRechazados").innerText = rech; // 👈 Actualizamos la nueva tarjeta
 
             if (typeof window.renderizarCalendario === "function") window.renderizarCalendario();
 
