@@ -234,8 +234,19 @@
         // 2. CARGA DE DATOS SEGÚN EL ROL
         // ============================================================ //
         async function cargarTodoElSistema() {
+            const zonaActiva = localStorage.getItem('ten_zona_activa') || 'norte';
+            const tecnicosLurin = ["BILLS", "CIELO"];
+
             const { data: t } = await clienteSupabase.from('tecnicos').select('*').order('id', { ascending: false }); 
-            if (t) { tecnicosGlobal = t; renderizarTecnicos(t); }
+            if (t) { 
+                // 🔒 FILTRO MÁGICO: Divide la tabla de Supabase entre Norte y Lurín
+                if (zonaActiva === "lurin") {
+                    tecnicosGlobal = t.filter(tec => tecnicosLurin.some(nom => tec.nombre.toUpperCase().includes(nom)));
+                } else {
+                    tecnicosGlobal = t.filter(tec => !tecnicosLurin.some(nom => tec.nombre.toUpperCase().includes(nom)));
+                }
+                renderizarTecnicos(tecnicosGlobal); 
+            }
             
             const { data: r } = await clienteSupabase.from('registros_soporte').select('*, tecnicos(nombre)'); 
             if (r) { registrosGlobal = r; procesarTodoElFrontend(); }
@@ -251,8 +262,8 @@
                 'MPACOTAIPE': 'Marcelino',
                 'RPACOTAIPE': 'Rodrigo',   
                 'CALARCON': 'Clever',
-                'JPATRICIO': 'Juan',
-                'JCORDOVA': 'Cordova',
+                'JPATRICIO': 'patricio',
+                'JCORDOVA': 'Juan',
                 'RRONDON': 'Renzo',
                 'RLEON': 'Ricardo',
                 'JLOLI': 'Josue',

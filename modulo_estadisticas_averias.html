@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analítica de Averías - TEN NOC</title>
+    <meta name="theme-color" content="#0f172a">
+    
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        .premium-pct-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .premium-pct-card { background: linear-gradient(145deg, var(--bg-panel) 0%, var(--bg-app) 100%); border: 1px solid var(--border); border-radius: 20px; padding: 30px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.04); position: relative; overflow: hidden; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .premium-pct-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(14, 165, 233, 0.1); }
+        .premium-pct-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 5px; }
+        .premium-pct-card.pct-blue::before { background: linear-gradient(90deg, #0ea5e9, #3b82f6); }
+        .premium-pct-card.pct-green::before { background: linear-gradient(90deg, #10b981, #34d399); }
+        .premium-pct-card.pct-purple::before { background: linear-gradient(90deg, #8b5cf6, #a855f7); }
+        .premium-pct-card.pct-pink::before { background: linear-gradient(90deg, #ec4899, #f43f5e); }
+        .premium-pct-value { font-size: 3.8rem; font-weight: 900; line-height: 1; margin-bottom: 12px; font-family: 'Segoe UI', system-ui, sans-serif; letter-spacing: -2px; }
+        .premium-pct-card.pct-blue .premium-pct-value { background: linear-gradient(135deg, #0ea5e9, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .premium-pct-card.pct-green .premium-pct-value { background: linear-gradient(135deg, #10b981, #059669); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .premium-pct-card.pct-purple .premium-pct-value { background: linear-gradient(135deg, #8b5cf6, #6d28d9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .premium-pct-card.pct-pink .premium-pct-value { background: linear-gradient(135deg, #ec4899, #e11d48); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .premium-pct-label { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; }
+
+        .analytics-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .analytics-kpi { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; align-items: center; gap: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); transition: transform 0.2s ease; position: relative; overflow: hidden; }
+        .analytics-kpi:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        .analytics-kpi::before { content: ''; position: absolute; left: 0; top: 0; height: 100%; width: 4px; }
+        .analytics-kpi.kpi-accent::before { background: var(--accent); }
+        .analytics-kpi.kpi-success::before { background: var(--success); }
+        .analytics-kpi.kpi-warning::before { background: var(--warning); }
+        .analytics-kpi.kpi-purple::before { background: var(--purple); }
+        .analytics-kpi.kpi-pink::before { background: #ec4899; }
+        .analytics-kpi.kpi-orange::before { background: var(--orange); }
+        .analytics-kpi.kpi-danger::before { background: var(--danger); }
+        .analytics-kpi-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+        .analytics-kpi-data { flex: 1; min-width: 0; }
+        .analytics-kpi-label { font-size: 0.68rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+        .analytics-kpi-value { font-size: 1.6rem; font-weight: 900; color: var(--text-main); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .analytics-kpi-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        .growth-up { color: var(--success) !important; }
+        .growth-down { color: var(--danger) !important; }
+        .chart-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .chart-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+        .chart-card .chart-title { font-size: 0.9rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .chart-card .chart-wrapper { position: relative; height: 280px; }
+        .ranking-item { padding: 12px; margin-bottom: 10px; background: var(--bg-app); border-radius: 10px; border-left: 4px solid var(--accent); }
+        .ranking-item .rk-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 800; color: var(--text-main); margin-bottom: 6px; }
+        .ranking-item .rk-bar { height: 8px; background: rgba(0,0,0,0.1); border-radius: 10px; overflow: hidden; }
+        .ranking-item .rk-fill { height: 100%; border-radius: 10px; transition: width 0.6s ease; }
+
+        .insights-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
+        .insights-header { font-size: 0.9rem; font-weight: 800; color: var(--text-main); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .insights-header i { color: #a855f7; }
+        .insights-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+        .insight-card { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 10px; background: var(--bg-app); border-left: 4px solid var(--accent); animation: fadeIn 0.4s ease; }
+        .insight-card.positive { border-left-color: var(--success); }
+        .insight-card.negative { border-left-color: var(--danger); }
+        .insight-card.warning  { border-left-color: var(--warning); }
+        .insight-card.neutral  { border-left-color: var(--purple); }
+        .insight-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+        .insight-card.positive .insight-icon { background: rgba(16,185,129,0.15); color: var(--success); }
+        .insight-card.negative .insight-icon { background: rgba(239,68,68,0.15); color: var(--danger); }
+        .insight-card.warning .insight-icon  { background: rgba(245,158,11,0.15); color: var(--warning); }
+        .insight-card.neutral .insight-icon  { background: rgba(139,92,246,0.15); color: var(--purple); }
+        .insight-text { font-size: 0.85rem; color: var(--text-main); line-height: 1.4; }
+        .insight-text b { color: var(--accent); }
+        .insight-text .highlight-num { font-size: 1rem; font-weight: 900; }
+
+        .last-installs-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .last-installs-table th { text-align: left; padding: 10px 12px; font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; border-bottom: 2px solid var(--border); letter-spacing: 0.5px; }
+        .last-installs-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        .last-installs-table tr:hover { background: var(--bg-app); }
+        .last-installs-table .pill-plan { padding: 2px 8px; border-radius: 12px; background: rgba(139,92,246,0.1); color: var(--purple); font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+        .last-installs-table .pill-tec { padding: 2px 8px; border-radius: 12px; background: rgba(16,185,129,0.1); color: var(--success); font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+        .last-installs-table .pill-danger { padding: 2px 8px; border-radius: 12px; background: rgba(239,68,68,0.1); color: var(--danger); font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+
+        @media (max-width: 900px) {
+            .chart-grid-2 { grid-template-columns: 1fr; }
+            .analytics-kpi-value { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-layout">
+    <div class="sidebar-overlay" onclick="window.toggleSidebar()"></div>
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <img src="logo.png" alt="TEN Logo" class="sidebar-logo">
+            <span class="sidebar-brand">TEN <b>NOC</b></span>
+        </div>
+        
+        <div class="sidebar-user">
+            <div class="avatar" style="background: rgba(245, 158, 11, 0.1); color: var(--warning);"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+            <div class="user-details">
+                <span class="user-role" id="lblUsuarioActivo" style="color: var(--warning); font-weight: bold;">Verificando credenciales...</span>
+                <span class="user-status"><i class="fa-solid fa-circle text-warning"></i> Inteligencia de Averías</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <p class="nav-section">NAVEGACIÓN</p>
+            <button type="button" class="nav-btn" onclick="window.location.href='index.html'">
+                <i class="fa-solid fa-arrow-left"></i> Volver al Inicio
+            </button>
+            
+            <p class="nav-section">REPORTES Y AJUSTES</p>
+            <button type="button" class="nav-btn" onclick="window.location.href='modulo_estadisticas.html'" style="color: #0ea5e9;">
+                <i class="fa-solid fa-chart-pie"></i> Analítica de Ventas
+            </button>
+            <button type="button" class="nav-btn active" style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--warning); color: var(--warning);">
+                <i class="fa-solid fa-screwdriver-wrench"></i> Analítica de Averías
+            </button>
+        </nav>
+    </aside>
+
+    <main class="app-main">
+        <header class="app-topbar">
+            <div class="topbar-left">
+                <button type="button" class="topbar-btn mobile-menu-btn" onclick="window.toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <h2 style="font-size: 1.2rem; margin: 0; color: var(--text-main);"><i class="fa-solid fa-screwdriver-wrench text-warning"></i> Rendimiento de Averías y Soportes</h2>
+            </div>
+            <div class="topbar-right">
+                <button type="button" class="topbar-btn" onclick="window.exportarEstadisticasExcel()" title="Exportar a Excel">
+                    <i class="fa-solid fa-file-excel text-success"></i>
+                </button>
+                <button type="button" class="topbar-btn" onclick="window.toggleTema()" title="Cambiar Tema"><i class="fa-solid fa-moon"></i></button>
+                <button type="button" class="topbar-btn btn-logout" onclick="window.cerrarSesion()"><i class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+        </header>
+
+        <div class="app-content">
+            
+            <!-- FILTROS -->
+            <div class="control-panel mb-4">
+                <div class="filtros-grupo" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end;">
+                    <div class="filtro-item" style="margin: 0;">
+                        <label><i class="fa-solid fa-calendar-days"></i> Mes:</label>
+                        <select id="filtroMes" class="form-control highlight-border-accent" onchange="window.procesarEstadisticas()">
+                            <option value="todos">Todos los Meses</option>
+                            <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                            <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                            <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                        </select>
+                    </div>
+                    <div class="filtro-item" style="margin: 0;">
+                        <label><i class="fa-solid fa-calendar-check"></i> Año:</label>
+                        <select id="filtroAnio" class="form-control highlight-border-accent" onchange="window.procesarEstadisticas()">
+                            <option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option>
+                        </select>
+                    </div>
+                    <div class="filtro-item" style="margin: 0;">
+                        <label><i class="fa-solid fa-map-location-dot"></i> Macro-Zona:</label>
+                        <select id="filtroZona" class="form-control" onchange="window.procesarEstadisticas()">
+                            <option value="todos">Todas las Zonas</option>
+                            <option value="norte">Cono Norte</option>
+                            <option value="lurin">Lurín</option>
+                        </select>
+                    </div>
+                    <div class="filtro-item" style="margin: 0;">
+                        <label><i class="fa-solid fa-map-pin" style="color: var(--warning);"></i> Zona Exacta:</label>
+                        <select id="filtroSubZona" class="form-control" onchange="window.procesarEstadisticas()" style="border-color: rgba(245, 158, 11, 0.5);">
+                            <option value="todos">Todas las SubZonas</option>
+                        </select>
+                    </div>
+                    <div class="filtro-item" style="margin: 0;">
+                        <label><i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> Tipo Avería:</label>
+                        <select id="filtroTipoAveria" class="form-control" onchange="window.renderizarTabla()" style="border-color: rgba(239, 68, 68, 0.5);">
+    <option value="todos">Todos los Tipos</option>
+    <option value="🔴 Punto rojo">🔴 Punto rojo (LOS)</option>
+    <option value="🔌 Sin Internet">🔌 Sin Internet</option>
+    <option value="🐢 Internet lento">🐢 Internet lento</option>
+    <option value="📺 Problemas con el IPTV">📺 Problemas con el IPTV</option>
+    <option value="📡 Problemas con el cable">📡 Problemas con el cable (CATV)</option>
+    <option value="🔄 Cambio de equipo">🔄 Cambio de equipo (Router)</option>
+    <option value="🚚 Traslado">🚚 Traslado</option>
+    <!-- NUEVA OPCIÓN AGREGADA -->
+    <option value="🏠 Reubicación de servicio">🏠 Reubicación de servicio</option>
+    <option value="🔐 Cambio de contraseña">🔐 Cambio de contraseña</option>
+    <option value="Otros">📝 Otros</option>
+</select>
+                    </div>
+                    <div class="filtro-item" style="margin: 0;">
+                        <label><i class="fa-solid fa-helmet-safety" style="color: #ec4899;"></i> Técnico:</label>
+                        <select id="filtroTecnico" class="form-control" onchange="window.procesarEstadisticas()" style="border-color: rgba(236, 72, 153, 0.5);">
+                            <option value="todos">Todos los Técnicos</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INSIGHTS -->
+            <div class="insights-panel mb-4">
+                <div class="insights-header">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Insights del Período
+                </div>
+                <div id="insightsContainer" class="insights-grid"></div>
+            </div>
+
+            <!-- KPIs PRINCIPALES -->
+            <div class="analytics-kpi-grid">
+                <div class="analytics-kpi kpi-success">
+                    <div class="analytics-kpi-icon" style="background: rgba(16,185,129,0.1); color: var(--success);"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                    <div class="analytics-kpi-data">
+                        <div class="analytics-kpi-label">Total Atendidas</div>
+                        <div class="analytics-kpi-value" id="kpiTotalAverias">0</div>
+                        <div class="analytics-kpi-sub" id="kpiCrecimiento"><i class="fa-solid fa-minus"></i> Sin datos previos</div>
+                    </div>
+                </div>
+
+                <div class="analytics-kpi kpi-accent">
+                    <div class="analytics-kpi-icon" style="background: rgba(14,165,233,0.1); color: var(--accent);"><i class="fa-solid fa-stopwatch"></i></div>
+                    <div class="analytics-kpi-data">
+                        <div class="analytics-kpi-label">Tiempo Promedio</div>
+                        <div class="analytics-kpi-value" id="kpiTiempoPromedio">0 min</div>
+                        <div class="analytics-kpi-sub">De la salida al cierre</div>
+                    </div>
+                </div>
+
+                <div class="analytics-kpi kpi-purple">
+                    <div class="analytics-kpi-icon" style="background: rgba(139,92,246,0.1); color: var(--purple);"><i class="fa-solid fa-road"></i></div>
+                    <div class="analytics-kpi-data">
+                        <div class="analytics-kpi-label">Tiempo de Viaje</div>
+                        <div class="analytics-kpi-value" id="kpiTiempoViaje">0 min</div>
+                        <div class="analytics-kpi-sub">Promedio de traslado</div>
+                    </div>
+                </div>
+
+                <div class="analytics-kpi kpi-warning">
+                    <div class="analytics-kpi-icon" style="background: rgba(245,158,11,0.1); color: var(--warning);"><i class="fa-solid fa-chart-line"></i></div>
+                    <div class="analytics-kpi-data">
+                        <div class="analytics-kpi-label">Promedio Diario</div>
+                        <div class="analytics-kpi-value" id="kpiPromedioDia">0</div>
+                        <div class="analytics-kpi-sub">Averías por día</div>
+                    </div>
+                </div>
+
+                <div class="analytics-kpi kpi-accent">
+                    <div class="analytics-kpi-icon" style="background: rgba(14,165,233,0.1); color: var(--accent);"><i class="fa-solid fa-map-pin"></i></div>
+                    <div class="analytics-kpi-data">
+                        <div class="analytics-kpi-label">Zona Top</div>
+                        <div class="analytics-kpi-value" id="kpiTopZona" style="font-size: 1.1rem;">-</div>
+                        <div class="analytics-kpi-sub">Con más averías</div>
+                    </div>
+                </div>
+
+                <div class="analytics-kpi kpi-danger">
+                    <div class="analytics-kpi-icon" style="background: rgba(239,68,68,0.1); color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="analytics-kpi-data">
+                        <div class="analytics-kpi-label">Avería Top</div>
+                        <div class="analytics-kpi-value" id="kpiTopTipo" style="font-size: 0.95rem;">-</div>
+                        <div class="analytics-kpi-sub">Más reportada</div>
+                    </div>
+                </div>
+
+                <div class="analytics-kpi kpi-pink">
+                    <div class="analytics-kpi-icon" style="background: rgba(236,72,153,0.1); color: #ec4899;"><i class="fa-solid fa-helmet-safety"></i></div>
+                    <div class="analytics-kpi-data">
+                        <div class="analytics-kpi-label">Mejor Técnico</div>
+                        <div class="analytics-kpi-value" id="kpiTopTecnico" style="font-size: 1rem;">-</div>
+                        <div class="analytics-kpi-sub">Más averías resueltas</div>
+                    </div>
+                </div>
+
+                <div class="analytics-kpi kpi-orange">
+                    <div class="analytics-kpi-icon" style="background: rgba(249,115,22,0.1); color: var(--orange);"><i class="fa-solid fa-circle-exclamation"></i></div>
+                    <div class="analytics-kpi-data">
+                        <div class="analytics-kpi-label">% Reincidencia</div>
+                        <div class="analytics-kpi-value" id="kpiPctReincidencia">0%</div>
+                        <div class="analytics-kpi-sub">Post-venta</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MÉTRICAS GIGANTES -->
+            <div class="premium-pct-container">
+                <div class="premium-pct-card pct-blue">
+                    <div class="premium-pct-value" id="bigPctEfectividad">0%</div>
+                    <div class="premium-pct-label">Efectividad<br><small style="text-transform: none; font-weight: normal; opacity: 0.7;">Atendidas vs Registradas</small></div>
+                </div>
+                <div class="premium-pct-card pct-green">
+                    <div class="premium-pct-value" id="bigPctExito">0%</div>
+                    <div class="premium-pct-label">Éxito de Reparación<br><small style="text-transform: none; font-weight: normal; opacity: 0.7;">Atendidas / (Atendidas + Fallidas)</small></div>
+                </div>
+                <div class="premium-pct-card pct-purple">
+                    <div class="premium-pct-value" id="bigPctCrecimiento">0%</div>
+                    <div class="premium-pct-label">Crecimiento<br><small style="text-transform: none; font-weight: normal; opacity: 0.7;">Vs mes anterior</small></div>
+                </div>
+                <div class="premium-pct-card pct-pink">
+                    <div class="premium-pct-value" id="bigPctQuejas">0%</div>
+                    <div class="premium-pct-label">Quejas Post-Venta<br><small style="text-transform: none; font-weight: normal; opacity: 0.7;">Del total post-venta</small></div>
+                </div>
+            </div>
+
+            <!-- GRÁFICOS - FILA 1 -->
+            <div class="chart-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fa-solid fa-chart-line text-accent"></i> Evolución Diaria (Comparativa Mes)</div>
+                    <div class="chart-wrapper"><canvas id="chartEvolucion"></canvas></div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fa-solid fa-chart-pie" style="color: var(--danger);"></i> Distribución de Tipos de Avería</div>
+                    <div class="chart-wrapper"><canvas id="chartTipos"></canvas></div>
+                </div>
+            </div>
+
+            <!-- GRÁFICOS - FILA 2 -->
+            <div class="chart-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fa-solid fa-chart-column text-warning"></i> Top Zonas / Sub-Zonas</div>
+                    <div class="chart-wrapper"><canvas id="chartZonas"></canvas></div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fa-solid fa-helmet-safety text-success"></i> Desempeño de Técnicos</div>
+                    <div class="chart-wrapper"><canvas id="chartTecnicos"></canvas></div>
+                </div>
+            </div>
+
+            <!-- GRÁFICOS - FILA 3 -->
+            <div class="chart-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fa-solid fa-hourglass-half" style="color: var(--orange);"></i> Distribución por Duración (minutos)</div>
+                    <div class="chart-wrapper"><canvas id="chartDuracion"></canvas></div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fa-solid fa-clock" style="color: var(--purple);"></i> Averías por Hora del Día</div>
+                    <div class="chart-wrapper"><canvas id="chartHoras"></canvas></div>
+                </div>
+            </div>
+
+            <!-- MEDIDORES -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                <div class="chart-card" style="text-align: center;">
+                    <div class="chart-title" style="justify-content: center;"><i class="fa-solid fa-thumbs-up text-accent"></i> Tasa de Efectividad</div>
+                    <div style="position: relative; height: 160px; display: flex; justify-content: center; align-items: flex-end; margin-top: 10px;">
+                        <canvas id="gaugeEfectividad"></canvas>
+                        <div id="lblPctEfectividad" style="position: absolute; bottom: 0; font-size: 2.8rem; font-weight: 900; color: var(--text-main); line-height: 1;">0%</div>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 15px;">Averías Registradas vs Atendidas</p>
+                </div>
+
+                <div class="chart-card" style="text-align: center;">
+                    <div class="chart-title" style="justify-content: center;"><i class="fa-solid fa-bolt text-success"></i> Tasa de Éxito</div>
+                    <div style="position: relative; height: 160px; display: flex; justify-content: center; align-items: flex-end; margin-top: 10px;">
+                        <canvas id="gaugeExito"></canvas>
+                        <div id="lblPctExito" style="position: absolute; bottom: 0; font-size: 2.8rem; font-weight: 900; color: var(--text-main); line-height: 1;">0%</div>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 15px;">Atendidas vs Fallidas</p>
+                </div>
+
+                <div class="chart-card" style="text-align: center;">
+                    <div class="chart-title" style="justify-content: center;"><i class="fa-solid fa-star" style="color: var(--orange);"></i> Calidad Post-Venta</div>
+                    <div style="position: relative; height: 160px; display: flex; justify-content: center; align-items: flex-end; margin-top: 10px;">
+                        <canvas id="gaugeCalidad"></canvas>
+                        <div id="lblPctCalidad" style="position: absolute; bottom: 0; font-size: 2.8rem; font-weight: 900; color: var(--text-main); line-height: 1;">0%</div>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 15px;">% Post-Venta sin reincidencia ni queja</p>
+                </div>
+            </div>
+
+            <!-- EMBUDO + DÍA SEMANA -->
+            <div class="chart-grid-2">
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fa-solid fa-filter" style="color: var(--accent);"></i> Embudo de Resolución (Registradas → Atendidas)</div>
+                    <div class="chart-wrapper"><canvas id="chartEmbudo"></canvas></div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-title"><i class="fa-solid fa-calendar-week" style="color: var(--purple);"></i> Distribución por Día de Semana</div>
+                    <div class="chart-wrapper"><canvas id="chartSemana"></canvas></div>
+                </div>
+            </div>
+
+            <!-- RANKINGS -->
+            <div class="chart-card" style="margin-bottom: 20px;">
+                <div class="chart-title"><i class="fa-solid fa-medal" style="color: var(--success);"></i> Ranking de Técnicos (más averías atendidas)</div>
+                <div id="rankingTecnicos" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;"></div>
+            </div>
+
+            <div class="chart-card" style="margin-bottom: 20px;">
+                <div class="chart-title"><i class="fa-solid fa-map-pin" style="color: var(--warning);"></i> Ranking de Zonas (más averías reportadas)</div>
+                <div id="rankingZonas" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;"></div>
+            </div>
+
+            <!-- ÚLTIMAS AVERÍAS -->
+            <div class="chart-card" style="margin-bottom: 40px;">
+                <div class="chart-title"><i class="fa-solid fa-list-check" style="color: var(--accent);"></i> Últimas 10 Averías del Período</div>
+                <div style="overflow-x: auto;">
+                    <table class="last-installs-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Cliente</th>
+                                <th>Tipo de Avería</th>
+                                <th>Técnico</th>
+                                <th style="text-align: right;">Duración</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaUltimasAverias">
+                            <tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Sin datos</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+// TRADUCTOR DE 24H A 12H (AM/PM) PARA ESTE MÓDULO
+window.formato12h = (hora24) => {
+    if (!hora24 || !hora24.includes(":")) return hora24 || "--:--";
+    let p = hora24.split(":"); let h = parseInt(p[0], 10);
+    let ampm = h >= 12 ? "PM" : "AM"; h = h % 12; h = h ? h : 12; 
+    let hStr = h < 10 ? "0" + h : h; return `${hStr}:${p[1]} ${ampm}`;
+};
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+    authDomain: "ten-soporte.firebaseapp.com",
+    projectId: "ten-soporte",
+    storageBucket: "ten-soporte.firebasestorage.app",
+    messagingSenderId: "498950424371",
+    appId: "1:498950424371:web:fce299a98cf8e57f822046",
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
+
+const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4");
+const coleccionUsuarios = collection(db, "artifacts", appId, "public", "data", "usuarios_sistema");
+
+let dbAverias = [];           // Solo atendidas (para el análisis principal)
+let dbTodasLasAverias = [];   // Todas (para el embudo)
+let dataFiltradaActual = [];
+let charts = {};
+
+// ==========================================
+// UTILIDADES
+// ==========================================
+window.toggleSidebar = () => {
+    const sidebar = document.querySelector('.app-sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    if (sidebar && overlay) { sidebar.classList.toggle('show'); overlay.classList.toggle('show'); }
+};
+
+window.cerrarSesion = () => { localStorage.removeItem('ten_rol'); signOut(auth).then(() => window.location.href = 'index.html'); };
+
+window.toggleTema = () => { 
+    const newTheme = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; 
+    document.documentElement.setAttribute("data-theme", newTheme); 
+    localStorage.setItem("temaTen", newTheme); 
+    window.procesarEstadisticas(); 
+};
+
+function mostrarToast(msg) {
+    const t = document.getElementById("toast");
+    if (t) { t.innerHTML = msg; t.className = "show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000); }
+}
+
+// ==========================================
+// AUTH
+// ==========================================
+onAuthStateChanged(auth, async (user) => { 
+    if (!user) { window.location.href = 'index.html'; return; }
+    
+    let nombreBase = user.email.split("@")[0].toUpperCase();
+    document.getElementById("lblUsuarioActivo").innerHTML = `<span style="font-size:10px; color:var(--text-muted); font-weight:900;">ANALÍTICA</span><br><span style="font-size:14px; color:var(--warning); font-weight:900;">${nombreBase}</span>`;
+    
+    let mesActual = String(new Date().getMonth() + 1).padStart(2, '0');
+    if(document.getElementById("filtroMes")) document.getElementById("filtroMes").value = mesActual;
+
+    const savedTheme = localStorage.getItem("temaTen") || "light";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+
+    try {
+        const snap = await getDocs(query(coleccionUsuarios, where("email", "==", user.email.toLowerCase())));
+        if (!snap.empty) {
+            let u = snap.docs[0].data();
+            if(u.nombre) {
+                document.getElementById("lblUsuarioActivo").innerHTML = `<span style="font-size:10px; color:var(--text-muted); font-weight:900;">ANALÍTICA</span><br><span style="font-size:14px; color:var(--warning); font-weight:900;">${u.nombre}</span>`;
+            }
+        }
+    } catch(e) { console.log("Usando nombre de correo por defecto."); }
+
+    cargarDatosAverias();
+});
+
+// ==========================================
+// DESCARGA DE DATOS
+// ==========================================
+function cargarDatosAverias() {
+    // Solo averías ATENDIDAS (para el análisis principal)
+    const q = query(coleccionTrabajos, where("tipoTarea", "==", "averia"), where("estado", "==", "atendido"));
+    onSnapshot(q, (snapshot) => {
+        dbAverias = [];
+        let zonaActiva = localStorage.getItem("ten_zona_activa") || "norte";
+        
+        snapshot.forEach((doc) => { 
+            let t = doc.data();
+            if ((t.zona || "norte").toLowerCase() === zonaActiva.toLowerCase()) {
+                dbAverias.push(t); 
+            }
+        });
+        window.procesarEstadisticas();
+    });
+
+    // TODAS las averías (para el embudo)
+    const qTodas = query(coleccionTrabajos, where("tipoTarea", "==", "averia"));
+    onSnapshot(qTodas, (snapshot) => {
+        dbTodasLasAverias = [];
+        let zonaActiva = localStorage.getItem("ten_zona_activa") || "norte";
+        
+        snapshot.forEach((doc) => { 
+            let t = doc.data();
+            if ((t.zona || "norte").toLowerCase() === zonaActiva.toLowerCase()) {
+                dbTodasLasAverias.push(t); 
+            }
+        });
+        window.procesarEstadisticas();
+    });
+}
+
+// ==========================================
+// PROCESAMIENTO PRINCIPAL
+// ==========================================
+window.procesarEstadisticas = () => {
+    const filtroMes = document.getElementById("filtroMes").value;
+    const filtroAnio = document.getElementById("filtroAnio").value;
+    const filtroZona = document.getElementById("filtroZona").value.toLowerCase();
+    const filtroSubZona = document.getElementById("filtroSubZona").value;
+    const filtroTipoAveria = document.getElementById("filtroTipoAveria").value;
+    const filtroTecnico = document.getElementById("filtroTecnico").value;
+
+    // 1. Llenar combos automáticamente
+    if (document.getElementById("filtroTecnico").options.length <= 1) {
+        let tecnicosSet = new Set(), subZonasSet = new Set();
+        
+        dbAverias.forEach(t => { 
+            let arrayTecnicos = Array.isArray(t.tecnicos) ? t.tecnicos : [t.tecnicos || "Sin Asignar"];
+            arrayTecnicos.forEach(tec => {
+                if (tec && tec !== "Sin Asignar") tecnicosSet.add(tec);
+            });
+            let sz = t.subZona || "OTRO";
+            if(sz.length > 2) subZonasSet.add(sz.toUpperCase());
+        });
+
+        const selT = document.getElementById("filtroTecnico");
+        [...tecnicosSet].sort().forEach(v => { selT.innerHTML += `<option value="${v}">${v}</option>`; });
+        
+        const selSZ = document.getElementById("filtroSubZona");
+        [...subZonasSet].sort().forEach(sz => { selSZ.innerHTML += `<option value="${sz}">${sz}</option>`; });
+    }
+
+    // 2. Filtrado maestro
+    let dataFiltrada = dbAverias.filter(t => {
+        if (!t.fecha) return false;
+        let [a, m] = t.fecha.split("-");
+        
+        let matchAnio = (a === filtroAnio);
+        let matchMes = (filtroMes === "todos" || m === filtroMes);
+        let matchZona = (filtroZona === "todos" || String(t.zona || "norte").toLowerCase() === filtroZona);
+        
+        let arrayTecnicosFiltro = Array.isArray(t.tecnicos) ? t.tecnicos : [t.tecnicos || "Sin Asignar"];
+        let matchTecnico = (filtroTecnico === "todos" || arrayTecnicosFiltro.includes(filtroTecnico));
+        
+        let sz = (t.subZona || "OTRO").toUpperCase();
+        let matchSubZona = (filtroSubZona === "todos" || sz === filtroSubZona);
+        
+        let tipoA = t.detalle || "";
+        let matchTipo = (filtroTipoAveria === "todos" || tipoA.includes(filtroTipoAveria));
+
+        return matchAnio && matchMes && matchZona && matchTecnico && matchSubZona && matchTipo;
+    });
+
+    dataFiltradaActual = dataFiltrada;
+
+    // 3. Si no hay datos
+    if (dataFiltrada.length === 0) {
+        document.getElementById("kpiTotalAverias").innerText = "0";
+        document.getElementById("kpiTiempoPromedio").innerText = "0 min";
+        document.getElementById("kpiTiempoViaje").innerText = "0 min";
+        document.getElementById("kpiPromedioDia").innerText = "0";
+        document.getElementById("kpiTopZona").innerText = "-";
+        document.getElementById("kpiTopTipo").innerText = "-";
+        document.getElementById("kpiTopTecnico").innerText = "-";
+        document.getElementById("kpiPctReincidencia").innerText = "0%";
+        document.getElementById("kpiCrecimiento").innerHTML = `<i class="fa-solid fa-minus"></i> Sin datos en el período`;
+        Object.keys(charts).forEach(k => { if(charts[k]) charts[k].destroy(); });
+        document.getElementById("insightsContainer").innerHTML = `<div class="insight-card neutral"><div class="insight-text">Sin datos suficientes para generar insights.</div></div>`;
+        document.getElementById("tablaUltimasAverias").innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Sin averías en el período</td></tr>`;
+        return;
+    }
+
+    // 4. Acumuladores
+    let countDias = {}, countTipos = {}, countSubZonas = {}, countTecnicos = {}, countHoras = {};
+    let countDiasSemana = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
+    let countDuracionBuckets = { "0-30 min": 0, "30-60 min": 0, "1-2 horas": 0, "2-4 horas": 0, "4+ horas": 0 };
+    let tiempoTotalReparacion = 0;
+    let tiempoTotalViaje = 0;
+    let countConTiempo = 0;
+    let countConViaje = 0;
+    let countReincidencias = 0;
+    let countQuejas = 0;
+
+    dataFiltrada.forEach(t => {
+        let dia = t.fecha.split("-")[2];
+        countDias[dia] = (countDias[dia] || 0) + 1;
+
+        let tipoA = t.detalle || "Otros";
+        countTipos[tipoA] = (countTipos[tipoA] || 0) + 1;
+
+        let subZona = (t.subZona || "OTRO").toUpperCase();
+        countSubZonas[subZona] = (countSubZonas[subZona] || 0) + 1;
+
+        let arrayTecnicosCount = Array.isArray(t.tecnicos) ? t.tecnicos : [t.tecnicos || "Sin Asignar"];
+        arrayTecnicosCount.forEach(tec => {
+            countTecnicos[tec] = (countTecnicos[tec] || 0) + 1;
+        });
+
+        // Duración total (tsFin - tsInicio)
+        if (t.tsInicio && t.tsFin) {
+            let minutos = Math.round((t.tsFin - t.tsInicio) / 60000);
+            tiempoTotalReparacion += minutos;
+            countConTiempo++;
+
+            if (minutos <= 30) countDuracionBuckets["0-30 min"]++;
+            else if (minutos <= 60) countDuracionBuckets["30-60 min"]++;
+            else if (minutos <= 120) countDuracionBuckets["1-2 horas"]++;
+            else if (minutos <= 240) countDuracionBuckets["2-4 horas"]++;
+            else countDuracionBuckets["4+ horas"]++;
+        }
+
+        // Tiempo de viaje (tsLlegada - tsInicio)
+        if (t.tsInicio && t.tsLlegada) {
+            tiempoTotalViaje += Math.round((t.tsLlegada - t.tsInicio) / 60000);
+            countConViaje++;
+        }
+
+        // Post-venta
+        if (t.segCalidad === "Reincidencia") countReincidencias++;
+        if (t.segCalidad === "Queja") countQuejas++;
+
+        let hora = t.horaInicio ? t.horaInicio.split(":")[0] : (t.tsInicio ? new Date(t.tsInicio).getHours().toString().padStart(2, "0") : null);
+        if (hora) countHoras[hora] = (countHoras[hora] || 0) + 1;
+
+        try {
+            const [ya, ym, yd] = t.fecha.split("-");
+            const fechaObj = new Date(parseInt(ya), parseInt(ym) - 1, parseInt(yd));
+            countDiasSemana[fechaObj.getDay()]++;
+        } catch(e) {}
+    });
+
+    // 5. KPIs
+    const total = dataFiltrada.length;
+    const tiempoPromedio = countConTiempo > 0 ? Math.round(tiempoTotalReparacion / countConTiempo) : 0;
+    const tiempoPromedioViaje = countConViaje > 0 ? Math.round(tiempoTotalViaje / countConViaje) : 0;
+    const diasConDatos = Object.keys(countDias).length || 1;
+    const promedioDiario = (total / diasConDatos).toFixed(1);
+    const pctReincidencia = total > 0 ? Math.round((countReincidencias / total) * 100) : 0;
+
+    // Crecimiento vs mes anterior
+    let crecimientoHtml = `<i class="fa-solid fa-minus"></i> Sin datos previos`;
+    if (filtroMes !== "todos") {
+        let mesNum = parseInt(filtroMes);
+        let mesPrev = mesNum === 1 ? 12 : mesNum - 1;
+        let anioPrev = mesNum === 1 ? parseInt(filtroAnio) - 1 : parseInt(filtroAnio);
+        let mesPrevStr = String(mesPrev).padStart(2, "0");
+
+        let dataMesAnterior = dbAverias.filter(t => {
+            if (!t.fecha) return false;
+            let [a, m] = t.fecha.split("-");
+            return a === String(anioPrev) && m === mesPrevStr && (filtroZona === "todos" || String(t.zona || "norte").toLowerCase() === filtroZona);
+        }).length;
+
+        if (dataMesAnterior > 0) {
+            let diff = total - dataMesAnterior;
+            let pct = Math.round((diff / dataMesAnterior) * 100);
+            document.getElementById("bigPctCrecimiento").innerText = (diff > 0 ? "+" : "") + pct + "%";
+            if (diff > 0) crecimientoHtml = `<span class="growth-up"><i class="fa-solid fa-arrow-trend-up"></i> +${pct}% vs mes anterior</span>`;
+            else if (diff < 0) crecimientoHtml = `<span class="growth-down"><i class="fa-solid fa-arrow-trend-down"></i> ${pct}% vs mes anterior</span>`;
+            else crecimientoHtml = `<i class="fa-solid fa-equals"></i> Igual que mes anterior`;
+        }
+    }
+
+    const fmtMin = (m) => m >= 60 ? `${Math.floor(m/60)}h ${m%60}m` : `${m} min`;
+
+    document.getElementById("kpiTotalAverias").innerText = total;
+    document.getElementById("kpiTiempoPromedio").innerText = fmtMin(tiempoPromedio);
+    document.getElementById("kpiTiempoViaje").innerText = fmtMin(tiempoPromedioViaje);
+    document.getElementById("kpiPromedioDia").innerText = promedioDiario;
+    document.getElementById("kpiTopZona").innerText = obtenerTop(countSubZonas) || "-";
+    document.getElementById("kpiTopTipo").innerText = obtenerTop(countTipos) || "-";
+    document.getElementById("kpiTopTecnico").innerText = obtenerTop(countTecnicos) || "-";
+    document.getElementById("kpiPctReincidencia").innerText = pctReincidencia + "%";
+    document.getElementById("kpiCrecimiento").innerHTML = crecimientoHtml;
+
+    // CountDiasAnterior para comparativa
+    let countDiasAnterior = {};
+    if (filtroMes !== "todos") {
+        const mesNum2 = parseInt(filtroMes);
+        const mesPrev2 = mesNum2 === 1 ? 12 : mesNum2 - 1;
+        const anioPrev2 = mesNum2 === 1 ? parseInt(filtroAnio) - 1 : parseInt(filtroAnio);
+        const mesStr2 = String(mesPrev2).padStart(2, "0");
+        dbAverias.forEach(t => {
+            if (!t.fecha) return;
+            const [a, m, d] = t.fecha.split("-");
+            if (a === String(anioPrev2) && m === mesStr2) countDiasAnterior[d] = (countDiasAnterior[d] || 0) + 1;
+        });
+    }
+
+    // 6. Dibujar gráficos
+    dibujarGraficos(countDias, countTipos, countSubZonas, countTecnicos, countDuracionBuckets, countHoras, countDiasAnterior, countDiasSemana);
+
+    // 7. Rankings
+    renderizarRankings(countTecnicos, countSubZonas);
+
+    // 8. Insights
+    generarInsights(dataFiltrada, countDias, countTecnicos, countTipos, countSubZonas, countReincidencias, countQuejas);
+
+    // 9. Embudo
+    dibujarEmbudo(filtroMes, filtroAnio);
+
+    // 10. Tabla últimas
+    renderizarUltimasAverias(dataFiltrada);
+};
+
+function obtenerTop(obj) {
+    let keys = Object.keys(obj);
+    if (keys.length === 0) return null;
+    return keys.reduce((a, b) => obj[a] > obj[b] ? a : b);
+}
+
+// ==========================================
+// GRÁFICOS
+// ==========================================
+function dibujarGraficos(cDias, cTipos, cSubZonas, cTecnicos, cDuracion, cHoras, cDiasAnterior, cDiasSemana) {
+    const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+    const colorTxt = isDark ? "#94a3b8" : "#64748b";
+    const colorGrid = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+
+    Chart.defaults.color = colorTxt;
+    Chart.defaults.font.family = "'Segoe UI', sans-serif";
+
+    Object.keys(charts).forEach(k => { if(charts[k]) charts[k].destroy(); });
+
+    // A. Evolución Diaria
+    let diasActuales = Object.keys(cDias).sort((a,b) => parseInt(a) - parseInt(b));
+    let diasAnteriores = Object.keys(cDiasAnterior || {}).sort((a,b) => parseInt(a) - parseInt(b));
+    let todosLosDias = [...new Set([...diasActuales, ...diasAnteriores])].sort((a,b) => parseInt(a) - parseInt(b));
+
+    let datasetsEvol = [{
+        label: "Mes Actual", data: todosLosDias.map(d => cDias[d] || 0),
+        borderColor: "#f59e0b", backgroundColor: "rgba(245, 158, 11, 0.1)",
+        fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: "#f59e0b"
+    }];
+
+    if (Object.keys(cDiasAnterior || {}).length > 0) {
+        datasetsEvol.push({
+            label: "Mes Anterior", data: todosLosDias.map(d => (cDiasAnterior || {})[d] || 0),
+            borderColor: "#94a3b8", backgroundColor: "transparent", borderDash: [5, 5],
+            fill: false, tension: 0.4, pointRadius: 3, pointBackgroundColor: "#94a3b8"
+        });
+    }
+
+    charts.evolucion = new Chart(document.getElementById("chartEvolucion").getContext("2d"), {
+        type: "line",
+        data: { labels: todosLosDias.map(d => `Día ${d}`), datasets: datasetsEvol },
+        options: { 
+            responsive: true, maintainAspectRatio: false, 
+            plugins: { legend: { display: datasetsEvol.length > 1, position: 'top', labels: { boxWidth: 12, usePointStyle: true, font: { size: 10 } } } }, 
+            scales: { 
+                y: { beginAtZero: true, grid: { color: colorGrid }, ticks: { stepSize: 1 } }, 
+                x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 15, font: { size: 10 } } } 
+            } 
+        }
+    });
+
+    // B. Tipos de Avería
+    charts.tipos = new Chart(document.getElementById("chartTipos").getContext("2d"), {
+        type: "doughnut",
+        plugins: [ChartDataLabels],
+        data: {
+            labels: Object.keys(cTipos),
+            datasets: [{ data: Object.values(cTipos), backgroundColor: ["#ef4444", "#f59e0b", "#0ea5e9", "#8b5cf6", "#10b981", "#ec4899", "#6366f1", "#f43f5e", "#14b8a6"], borderWidth: 0 }]
+        },
+        options: { 
+            responsive: true, maintainAspectRatio: false, cutout: '55%', 
+            plugins: { 
+                legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 }, padding: 8 } },
+                datalabels: {
+                    color: '#ffffff', font: { weight: 'bold', size: 11 },
+                    formatter: (value, context) => {
+                        let total = context.chart._metasets[context.datasetIndex].total;
+                        let p = Math.round((value / total) * 100);
+                        return p > 4 ? p + '%' : '';
+                    }
+                }
+            } 
+        }
+    });
+
+    // C. Sub-Zonas
+    let zonasOrd = Object.entries(cSubZonas).sort((a,b) => b[1] - a[1]).slice(0, 8);
+    charts.zonas = new Chart(document.getElementById("chartZonas").getContext("2d"), {
+        type: "bar",
+        data: { labels: zonasOrd.map(z => z[0]), datasets: [{ data: zonasOrd.map(z => z[1]), backgroundColor: "#f59e0b", borderRadius: 6 }] },
+        options: { 
+            responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
+            scales: { 
+                y: { beginAtZero: true, grid: { color: colorGrid }, ticks: { stepSize: 1 } }, 
+                x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 30, font: { size: 10 } } } 
+            } 
+        }
+    });
+
+    // D. Técnicos
+    let tecOrd = Object.entries(cTecnicos).sort((a,b) => b[1] - a[1]);
+    charts.tecnicos = new Chart(document.getElementById("chartTecnicos").getContext("2d"), {
+        type: "bar",
+        data: { labels: tecOrd.map(t => t[0]), datasets: [{ data: tecOrd.map(t => t[1]), backgroundColor: "#10b981", borderRadius: 6 }] },
+        options: { 
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
+            scales: { 
+                x: { beginAtZero: true, grid: { color: colorGrid }, ticks: { stepSize: 1 } }, 
+                y: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } } 
+            } 
+        }
+    });
+
+    // E. Distribución por duración
+    charts.duracion = new Chart(document.getElementById("chartDuracion").getContext("2d"), {
+        type: "bar",
+        data: {
+            labels: Object.keys(cDuracion),
+            datasets: [{ data: Object.values(cDuracion), backgroundColor: ["#10b981", "#0ea5e9", "#f59e0b", "#f97316", "#ef4444"], borderRadius: 6 }]
+        },
+        options: { 
+            responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
+            scales: { 
+                y: { beginAtZero: true, grid: { color: colorGrid }, ticks: { stepSize: 1 } }, 
+                x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } } 
+            } 
+        }
+    });
+
+    // F. Horas
+    let horasOrdenadas = Object.keys(cHoras).sort((a,b) => parseInt(a) - parseInt(b));
+    charts.horas = new Chart(document.getElementById("chartHoras").getContext("2d"), {
+        type: "bar",
+        data: { labels: horasOrdenadas.map(h => h + ":00"), datasets: [{ data: horasOrdenadas.map(h => cHoras[h]), backgroundColor: "#8b5cf6", borderRadius: 6 }] },
+        options: { 
+            responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
+            scales: { 
+                y: { beginAtZero: true, grid: { color: colorGrid }, ticks: { stepSize: 1 } }, 
+                x: { grid: { display: false }, ticks: { font: { size: 10 } } } 
+            } 
+        }
+    });
+
+    // G. Día de Semana
+    const nombresDias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    const ordenVisual = [1, 2, 3, 4, 5, 6, 0];
+    const valoresSemana = ordenVisual.map(d => cDiasSemana[d] || 0);
+    charts.semana = new Chart(document.getElementById("chartSemana").getContext("2d"), {
+        type: "bar",
+        data: {
+            labels: ordenVisual.map(d => nombresDias[d]),
+            datasets: [{ data: valoresSemana, backgroundColor: ["#0ea5e9", "#0ea5e9", "#0ea5e9", "#0ea5e9", "#0ea5e9", "#8b5cf6", "#f59e0b"], borderRadius: 8 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: colorGrid }, ticks: { stepSize: 1 } },
+                x: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold' } } }
+            }
+        }
+    });
+}
+
+// ==========================================
+// RANKINGS
+// ==========================================
+function renderizarRankings(cTecnicos, cZonas) {
+    // Técnicos
+    let tecnicosOrd = Object.entries(cTecnicos).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    let maxT = tecnicosOrd[0] ? tecnicosOrd[0][1] : 1;
+    let htmlT = "";
+    tecnicosOrd.forEach((t, i) => {
+        let pct = Math.round((t[1] / maxT) * 100);
+        let colores = ["#fbbf24", "#94a3b8", "#b45309", "#0ea5e9", "#8b5cf6"];
+        let color = colores[i] || "#10b981";
+        htmlT += `
+            <div class="ranking-item" style="border-left-color: ${color};">
+                <div class="rk-header">
+                    <span><b style="color: ${color};">#${i+1}</b> ${t[0]}</span>
+                    <span>${t[1]} <span style="color: var(--text-muted); font-weight: 600; font-size: 0.75rem;">averías</span></span>
+                </div>
+                <div class="rk-bar"><div class="rk-fill" style="width: ${pct}%; background: ${color};"></div></div>
+            </div>`;
+    });
+    document.getElementById("rankingTecnicos").innerHTML = htmlT || `<div style="color: var(--text-muted);">Sin datos de técnicos</div>`;
+
+    // Zonas
+    let zonasOrd = Object.entries(cZonas).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    let maxZ = zonasOrd[0] ? zonasOrd[0][1] : 1;
+    let htmlZ = "";
+    zonasOrd.forEach((z, i) => {
+        let pct = Math.round((z[1] / maxZ) * 100);
+        let colores = ["#fbbf24", "#94a3b8", "#b45309", "#0ea5e9", "#8b5cf6"];
+        let color = colores[i] || "#f59e0b";
+        htmlZ += `
+            <div class="ranking-item" style="border-left-color: ${color};">
+                <div class="rk-header">
+                    <span><b style="color: ${color};">#${i+1}</b> ${z[0]}</span>
+                    <span>${z[1]} <span style="color: var(--text-muted); font-weight: 600; font-size: 0.75rem;">averías</span></span>
+                </div>
+                <div class="rk-bar"><div class="rk-fill" style="width: ${pct}%; background: ${color};"></div></div>
+            </div>`;
+    });
+    document.getElementById("rankingZonas").innerHTML = htmlZ || `<div style="color: var(--text-muted);">Sin datos de zonas</div>`;
+}
+
+// ==========================================
+// INSIGHTS
+// ==========================================
+function generarInsights(data, cDias, cTecnicos, cTipos, cSubZonas, reincidencias, quejas) {
+    const contenedor = document.getElementById("insightsContainer");
+    if (!contenedor) return;
+    contenedor.innerHTML = "";
+
+    const insights = [];
+    const filtroMes = document.getElementById("filtroMes").value;
+    const anio = document.getElementById("filtroAnio").value;
+
+    // Día top
+    let mejorDia = null, mejorCant = 0;
+    Object.entries(cDias).forEach(([d, c]) => { if (c > mejorCant) { mejorCant = c; mejorDia = d; } });
+    if (mejorDia) {
+        insights.push({
+            tipo: "warning", icono: "fa-calendar-day",
+            texto: `El día con más averías fue el <span class="highlight-num">${mejorDia}</span> con <b>${mejorCant}</b> reportes.`
+        });
+    }
+
+    // Técnico top
+    let tOrd = Object.entries(cTecnicos).sort((a,b) => b[1] - a[1]);
+    if (tOrd.length > 0 && tOrd[0][0] !== "Sin Asignar") {
+        const pct = Math.round((tOrd[0][1] / data.length) * 100);
+        insights.push({
+            tipo: "positive", icono: "fa-medal",
+            texto: `<b>${tOrd[0][0]}</b> lidera el equipo con <span class="highlight-num">${tOrd[0][1]}</span> averías atendidas (<b>${pct}%</b>).`
+        });
+    }
+
+    // Tipo top
+    let tipoOrd = Object.entries(cTipos).sort((a,b) => b[1] - a[1]);
+    if (tipoOrd.length > 0) {
+        const pct = Math.round((tipoOrd[0][1] / data.length) * 100);
+        insights.push({
+            tipo: "negative", icono: "fa-triangle-exclamation",
+            texto: `La avería más frecuente es <b>${tipoOrd[0][0]}</b> representando el <b>${pct}%</b> de los casos.`
+        });
+    }
+
+    // Reincidencias y quejas
+    if (reincidencias > 0 || quejas > 0) {
+        const totalPost = reincidencias + quejas;
+        const pct = Math.round((totalPost / data.length) * 100);
+        insights.push({
+            tipo: pct > 10 ? "negative" : "warning",
+            icono: "fa-circle-exclamation",
+            texto: `<b>${reincidencias}</b> reincidencias y <b>${quejas}</b> quejas registradas (<b>${pct}%</b> del total).`
+        });
+    } else {
+        insights.push({
+            tipo: "positive", icono: "fa-thumbs-up",
+            texto: `¡Excelente! Sin reincidencias ni quejas reportadas en el período.`
+        });
+    }
+
+    // Concentración en zona
+    let zOrd = Object.entries(cSubZonas).sort((a,b) => b[1] - a[1]);
+    if (zOrd.length > 0 && zOrd[0][0] !== "OTRO") {
+        const pct = Math.round((zOrd[0][1] / data.length) * 100);
+        insights.push({
+            tipo: pct >= 40 ? "warning" : "neutral",
+            icono: "fa-map-pin",
+            texto: `La zona <b>${zOrd[0][0]}</b> concentra el <b>${pct}%</b> de las averías. ${pct >= 40 ? 'Puede requerir atención preventiva.' : ''}`
+        });
+    }
+
+    if (insights.length === 0) {
+        contenedor.innerHTML = `<div class="insight-card neutral"><div class="insight-text">Sin datos suficientes para generar insights.</div></div>`;
+        return;
+    }
+
+    insights.forEach(i => {
+        contenedor.innerHTML += `
+            <div class="insight-card ${i.tipo}">
+                <div class="insight-icon"><i class="fa-solid ${i.icono}"></i></div>
+                <div class="insight-text">${i.texto}</div>
+            </div>`;
+    });
+}
+
+// ==========================================
+// EMBUDO Y MEDIDORES
+// ==========================================
+function dibujarEmbudo(filtroMes, filtroAnio) {
+    const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+    const bgTrack = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+
+    const canvasEmbudo = document.getElementById("chartEmbudo");
+    if (!canvasEmbudo) return;
+    
+    if (charts.embudo) charts.embudo.destroy();
+    if (charts.gaugeEfectividad) charts.gaugeEfectividad.destroy();
+    if (charts.gaugeExito) charts.gaugeExito.destroy();
+    if (charts.gaugeCalidad) charts.gaugeCalidad.destroy();
+
+    let embudo = { total: 0, atendidas: 0, fallidas: 0, sinGestion: 0 };
+    let countPostVenta = 0;
+    let sinProblemas = 0;
+
+    dbTodasLasAverias.forEach(t => {
+        if (!t.fecha) return;
+        const [a, m] = t.fecha.split("-");
+        if (a !== filtroAnio) return;
+        if (filtroMes !== "todos" && m !== filtroMes) return;
+
+        embudo.total++;
+        if (t.estado === "atendido") {
+            embudo.atendidas++;
+            // Post-venta
+            if (t.segCalidad) {
+                countPostVenta++;
+                if (t.segCalidad !== "Reincidencia" && t.segCalidad !== "Queja") sinProblemas++;
+            }
+        } else if (t.estado === "no_atendido") {
+            embudo.fallidas++;
+        } else {
+            embudo.sinGestion++;
+        }
+    });
+
+    const pctEfectividad = embudo.total > 0 ? Math.round((embudo.atendidas / embudo.total) * 100) : 0;
+    const baseExito = embudo.atendidas + embudo.fallidas;
+    const pctExito = baseExito > 0 ? Math.round((embudo.atendidas / baseExito) * 100) : 0;
+    const pctCalidad = countPostVenta > 0 ? Math.round((sinProblemas / countPostVenta) * 100) : 0;
+    const pctQuejas = countPostVenta > 0 ? Math.round(((countPostVenta - sinProblemas) / countPostVenta) * 100) : 0;
+
+    // Números grandes
+    document.getElementById("bigPctEfectividad").innerText = pctEfectividad + "%";
+    document.getElementById("bigPctExito").innerText = pctExito + "%";
+    document.getElementById("bigPctQuejas").innerText = pctQuejas + "%";
+
+    document.getElementById("lblPctEfectividad").innerText = pctEfectividad + "%";
+    document.getElementById("lblPctExito").innerText = pctExito + "%";
+    document.getElementById("lblPctCalidad").innerText = pctCalidad + "%";
+    document.getElementById("lblPctEfectividad").style.color = pctEfectividad >= 80 ? "var(--accent)" : "var(--danger)";
+    document.getElementById("lblPctExito").style.color = pctExito >= 80 ? "var(--success)" : "var(--warning)";
+
+    // Embudo
+    charts.embudo = new Chart(canvasEmbudo.getContext("2d"), {
+        type: "bar",
+        data: {
+            labels: [`📥 Registradas (${embudo.total})`, `✅ Atendidas (${embudo.atendidas})`, `❌ Fallidas (${embudo.fallidas})`, `⏳ Pendientes (${embudo.sinGestion})`],
+            datasets: [{ data: [embudo.total, embudo.atendidas, embudo.fallidas, embudo.sinGestion], backgroundColor: ["#94a3b8", "#10b981", "#ef4444", "#f59e0b"], borderRadius: 8, barThickness: 32 }]
+        },
+        options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, grid: { display: false } }, y: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold' } } } }
+        }
+    });
+
+    const gaugeOptions = {
+        responsive: true, maintainAspectRatio: false, circumference: 180, rotation: 270, cutout: '75%',
+        plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    };
+
+    charts.gaugeEfectividad = new Chart(document.getElementById("gaugeEfectividad").getContext("2d"), {
+        type: "doughnut",
+        data: { datasets: [{ data: [pctEfectividad, 100 - pctEfectividad], backgroundColor: ["#0ea5e9", bgTrack], borderWidth: 0 }] },
+        options: gaugeOptions
+    });
+
+    charts.gaugeExito = new Chart(document.getElementById("gaugeExito").getContext("2d"), {
+        type: "doughnut",
+        data: { datasets: [{ data: [pctExito, 100 - pctExito], backgroundColor: ["#10b981", bgTrack], borderWidth: 0 }] },
+        options: gaugeOptions
+    });
+
+    charts.gaugeCalidad = new Chart(document.getElementById("gaugeCalidad").getContext("2d"), {
+        type: "doughnut",
+        data: { datasets: [{ data: [pctCalidad, 100 - pctCalidad], backgroundColor: ["#f59e0b", bgTrack], borderWidth: 0 }] },
+        options: gaugeOptions
+    });
+}
+
+// ==========================================
+// ÚLTIMAS AVERÍAS
+// ==========================================
+function renderizarUltimasAverias(data) {
+    const tbody = document.getElementById("tablaUltimasAverias");
+    if (!tbody) return;
+
+    let ordenadas = [...data].sort((a, b) => {
+        let fA = (a.fecha || "") + " " + (a.horaInicio || "");
+        let fB = (b.fecha || "") + " " + (b.horaInicio || "");
+        return fB.localeCompare(fA);
+    }).slice(0, 10);
+
+    if (ordenadas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: var(--text-muted);">Sin averías en el período</td></tr>`;
+        return;
+    }
+
+    let html = "";
+    ordenadas.forEach(t => {
+        let tipoA = t.detalle || "Otros";
+        let tecnico = Array.isArray(t.tecnicos) ? t.tecnicos.join(", ") : (t.tecnicos || "Sin asignar");
+        let fechaFmt = t.fecha ? t.fecha.split("-").reverse().join("/") : "-";
+        
+        // Duración
+        let duracion = "-";
+        if (t.tsInicio && t.tsFin) {
+            let min = Math.round((t.tsFin - t.tsInicio) / 60000);
+            duracion = min >= 60 ? `${Math.floor(min/60)}h ${min%60}m` : `${min} min`;
+        }
+
+        let estadoPost = "";
+        if (t.segCalidad === "Reincidencia") estadoPost = `<span class="pill-danger"><i class="fa-solid fa-triangle-exclamation"></i> Reincidencia</span>`;
+        else if (t.segCalidad === "Queja") estadoPost = `<span class="pill-danger"><i class="fa-solid fa-circle-exclamation"></i> Queja</span>`;
+        else if (t.segCalidad === "Todo OK") estadoPost = `<span class="pill-tec"><i class="fa-solid fa-check"></i> OK</span>`;
+
+        html += `
+            <tr>
+                <td><b>${fechaFmt}</b><br><small style="color: var(--text-muted);">${window.formato12h(t.horaInicio)}</small></td>
+                <td><b style="font-size: 0.85rem;">${t.cliente || "Sin nombre"}</b>${estadoPost ? '<br>' + estadoPost : ''}</td>
+                <td><span class="pill-plan">${tipoA}</span></td>
+                <td><span class="pill-tec">${tecnico}</span></td>
+                <td style="text-align: right; font-weight: 900; color: var(--warning);">${duracion}</td>
+            </tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+// ==========================================
+// EXPORTAR A EXCEL
+// ==========================================
+window.exportarEstadisticasExcel = () => {
+    if (!dataFiltradaActual || dataFiltradaActual.length === 0) {
+        alert("No hay datos para exportar con los filtros actuales.");
+        return;
+    }
+
+    let dataExportar = dataFiltradaActual.map((t, i) => {
+        let duracion = "";
+        if (t.tsInicio && t.tsFin) {
+            let min = Math.round((t.tsFin - t.tsInicio) / 60000);
+            duracion = min >= 60 ? `${Math.floor(min/60)}h ${min%60}m` : `${min} min`;
+        }
+        return {
+            "Item": i + 1,
+            "Fecha": t.fecha || "",
+            "Hora": t.horaInicio || "",
+            "Cliente": t.cliente || "",
+            "DNI": t.dni || "",
+            "Teléfono": t.tel || "",
+            "Dirección": t.dir || "",
+            "Zona": t.zona || "",
+            "Sub-Zona": t.subZona || "",
+            "Tipo de Avería": t.detalle || "",
+            "Info de Red": t.infoRed || "",
+            "Técnico": Array.isArray(t.tecnicos) ? t.tecnicos.join(", ") : (t.tecnicos || ""),
+            "Duración Total": duracion,
+            "Estado Post-Venta": t.segCalidad || "Sin contactar",
+            "Gestor Post-Venta": t.segUsuario || "",
+            "Notas": t.notas || ""
+        };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(dataExportar);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Analitica_Averias");
+
+    let nombreArchivo = `Analitica_Averias_${document.getElementById("filtroAnio").value}_${document.getElementById("filtroMes").value}.xlsx`;
+    XLSX.writeFile(wb, nombreArchivo);
+};
+</script>
+
+<div id="toast">Mensaje</div>
+</body>
+</html>

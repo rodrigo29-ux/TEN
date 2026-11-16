@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encuesta de Calidad - TEN</title>
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --primary: #3b82f6; --bg: #f8fafc; --text: #1e293b; --card: #ffffff; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+        .header { background: var(--primary); width: 100%; padding: 20px 0; text-align: center; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header img { width: 50px; margin-bottom: 10px; }
+        .header h1 { margin: 0; font-size: 1.2rem; }
+        .container { width: 90%; max-width: 500px; background: var(--card); margin: -20px auto 30px; padding: 25px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); position: relative; z-index: 10; box-sizing: border-box; }
+        .welcome-text { text-align: center; margin-bottom: 25px; font-size: 0.95rem; color: #475569; }
+        
+        .question-box { margin-bottom: 25px; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; }
+        .question-box:last-of-type { border-bottom: none; }
+        .question-title { font-weight: bold; margin-bottom: 12px; font-size: 0.95rem; display: block; }
+        
+        .radio-group { display: flex; flex-direction: column; gap: 10px; }
+        .radio-label { display: flex; align-items: center; gap: 10px; background: #f1f5f9; padding: 12px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; font-size: 0.9rem; }
+        .radio-label:hover { background: #e2e8f0; }
+        .radio-label input[type="radio"] { margin: 0; transform: scale(1.2); accent-color: var(--primary); }
+        .radio-label.selected { background: #eff6ff; border-color: var(--primary); font-weight: bold; }
+
+        .btn-submit { width: 100%; background: var(--primary); color: white; border: none; padding: 15px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3); transition: background 0.2s; margin-top: 10px; }
+        .btn-submit:hover { background: #2563eb; }
+        .btn-submit:disabled { background: #94a3b8; cursor: not-allowed; box-shadow: none; }
+
+        .loader { display: none; text-align: center; padding: 40px; }
+        .success-screen { display: none; text-align: center; padding: 30px 10px; }
+        .success-screen i { font-size: 4rem; color: #10b981; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <img src="logo.png" alt="TEN Logo" onerror="this.style.display='none'">
+        <h1>Control de Calidad</h1>
+    </div>
+
+    <!-- Pantalla de Carga -->
+    <div class="container loader" id="loaderScreen">
+        <i class="fa-solid fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary); margin-bottom: 15px;"></i>
+        <p>Cargando tu información...</p>
+    </div>
+
+    <!-- Mensaje de Éxito -->
+    <div class="container success-screen" id="successScreen">
+        <i class="fa-solid fa-circle-check"></i>
+        <h2 style="margin: 0 0 10px 0; color: #1e293b;">¡Gracias por tu tiempo!</h2>
+        <p style="color: #475569; font-size: 0.95rem;">Tus respuestas han sido registradas. Nos ayudan a mejorar cada día el servicio que te brindamos.</p>
+    </div>
+
+    <!-- Formulario Principal -->
+    <div class="container" id="formScreen" style="display: none;">
+        <div class="welcome-text">
+            Hola <b id="lblNombreCli" style="color: var(--primary);">Cliente</b>,<br>
+            Por favor califica tu reciente instalación.
+        </div>
+
+        <form id="encuestaForm">
+            <div class="question-box">
+                <label class="question-title">1. ¿El internet quedó funcionando perfectamente y ya estás navegando?</label>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="encP1" value="Sí" required> ✅ Sí, activo y estable</label>
+                    <label class="radio-label"><input type="radio" name="encP1" value="No"> ❌ No, hay problemas</label>
+                </div>
+            </div>
+
+            <div class="question-box">
+                <label class="question-title">2. ¿El técnico realizó pruebas de velocidad y te ayudó a conectar el Wi-Fi?</label>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="encP2" value="Sí" required> ✅ Sí lo hizo</label>
+                    <label class="radio-label"><input type="radio" name="encP2" value="No"> ❌ No lo hizo</label>
+                </div>
+            </div>
+
+            <div class="question-box">
+                <label class="question-title">3. ¿Qué tal fue la atención y amabilidad del técnico?</label>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="encP3" value="Excelente" required> 🌟 Excelente</label>
+                    <label class="radio-label"><input type="radio" name="encP3" value="Buena"> 👍 Buena</label>
+                    <label class="radio-label"><input type="radio" name="encP3" value="Regular"> 😐 Regular</label>
+                    <label class="radio-label"><input type="radio" name="encP3" value="Mala"> 👎 Mala</label>
+                </div>
+            </div>
+
+            <div class="question-box">
+                <label class="question-title">4. ¿Quedaste conforme con la limpieza y el orden del cableado?</label>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="encP4" value="Limpio" required> ✨ Todo quedó limpio y ordenado</label>
+                    <label class="radio-label"><input type="radio" name="encP4" value="Desordenado"> 🗑️ Dejó desordenado</label>
+                </div>
+            </div>
+
+            <div class="question-box" style="border:none;">
+                <label class="question-title">5. En general, ¿qué tan satisfecho estás con la instalación?</label>
+                <div class="radio-group">
+                    <label class="radio-label"><input type="radio" name="encP5" value="5" required> ⭐⭐⭐⭐⭐ (5) Muy Satisfecho</label>
+                    <label class="radio-label"><input type="radio" name="encP5" value="4"> ⭐⭐⭐⭐ (4) Satisfecho</label>
+                    <label class="radio-label"><input type="radio" name="encP5" value="3"> ⭐⭐⭐ (3) Regular</label>
+                    <label class="radio-label"><input type="radio" name="encP5" value="2"> ⭐⭐ (2) Insatisfecho</label>
+                    <label class="radio-label"><input type="radio" name="encP5" value="1"> ⭐ (1) Muy Insatisfecho</label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="btnSubmit"><i class="fa-solid fa-paper-plane"></i> Enviar Respuestas</button>
+        </form>
+    </div>
+
+    <!-- LÓGICA Y FIREBASE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        // IMPORTAMOS LA AUTENTICACIÓN
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+            authDomain: "ten-soporte.firebaseapp.com",
+            projectId: "ten-soporte",
+            storageBucket: "ten-soporte.firebasestorage.app",
+            messagingSenderId: "498950424371",
+            appId: "1:498950424371:web:fce299a98cf8e57f822046",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app); // INICIALIZAMOS AUTH
+        const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const trabajoId = urlParams.get('id');
+        const zonaCliente = urlParams.get('z') || 'norte'; // Atrapa la zona desde el Link
+
+        const pathTrabajos = zonaCliente === "lurin" ? "trabajos_lurin" : "trabajos_v4";
+
+        const formScreen = document.getElementById("formScreen");
+
+        document.querySelectorAll('input[type="radio"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                let name = this.name;
+                document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+                    r.parentElement.classList.remove('selected');
+                });
+                if(this.checked) this.parentElement.classList.add('selected');
+            });
+        });
+
+        async function initEncuesta() {
+            if (!trabajoId) {
+                loaderScreen.innerHTML = "❌<br>Enlace inválido o incompleto.";
+                loaderScreen.style.display = "block";
+                return;
+            }
+
+            loaderScreen.style.display = "block";
+
+            try {
+                // MAGIA AQUÍ: Iniciamos una sesión "silenciosa" para que Firebase nos deje pasar
+                await signInAnonymously(auth);
+
+                const refDoc = doc(db, "artifacts", appId, "public", "data", pathTrabajos, trabajoId);
+                const docSnap = await getDoc(refDoc);
+
+                if (!docSnap.exists()) {
+                    loaderScreen.innerHTML = "❌<br>Instalación no encontrada.";
+                    return;
+                }
+
+                const data = docSnap.data();
+
+                if (data.encuestaPorCliente === true) {
+                    loaderScreen.style.display = "none";
+                    successScreen.innerHTML = "<i class='fa-solid fa-star' style='color:#f59e0b;'></i><h2 style='margin: 0 0 10px 0; color: #1e293b;'>Encuesta ya respondida</h2><p style='color: #475569;'>Ya hemos recibido tus respuestas anteriormente. ¡Muchas gracias por tu tiempo!</p>";
+                    successScreen.style.display = "block";
+                    return;
+                }
+
+                document.getElementById("lblNombreCli").innerText = data.cliente ? data.cliente.split(" ")[0] : "Cliente";
+                
+                loaderScreen.style.display = "none";
+                formScreen.style.display = "block";
+
+            } catch (error) {
+                console.error(error);
+                // Si olvidaste el Paso 1, te mostrará exactamente qué falló aquí:
+                loaderScreen.innerHTML = `❌<br>Error de seguridad: ${error.message}<br><span style="font-size:11px; margin-top:10px; display:block; color:#64748b;">(Asegúrate de activar 'Anónimo' en Firebase)</span>`;
+            }
+        }
+
+        document.getElementById("encuestaForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById("btnSubmit");
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
+
+            const formData = new FormData(e.target);
+            
+            try {
+                const refDoc = doc(db, "artifacts", appId, "public", "data", "trabajos_v4", trabajoId);
+                await updateDoc(refDoc, {
+                    encP1: formData.get("encP1"),
+                    encP2: formData.get("encP2"),
+                    encP3: formData.get("encP3"),
+                    encP4: formData.get("encP4"),
+                    encP5: formData.get("encP5"),
+                    encuestaPorCliente: true
+                });
+
+                formScreen.style.display = "none";
+                successScreen.style.display = "block";
+
+            } catch (error) {
+                console.error(error);
+                alert("Ocurrió un error al enviar: " + error.message);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Respuestas';
+            }
+        });
+
+        initEncuesta();
+    </script>
+</body>
+</html>

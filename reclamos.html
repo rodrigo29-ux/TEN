@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Libro de Reclamaciones Virtual - TEN</title>
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Nunito', sans-serif; background-color: #f8fafc; margin: 0; padding: 0; color: #334155; }
+        .header-oficial { background: #0f172a; color: white; padding: 20px; text-align: center; border-bottom: 4px solid #00e5ff; }
+        .header-oficial h1 { margin: 0; font-size: 1.5rem; font-weight: 900; letter-spacing: 1px; }
+        .header-oficial p { margin: 5px 0 0 0; color: #94a3b8; font-size: 0.9rem; }
+        
+        .container { max-width: 600px; margin: 30px auto; padding: 0 20px; }
+        .libro-box { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        
+        .aviso-legal { background: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; border-radius: 4px; font-size: 0.85rem; color: #1e3a8a; margin-bottom: 25px; }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 700; margin-bottom: 8px; font-size: 0.9rem; color: #475569; }
+        .form-control { width: 100%; box-sizing: border-box; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-family: 'Nunito', sans-serif; transition: 0.3s; background: #f8fafc; }
+        .form-control:focus { outline: none; border-color: #3b82f6; background: white; }
+        
+        .btn-submit { width: 100%; padding: 15px; background: #0f172a; color: white; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: 900; cursor: pointer; transition: 0.3s; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .btn-submit:hover { background: #3b82f6; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4); }
+        .btn-submit:disabled { background: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        #pantalla-exito { display: none; text-align: center; padding: 40px 20px; }
+        .check-circle { width: 80px; height: 80px; background: #10b981; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-size: 40px; margin: 0 auto 20px; }
+        .ticket-id { font-size: 2rem; font-weight: 900; color: #0f172a; margin: 10px 0; padding: 15px; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 8px; letter-spacing: 2px; }
+    </style>
+</head>
+<body>
+
+    <div class="header-oficial">
+        <h1><i class="fa-solid fa-book-open"></i> Libro de Reclamaciones</h1>
+        <p>Atención al Cliente - TEN Soporte</p>
+    </div>
+
+    <div class="container">
+        <div class="libro-box" id="pantalla-formulario">
+            <div class="aviso-legal">
+                <i class="fa-solid fa-scale-balanced"></i> Conforme a lo establecido en el Código de Protección y Defensa del Consumidor, este establecimiento cuenta con un Libro de Reclamaciones a tu disposición.
+            </div>
+
+            <form id="formReclamo">
+                <!-- Honeypot Anti-Spam (Oculto) -->
+                <input type="text" id="txtWeb" name="website" style="display:none !important;" autocomplete="off">
+
+                <div class="form-group">
+                    <label>DNI / Carnet de Extranjería <span style="color:red">*</span></label>
+                    <input type="tel" id="txtDni" class="form-control" pattern="[0-9]{8,12}" maxlength="12" placeholder="Ej: 71234567" required>
+                </div>
+                <div class="form-group">
+                    <label>Nombres y Apellidos Completos <span style="color:red">*</span></label>
+                    <input type="text" id="txtNombres" class="form-control" placeholder="Tus nombres completos" required>
+                </div>
+                <div class="form-group">
+                    <label>Celular de Contacto <span style="color:red">*</span></label>
+                    <input type="tel" id="txtCelular" class="form-control" pattern="[0-9]{9}" maxlength="9" placeholder="Ej: 987654321" required>
+                </div>
+                <div class="form-group">
+                    <label>Motivo de la Solicitud <span style="color:red">*</span></label>
+                    <select id="txtTipo" class="form-control" required>
+                        <option value="" disabled selected>Seleccione el tipo...</option>
+                        <option value="Avería Técnica">Avería Técnica (Sin internet, lentitud, cable roto)</option>
+                        <option value="Queja Comercial">Queja Comercial (Mala atención, problemas con pagos)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Detalle del Reclamo / Avería <span style="color:red">*</span></label>
+                    <textarea id="txtDetalle" class="form-control" rows="4" placeholder="Explique claramente su inconveniente..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Subir Evidencia (Foto del problema o recibo)</label>
+                    <input type="file" id="fotoEvidencia" class="form-control" accept="image/*" onchange="document.getElementById('previewFoto').src = window.URL.createObjectURL(this.files[0]); document.getElementById('previewFoto').style.display='block';">
+                    <img id="previewFoto" style="display:none; margin-top: 10px; max-width: 150px; border-radius: 8px; border: 2px solid #e2e8f0;">
+                </div>
+
+                <div class="form-group" style="display: flex; gap: 10px; align-items: flex-start;">
+                    <input type="checkbox" id="chkTerminos" required style="margin-top: 5px; transform: scale(1.3);">
+                    <label for="chkTerminos" style="font-weight: normal; font-size: 0.85rem; line-height: 1.4;">
+                        Declaro que la información proporcionada es verídica y acepto la <b>Política de Privacidad</b> y el tratamiento de mis datos personales.
+                    </label>
+                </div>
+
+                <button type="submit" id="btnEnviar" class="btn-submit">
+                    <i class="fa-solid fa-paper-plane"></i> Generar Reclamo Oficial
+                </button>
+            </form>
+        </div>
+
+        <div class="libro-box" id="pantalla-exito">
+            <div class="check-circle"><i class="fa-solid fa-check"></i></div>
+            <h2 style="font-weight: 900;">Reclamo Registrado Exitosamente</h2>
+            <p style="color: #64748b;">Guarde este número de ticket para hacer seguimiento a su caso. Un asesor se comunicará con usted en breve.</p>
+            <div class="ticket-id" id="txtTicketGenerado">REC-000000</div>
+            <button onclick="window.location.reload()" class="btn-submit" style="margin-top: 20px; background: #334155;">Volver al inicio</button>
+        </div>
+    </div>
+
+    <!-- SCRIPT FIREBASE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+            authDomain: "ten-soporte.firebaseapp.com",
+            projectId: "ten-soporte",
+            storageBucket: "ten-soporte.firebasestorage.app",
+            messagingSenderId: "498950424371",
+            appId: "1:498950424371:web:fce299a98cf8e57f822046",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        const comprimirFoto = (archivo) => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(archivo);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800; 
+                        let width = img.width; let height = img.height;
+                        if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob((blob) => { resolve(blob); }, 'image/jpeg', 0.6);
+                    };
+                };
+            });
+        };
+
+        document.getElementById('formReclamo').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Bloqueo Anti-Spam (Honeypot)
+            if (document.getElementById("txtWeb").value !== "") return;
+
+            let btn = document.getElementById('btnEnviar');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Procesando...';
+
+            try {
+                let fotoInput = document.getElementById("fotoEvidencia");
+                let urlFoto = "";
+                let ticketNum = "REC-" + new Date().getFullYear() + "-" + Date.now().toString().slice(-6);
+
+                if (fotoInput.files.length > 0) {
+                    btn.innerHTML = '<i class="fa-solid fa-compress"></i> Subiendo evidencia...';
+                    let fotoComprimida = await comprimirFoto(fotoInput.files[0]);
+                    const storageRef = ref(storage, "reclamos_clientes/" + ticketNum + ".jpg");
+                    await uploadBytes(storageRef, fotoComprimida);
+                    urlFoto = await getDownloadURL(storageRef);
+                }
+
+                btn.innerHTML = '<i class="fa-solid fa-database"></i> Registrando caso...';
+
+                await addDoc(collection(db, "reclamaciones"), {
+                    ticket: ticketNum,
+                    dni: document.getElementById("txtDni").value,
+                    cliente: document.getElementById("txtNombres").value,
+                    celular: document.getElementById("txtCelular").value,
+                    zona: localStorage.getItem("ten_zona_activa") || "norte",
+                    tipo: document.getElementById("txtTipo").value,
+                    detalle: document.getElementById("txtDetalle").value,
+                    foto: urlFoto,
+                    fecha: new Date().toISOString(),
+                    estado: "Recibido",
+                    ts: Date.now()
+                });
+
+                document.getElementById('pantalla-formulario').style.display = 'none';
+                document.getElementById('pantalla-exito').style.display = 'block';
+                document.getElementById('txtTicketGenerado').innerText = ticketNum;
+
+            } catch (error) {
+                alert("Hubo un error de conexión. Intente nuevamente.");
+                console.error(error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Generar Reclamo Oficial';
+            }
+        });
+    </script>
+</body>
+</html>

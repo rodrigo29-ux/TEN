@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEN - Mis Asistencias</title>
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    
+    <script>
+        const savedTheme = localStorage.getItem("temaTen") || "dark";
+        document.documentElement.setAttribute("data-theme", savedTheme);
+    </script>
+
+    <style>
+        /* ✨ RESET BÁSICO PARA EVITAR DESBORDE HORIZONTAL (SCROLL A LOS LADOS) */
+        * { box-sizing: border-box; }
+        html, body { max-width: 100vw; overflow-x: hidden; }
+
+        .timeline-box { background: rgba(0,0,0,0.02); border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-size: 11px; margin-bottom: 8px; position: relative; }
+        .hora-badge { font-weight: 900; padding: 4px 8px; border-radius: 6px; color: #fff; letter-spacing: 0.5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .bg-in { background: #3b82f6; } 
+        .bg-out { background: #ef4444; } 
+        .bg-food { background: #f59e0b; color: #000; } 
+        .bg-purple { background: #8b5cf6; } 
+        
+        .foto-evidencia { width: 38px; height: 38px; object-fit: cover; border-radius: 6px; border: 2px solid var(--border); transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); flex-shrink: 0;}
+        .foto-evidencia:hover { transform: scale(2); z-index: 10; position: relative; }
+        
+        .hx-panel { background: rgba(139, 92, 246, 0.05); border: 1px dashed #8b5cf6; padding: 12px; border-radius: 8px; margin-top: 10px; }
+        .hx-aprobada { background: rgba(16, 185, 129, 0.1); border-left: 3px solid #10b981; padding: 8px 12px; border-radius: 4px; color: #10b981; font-weight: bold; font-size: 11px; margin-top: 8px; }
+        .hx-rechazada { background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; padding: 8px 12px; border-radius: 4px; color: #ef4444; font-size: 11px; margin-top: 8px; }
+
+        .badge-tardanza { background: var(--danger); color: white; font-size: 9px; padding: 3px 6px; border-radius: 4px; font-weight: 900; }
+        .badge-duplicado { background: var(--warning); color: #000; font-size: 9px; padding: 3px 6px; border-radius: 4px; font-weight: 900; }
+
+        /* ✨ BOTÓN FLOTANTE VOLVER AL NOC */
+        .fab-noc {
+            position: fixed; bottom: 20px; right: 20px;
+            width: 55px; height: 55px; border-radius: 50%;
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: white; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 8px 20px rgba(249,115,22,0.45);
+            z-index: 999; text-decoration: none;
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .fab-noc:hover { transform: scale(1.1) translateY(-3px); box-shadow: 0 12px 25px rgba(249,115,22,0.6); }
+        .fab-noc:active { transform: scale(0.95); }
+
+        /* 🍞 TOAST LOCAL */
+        @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        #miToastLocal {
+            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+            background: var(--accent); color: white; padding: 12px 24px;
+            border-radius: 8px; font-weight: 900; font-size: 0.9rem;
+            z-index: 99999; box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            display: none; animation: toastIn 0.3s ease-out;
+            max-width: 90vw; text-align: center;
+        }
+
+        /* ========================================================= */
+        /* ✨ MAGIA CSS PARA CELULARES (Diseño de Tarjetas)          */
+        /* ========================================================= */
+        @media (max-width: 768px) {
+            /* 🆕 FIX #1: Evitar que el contenido baile a los lados */
+            html, body { overflow-x: hidden; width: 100%; }
+            .app-content { padding-bottom: 100px !important; overflow-x: hidden; }
+
+            /* Transformar tabla en formato bloques/cards */
+            .table-wrapper { overflow-x: hidden; }
+            .table-wrapper thead { display: none; }
+            .table-wrapper table, .table-wrapper tbody, .table-wrapper tr, .table-wrapper td { display: block; width: 100%; box-sizing: border-box; }
+            .table-wrapper tr { margin-bottom: 20px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+            
+            /* 🆕 FIX #2: Título resaltado para la Fecha (Ajuste de padding para no cortar letras ni íconos) */
+            .table-wrapper td:nth-child(1) { 
+                background: rgba(14, 165, 233, 0.05); 
+                border-bottom: 2px solid var(--border); 
+                text-align: center; 
+                font-size: 1.15rem; 
+                padding: 18px 10px; /* Más padding arriba y abajo para que respire */
+                line-height: 1.4;
+            }
+            .table-wrapper td { padding: 15px; border: none; border-bottom: 1px dashed var(--border); }
+            .table-wrapper td:last-child { border-bottom: none; }
+            
+            /* 🆕 FIX #3: Ajuste de filtros de fecha (No más botones estirados en iOS) */
+            .filtros-grupo { flex-direction: column; align-items: stretch !important; gap: 15px; }
+            .filtros-grupo .filtro-item { width: 100%; box-sizing: border-box; }
+            .filtros-grupo input[type="date"] { 
+                height: 48px !important; 
+                padding: 10px 15px !important; 
+                font-size: 1rem !important; 
+                text-align: center;
+                border-radius: 8px !important;
+                -webkit-appearance: none; /* Resetea el diseño nativo raro de iOS */
+                background-color: var(--bg-panel);
+            }
+
+            .topbar-left h2 { font-size: 1rem !important; }
+
+            /* Empty state no debe parecer una tarjeta */
+            .table-wrapper tr:has(td[colspan="3"]) { background: transparent; border: none; box-shadow: none; margin-bottom: 0; }
+            .table-wrapper td[colspan="3"] { padding: 40px 15px !important; background: transparent !important; border: none !important; text-align: center; }
+
+            /* Foto sin desbordar al hacer tap */
+            .foto-evidencia:hover { transform: none; }
+            .foto-evidencia:active { transform: scale(1.5); z-index: 10; position: relative; }
+
+            /* FAB más discreto en móvil */
+            .fab-noc { width: 50px; height: 50px; bottom: 15px; right: 15px; }
+        }
+
+        /* Gráfico más chico en pantallas muy angostas */
+        @media (max-width: 480px) {
+            #graficoMisHoras { height: 150px !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar-overlay" onclick="window.toggleSidebar()"></div>
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <img src="logo.png" alt="TEN Logo" class="sidebar-logo" onerror="this.style.display='none'">
+            <span class="sidebar-brand">TEN <b>NOC</b></span>
+        </div>
+        
+        <div class="sidebar-user">
+            <div class="avatar" style="background: rgba(14, 165, 233, 0.1); color: #0ea5e9;">
+                <i class="fa-solid fa-user-gear"></i>
+            </div>
+            <div class="user-details">
+                <span class="user-role" id="lblUsuarioActivo">Cargando...</span>
+                <span class="user-status"><i class="fa-solid fa-circle text-success"></i> Técnico en Ruta</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <p class="nav-section">RECURSOS HUMANOS</p>
+            <button type="button" class="nav-btn" onclick="window.location.href='modulo_programacion.html'">
+                <i class="fa-solid fa-clock"></i> Programación / Turnos
+            </button>
+            <button type="button" class="nav-btn active" style="background: #0ea5e9; color: white;">
+                <i class="fa-solid fa-user-check"></i> Mis Asistencias
+            </button>
+            <button type="button" class="nav-btn" onclick="window.exportarMisAsistenciasExcel()" style="color: #10b981;">
+                <i class="fa-solid fa-file-excel"></i> Descargar mi Reporte
+            </button>
+            <button type="button" class="nav-btn" onclick="window.abrirModalMisBoletas()" style="color: #8b5cf6;">
+                <i class="fa-solid fa-folder-open"></i> Mis Boletas de Pago
+            </button>
+
+            <p class="nav-section">NAVEGACIÓN</p>
+            <button type="button" class="nav-btn" onclick="window.location.href='index.html'">
+                <i class="fa-solid fa-arrow-left"></i> Volver al NOC
+            </button>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="app-main">
+        <header class="app-topbar">
+            <div class="topbar-left" style="display: flex; align-items: center;">
+                <button type="button" class="topbar-btn mobile-menu-btn" onclick="window.toggleSidebar()">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <h2 style="font-size: 1.1rem; font-weight: 900; color: var(--text-main); margin-left: 10px;">
+                    <i class="fa-solid fa-clipboard-user" style="color: #0ea5e9;"></i> Mi Registro de Asistencia
+                </h2>
+            </div>
+            <div class="topbar-right" style="display: flex; align-items: center; gap: 10px;">
+                <button type="button" class="topbar-btn" onclick="window.toggleTema()" title="Cambiar Tema"><i class="fa-solid fa-moon"></i></button>
+                <button type="button" class="topbar-btn btn-logout" onclick="window.cerrarSesion()" title="Cerrar Sesión">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="app-content">
+            <!-- MIS KPIs -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--info);">
+                    <h3 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">MIS HORAS TRABAJADAS</h3>
+                    <div style="font-size: 1.8rem; font-weight: 900; color: var(--info);" id="kpiHorasNetas">0h 0m</div>
+                </div>
+                <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--success);">
+                    <h3 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">MIS HORAS EXTRAS APROBADAS</h3>
+                    <div style="font-size: 1.8rem; font-weight: 900; color: var(--success);" id="kpiHorasExtras">0h 0m</div>
+                </div>
+                <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--danger);">
+                    <h3 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">MIS TARDANZAS</h3>
+                    <div style="font-size: 1.8rem; font-weight: 900; color: var(--danger);">
+                        <span id="kpiTardanzas">0</span> 
+                        <span id="promedioTardanza" style="font-size: 11px; color: var(--text-muted); font-weight: bold; margin-left: 5px;"></span>
+                    </div>
+                </div>
+                <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--warning);">
+                    <h3 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">HX PENDIENTES DE APROBAR</h3>
+                    <div style="font-size: 1.8rem; font-weight: 900; color: var(--warning);" id="kpiHxPendientes">0</div>
+                </div>
+            </div>
+
+            <!-- GRÁFICO SEMANAL -->
+            <div class="stat-card" style="padding: 20px; margin-bottom: 20px;">
+                <div class="card-header" style="margin-bottom: 15px;">
+                    <h3 style="font-size: 0.9rem; color: var(--text-main);"><i class="fa-solid fa-chart-column" style="color: var(--accent);"></i> MIS HORAS EN LOS ÚLTIMOS 7 DÍAS</h3>
+                </div>
+                <div style="height: 180px; position: relative;"><canvas id="graficoMisHoras"></canvas></div>
+            </div>
+
+            <!-- FILTROS PERSONALES -->
+            <div class="control-panel">
+                <div class="filtros-grupo" style="display: flex; gap: 15px; align-items: center;">
+                    <div class="filtro-item" style="flex: 1; min-width: 140px;">
+                        <label><i class="fa-solid fa-calendar-day"></i> MOSTRAR DESDE:</label>
+                        <input type="date" id="filtroDesde" class="form-control highlight-border-accent" onchange="window.procesarMisAsistencias()">
+                    </div>
+                    <div class="filtro-item" style="flex: 1; min-width: 140px;">
+                        <label><i class="fa-solid fa-calendar-day"></i> MOSTRAR HASTA:</label>
+                        <input type="date" id="filtroHasta" class="form-control highlight-border-accent" onchange="window.procesarMisAsistencias()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TABLA DE ASISTENCIA -->
+            <div class="table-wrapper" style="margin-top: 20px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">Fecha</th>
+                            <th style="width: 50%;">Mi Línea de Tiempo</th>
+                            <th style="width: 35%; text-align: center;">Resumen y Solicitudes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaAsistencia">
+                        <tr><td colspan="3" class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Cargando mi historial...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ✨ BOTÓN FLOTANTE VOLVER AL NOC -->
+<a href="index.html" class="fab-noc" title="Volver al NOC">
+    <i class="fa-solid fa-house" style="font-size:1.3rem;"></i>
+</a>
+
+<!-- ✨ TOAST LOCAL -->
+<div id="miToastLocal">Mensaje</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+    authDomain: "ten-soporte.firebaseapp.com",
+    projectId: "ten-soporte",
+    storageBucket: "ten-soporte.firebasestorage.app"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
+const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4"); 
+
+let dbMisEventos = [];
+window.datosMisAsistencias = []; 
+let miNombreNOC = "";
+let graficoMisHorasInstancia = null;
+
+// ============================================================
+// 🍞 TOAST LOCAL
+// ============================================================
+window.mostrarToast = (msg) => {
+    const t = document.getElementById("miToastLocal");
+    if (!t) return;
+    t.innerText = msg;
+    t.style.display = "block";
+    t.style.animation = "none";
+    void t.offsetWidth;
+    t.style.animation = "toastIn 0.3s ease-out";
+    setTimeout(() => { t.style.display = "none"; }, 3000);
+};
+
+window.toggleSidebar = () => { 
+    const sidebar = document.querySelector('.app-sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    if(sidebar) sidebar.classList.toggle('show');
+    if(overlay) overlay.classList.toggle('show');
+};
+
+window.cerrarSesion = () => {
+    localStorage.removeItem('ten_rol'); 
+    localStorage.removeItem('ten_email'); 
+    localStorage.removeItem('ten_nombre_tecnico'); 
+    signOut(auth).then(() => { window.location.href = "index.html"; });
+};
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        miNombreNOC = localStorage.getItem('ten_nombre_tecnico') || user.email.split("@")[0].toUpperCase();
+        document.getElementById("lblUsuarioActivo").innerText = miNombreNOC;
+        
+        let fechaHaceUnaSemana = new Date();
+        fechaHaceUnaSemana.setDate(fechaHaceUnaSemana.getDate() - 7);
+        
+        document.getElementById("filtroDesde").value = fechaHaceUnaSemana.toLocaleDateString('en-CA');
+        document.getElementById("filtroHasta").value = new Date().toLocaleDateString('en-CA');
+        
+        cargarMisDatos();
+    } else {
+        window.location.href = "index.html";
+    }
+});
+
+function cargarMisDatos() {
+    onSnapshot(query(coleccionTrabajos, where("tipoTarea", "in", ["biometrico", "otros"])), (snapshot) => {
+        dbMisEventos = [];
+        
+        snapshot.forEach((doc) => { 
+            let data = doc.data();
+            
+            let esMio = false;
+            if (Array.isArray(data.tecnicos)) {
+                esMio = data.tecnicos.includes(miNombreNOC);
+            } else if (typeof data.tecnicos === "string") {
+                esMio = (data.tecnicos === miNombreNOC);
+            }
+            if (!esMio) return;
+            
+            const eventosRRHH = ["Hora de Almuerzo", "Inicio de Turno", "Fin de Turno", "Incidente Vehicular", "Retraso por Clima", "Permiso Personal"];
+            if (eventosRRHH.includes(data.detalle)) {
+                dbMisEventos.push({ id: doc.id, ...data }); 
+            }
+        });
+
+        window.procesarMisAsistencias();
+    });
+}
+
+window.procesarMisAsistencias = () => {
+    let fDesde = document.getElementById("filtroDesde").value;
+    let fHasta = document.getElementById("filtroHasta").value;
+    let tbody = document.getElementById("tablaAsistencia");
+
+    let agrupado = {};
+    
+    dbMisEventos.forEach(ev => {
+        let fecha = ev.fecha;
+        if (fDesde && fecha < fDesde) return;
+        if (fHasta && fecha > fHasta) return;
+
+        if (!agrupado[fecha]) agrupado[fecha] = {
+            eventos: [], inicioTs: null, finTs: null, almuerzoIniTs: null, almuerzoFinTs: null, 
+            incidencias: 0, tardanzaMins: 0, hxEstado: null, hxMotivo: null,
+            cantidadInicios: 0, cantidadFines: 0
+        };
+
+        let diaData = agrupado[fecha];
+        let tsReal = ev.tsFin || ev.tsInicio || ev.tsLlegada || Date.now();
+        let horaDisplay = new Date(tsReal).toLocaleTimeString("en-US", {hour: '2-digit', minute:'2-digit', hour12: true});
+        let fotoEvi = (ev.evidencias && ev.evidencias.length > 0) ? ev.evidencias[0] : (ev.fotoLlegada || "");
+
+        if (ev.detalle === "Hora de Almuerzo") {
+            if (ev.tsInicio) {
+                let hDispIni = new Date(ev.tsInicio).toLocaleTimeString("en-US", {hour: '2-digit', minute:'2-digit', hour12: true});
+                if (diaData.almuerzoIniTs && !diaData.almuerzoFinTs) {
+                    diaData.eventos.push({ ts: ev.tsInicio, hora: hDispIni, evento: "Hora de Almuerzo", accion: "Salida (DUPLICADO)", color: "bg-food", badgeDuplicado: true });
+                } else {
+                    diaData.almuerzoIniTs = ev.tsInicio;
+                    diaData.eventos.push({ ts: ev.tsInicio, hora: hDispIni, evento: "Hora de Almuerzo", accion: "Salida", color: "bg-food" });
+                }
+            }
+            if (ev.tsFin) {
+                diaData.almuerzoFinTs = ev.tsFin;
+                diaData.eventos.push({ ts: ev.tsFin, hora: horaDisplay, evento: "Hora de Almuerzo", accion: "Retorno", color: "bg-food", foto: fotoEvi, notas: ev.notaCierre });
+            }
+        } else if (ev.detalle === "Inicio de Turno" || ev.detalle === "Fin de Turno") {
+            let colorSt = ev.detalle === "Inicio de Turno" ? "bg-in" : "bg-out";
+            let badgeTardanzaHtml = "";
+            
+            if (ev.detalle === "Inicio de Turno") {
+                diaData.cantidadInicios++;
+                if (!diaData.inicioTs) {
+                    diaData.inicioTs = tsReal;
+                    let dIni = new Date(tsReal);
+                    let limite8 = new Date(dIni); limite8.setHours(8, 0, 0, 0); 
+                    if (dIni > limite8) {
+                        diaData.tardanzaMins = Math.floor((dIni - limite8) / 60000);
+                        badgeTardanzaHtml = `<span class="badge-tardanza">⚠️ +${diaData.tardanzaMins} min tarde</span>`;
+                    }
+                }
+            }
+            
+            if (ev.detalle === "Fin de Turno") {
+                diaData.cantidadFines++;
+                if (!diaData.finTs) {
+                    diaData.finTs = tsReal;
+                    diaData.hxEstado = ev.horasExtrasEstado || 'pendiente';
+                    diaData.hxMotivo = ev.horasExtrasMotivo || '';
+                }
+            }
+            
+            diaData.eventos.push({ ts: tsReal, hora: horaDisplay, evento: ev.detalle, color: colorSt, foto: fotoEvi, notas: ev.notaCierre, badgeTardanza: badgeTardanzaHtml });
+        } else {
+            diaData.incidencias++;
+            diaData.eventos.push({ ts: tsReal, hora: horaDisplay, evento: ev.detalle, color: "bg-purple", foto: fotoEvi, notas: ev.notaCierre });
+        }
+    });
+
+    tbody.innerHTML = "";
+    let totNetas = 0, totExtras = 0, totTardanzas = 0, totHxPendientes = 0;
+    let totalMinsTardanza = 0;
+    let fechasOrdenadas = Object.keys(agrupado).sort((a,b) => b.localeCompare(a)); 
+
+    let ultimos7Dias = [];
+    let hoyDate = new Date();
+    for (let i = 6; i >= 0; i--) {
+        let d = new Date(hoyDate);
+        d.setDate(d.getDate() - i);
+        ultimos7Dias.push(d.toLocaleDateString('en-CA'));
+    }
+
+    fechasOrdenadas.forEach(fecha => {
+        let data = agrupado[fecha];
+        let timelineHtml = "";
+        
+        data.eventos.sort((a,b) => a.ts - b.ts);
+        
+        data.eventos.forEach(e => {
+            let imgHtml = e.foto ? `<a href="${e.foto}" target="_blank"><img src="${e.foto}" class="foto-evidencia"></a>` : "";
+            let badgeDupHtml = e.badgeDuplicado ? `<span class="badge-duplicado">⚠️ DUPLICADO</span>` : "";
+            let badgeTardHtml = e.badgeTardanza || "";
+            
+            timelineHtml += `
+                <div class="timeline-box">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                        <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+                            <span class="hora-badge ${e.color}">${e.hora}</span> 
+                            <b style="color:var(--text-main); font-size:12px;">${e.evento}</b> 
+                            <span style="color:var(--text-muted);">${e.accion ? `(${e.accion})` : ""}</span>
+                            ${badgeTardHtml}${badgeDupHtml}
+                        </div>
+                        ${imgHtml}
+                    </div>
+                    ${e.notas ? `<div style="color:var(--text-muted); font-style:italic; margin-top:8px; padding-left:10px; border-left:2px solid var(--border); font-size:11px;">"${e.notas}"</div>` : ""}
+                </div>`;
+        });
+
+        let minsBrutos = 0, minsAlmuerzo = 0, minsNetos = 0, hxMins = 0;
+        let calcHtml = "";
+
+        if (data.inicioTs && data.finTs) {
+            minsBrutos = Math.floor((data.finTs - data.inicioTs) / 60000);
+            
+            if (!data.almuerzoIniTs && data.almuerzoFinTs) {
+                calcHtml += `<div style="color:var(--danger); font-size:10px; margin-bottom:5px;">⚠️ Marcaste retorno de almuerzo pero no salida. No se puede calcular.</div>`;
+            } else if (data.almuerzoIniTs && data.almuerzoFinTs) {
+                minsAlmuerzo = Math.floor((data.almuerzoFinTs - data.almuerzoIniTs) / 60000);
+            } else if (data.almuerzoIniTs && !data.almuerzoFinTs) {
+                calcHtml += `<div style="color:var(--danger); font-size:10px; margin-bottom:5px;">⚠️ Olvidaste marcar retorno de almuerzo. RRHH restará 1h por defecto.</div>`;
+                minsAlmuerzo = 60;
+            }
+
+            minsNetos = minsBrutos - minsAlmuerzo;
+            
+            let dFin = new Date(data.finTs);
+            let limite17 = new Date(dFin); limite17.setHours(17, 0, 0, 0); 
+            if (dFin > limite17) {
+                hxMins = Math.floor((dFin - limite17) / 60000);
+            }
+
+            totNetas += minsNetos; 
+            if (data.tardanzaMins > 0) {
+                totTardanzas++;
+                totalMinsTardanza += data.tardanzaMins;
+            }
+
+            calcHtml += `
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:12px; color:var(--text-main);"><span>Jornada Bruta:</span> <b>${formatoHoras(minsBrutos)}</b></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:12px; color:var(--warning);"><span>Descanso (Almuerzo):</span> <b>- ${formatoHoras(minsAlmuerzo)}</b></div>
+                <hr style="border-color:var(--border); margin:5px 0;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px; color:var(--info);"><span><b>TOTAL NETO:</b></span> <b>${formatoHoras(minsNetos)}</b></div>
+            `;
+
+            if (data.tardanzaMins > 0) {
+                calcHtml += `<div style="color:var(--danger); font-size:11px; margin-top:5px; background: rgba(239, 68, 68, 0.1); padding: 6px; border-radius: 4px;"><b><i class="fa-solid fa-clock"></i> Llegaste ${data.tardanzaMins} min tarde.</b></div>`;
+            }
+
+            if (data.cantidadInicios > 1 || data.cantidadFines > 1) {
+                calcHtml += `<div style="color:var(--warning); font-size:10px; margin-top:3px;"><i class="fa-solid fa-circle-exclamation"></i> Marcaste salida o inicio más de una vez. RRHH tomará la primera.</div>`;
+            }
+
+            if (hxMins > 0) {
+                if (data.hxEstado === 'aprobada') {
+                    totExtras += hxMins;
+                    calcHtml += `<div class="hx-aprobada"><i class="fa-solid fa-check-circle"></i> +${formatoHoras(hxMins)} Horas Extras Aprobadas</div>`;
+                } else if (data.hxEstado === 'rechazada') {
+                    calcHtml += `<div class="hx-rechazada"><b><i class="fa-solid fa-ban"></i> Horas Extras Rechazadas</b><br>Motivo de RRHH: ${data.hxMotivo}</div>`;
+                } else {
+                    totHxPendientes++;
+                    calcHtml += `
+                        <div class="hx-panel">
+                            <b style="color:#8b5cf6; font-size:11px; display:block; margin-bottom:2px;"><i class="fa-solid fa-clock-rotate-left"></i> Solicitud enviada: +${formatoHoras(hxMins)}</b>
+                            <span style="color: var(--text-muted); font-size: 10px;">⏳ En revisión por Administración.</span>
+                        </div>
+                    `;
+                }
+            } else {
+                calcHtml += `<div style="display:flex; justify-content:space-between; margin-top:8px; font-size:11px; color:var(--text-muted);"><span>Horas Extras:</span> <b>0h 0m</b></div>`;
+            }
+
+            window.datosMisAsistencias.push({
+                fecha, 
+                entrada: data.inicioTs ? new Date(data.inicioTs).toLocaleTimeString("es-PE", {hour:'2-digit', minute:'2-digit'}) : "-",
+                salida: data.finTs ? new Date(data.finTs).toLocaleTimeString("es-PE", {hour:'2-digit', minute:'2-digit'}) : "-",
+                jornadaBruta: formatoHoras(minsBrutos),
+                almuerzo: formatoHoras(minsAlmuerzo),
+                totalNeto: formatoHoras(minsNetos),
+                tardanzaMin: data.tardanzaMins,
+                horasExtras: formatoHoras(hxMins),
+                estadoHx: data.hxEstado || "-",
+                motivoHx: data.hxMotivo || "-"
+            });
+
+        } else {
+            calcHtml = `<div style="text-align:center; color:var(--danger); font-size:11px; font-weight:bold; padding: 10px;"><i class="fa-solid fa-triangle-exclamation"></i> Faltan marcas de Inicio o Fin de Turno.</div>`;
+        }
+
+        let fechaDate = new Date(fecha + "T00:00:00");
+        let fechaStr = fechaDate.toLocaleDateString('es-PE', {weekday: 'short', day: '2-digit', month: 'short'});
+        fechaStr = fechaStr.charAt(0).toUpperCase() + fechaStr.slice(1);
+
+        tbody.innerHTML += `
+            <tr>
+                <td style="font-weight:bold; color:var(--accent); text-transform: capitalize;"><i class="fa-regular fa-calendar"></i> ${fechaStr}</td>
+                <td>${timelineHtml}</td>
+                <td style="background: rgba(0,0,0,0.02); border-radius: 8px; padding: 10px;">${calcHtml}</td>
+            </tr>
+        `;
+    });
+
+    if (tbody.innerHTML === "") {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-muted"><i class="fa-solid fa-mug-hot text-2xl mb-2 block"></i><br>No tienes registros de asistencia en estas fechas.</td></tr>`;
+    }
+
+    document.getElementById("kpiHorasNetas").innerText = formatoHoras(totNetas);
+    document.getElementById("kpiHorasExtras").innerText = formatoHoras(totExtras);
+    document.getElementById("kpiTardanzas").innerText = totTardanzas;
+    document.getElementById("kpiHxPendientes").innerText = totHxPendientes;
+
+    // 🆕 FIX #3: Promedio en formato "4h 15m" en vez de "255 min"
+    let lblProm = document.getElementById("promedioTardanza");
+    if (lblProm) {
+        if (totTardanzas > 0) {
+            let prom = Math.round(totalMinsTardanza / totTardanzas);
+            lblProm.innerText = `(prom. ${formatoHoras(prom)})`;
+        } else {
+            lblProm.innerText = "";
+        }
+    }
+
+    renderizarGraficoMisHoras(ultimos7Dias, agrupado);
+};
+
+function renderizarGraficoMisHoras(ultimos7Dias, agrupado) {
+    const canvas = document.getElementById("graficoMisHoras");
+    if (!canvas) return;
+
+    let etiquetas = [];
+    let datosHoras = [];
+
+    ultimos7Dias.forEach(fecha => {
+        let d = new Date(fecha + "T00:00:00");
+        let dia = d.toLocaleDateString('es-PE', { weekday: 'short', day: '2-digit' });
+        etiquetas.push(dia.charAt(0).toUpperCase() + dia.slice(1));
+
+        let data = agrupado[fecha];
+        let horasDia = 0;
+        if (data && data.inicioTs && data.finTs) {
+            let minsBrutos = Math.floor((data.finTs - data.inicioTs) / 60000);
+            let minsAlmuerzo = 0;
+            if (data.almuerzoIniTs && data.almuerzoFinTs) {
+                minsAlmuerzo = Math.floor((data.almuerzoFinTs - data.almuerzoIniTs) / 60000);
+            } else if (data.almuerzoIniTs && !data.almuerzoFinTs) {
+                minsAlmuerzo = 60;
+            }
+            horasDia = (minsBrutos - minsAlmuerzo) / 60;
+            if (horasDia < 0) horasDia = 0;
+        }
+        datosHoras.push(horasDia);
+    });
+
+    const isDark = document.documentElement.getAttribute("data-theme") !== "light";
+    const textColor = isDark ? "#94a3b8" : "#64748b";
+    const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+
+    if (graficoMisHorasInstancia) graficoMisHorasInstancia.destroy();
+
+    const ctx = canvas.getContext("2d");
+    let gradient = ctx.createLinearGradient(0, 0, 0, 180);
+    gradient.addColorStop(0, "#0ea5e9");
+    gradient.addColorStop(1, "#0369a1");
+
+    // 🆕 FIX #2: Si el valor máximo es muy chico (<1h), forzamos escala mínima de 1h
+    // para que se vea la barra proporcional. Si es mayor, se calcula solo.
+    let maxVal = Math.max(...datosHoras);
+    let yMaxSugerido = maxVal < 1 ? 1 : undefined;
+
+    graficoMisHorasInstancia = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: etiquetas,
+            datasets: [{
+                data: datosHoras,
+                backgroundColor: gradient,
+                borderRadius: 6,
+                barThickness: 35,
+                // 🆕 FIX: Forzamos altura mínima visual de 3px para barras chicas
+                minBarLength: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            let h = ctx.parsed.y;
+                            if (h < 1) {
+                                let mins = Math.round(h * 60);
+                                return `Tiempo: ${mins} min`;
+                            }
+                            return `Tiempo: ${h.toFixed(1)}h`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: yMaxSugerido,
+                    grid: { color: gridColor },
+                    ticks: { 
+                        color: textColor, 
+                        font: { size: 10 },
+                        callback: function(value) { 
+                            if (value < 1 && value > 0) return Math.round(value * 60) + 'min';
+                            return value + 'h'; 
+                        }
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: textColor, font: { size: 10 } }
+                }
+            }
+        }
+    });
+}
+
+function formatoHoras(minutos) {
+    if (!minutos || minutos <= 0) return "0h 0m";
+    let h = Math.floor(minutos / 60);
+    let m = minutos % 60;
+    return `${h}h ${m}m`;
+}
+
+window.exportarMisAsistenciasExcel = () => {
+    if (!window.datosMisAsistencias || window.datosMisAsistencias.length === 0) {
+        window.mostrarToast("⚠️ No hay datos para exportar. Ajusta los filtros de fecha primero.");
+        return;
+    }
+
+    let dataExport = window.datosMisAsistencias.map(d => ({
+        "FECHA": d.fecha,
+        "HORA ENTRADA": d.entrada,
+        "HORA SALIDA": d.salida,
+        "JORNADA BRUTA": d.jornadaBruta,
+        "ALMUERZO": d.almuerzo,
+        "TOTAL NETO": d.totalNeto,
+        "TARDANZA (min)": d.tardanzaMin,
+        "HORAS EXTRAS": d.horasExtras,
+        "ESTADO HX": String(d.estadoHx).toUpperCase(),
+        "MOTIVO RECHAZO": d.motivoHx
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Mis_Asistencias");
+
+    let hoy = new Date().toLocaleDateString('es-PE').replace(/\//g, '-');
+    XLSX.writeFile(wb, `Mis_Asistencias_${miNombreNOC}_${hoy}.xlsx`);
+
+    window.mostrarToast("✅ Reporte descargado correctamente.");
+};
+
+window.toggleTema = () => { 
+    const newTheme = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; 
+    document.documentElement.setAttribute("data-theme", newTheme); 
+    localStorage.setItem("temaTen", newTheme); 
+    if (typeof window.procesarMisAsistencias === "function") window.procesarMisAsistencias();
+};
+// ============================================================
+// 📁 VISOR DE BOLETAS Y REPORTES (VISTA TÉCNICO)
+// ============================================================
+const zonaSede = localStorage.getItem("ten_zona_activa") || "norte";
+const pathBoletas = zonaSede === "lurin" ? "boletas_pago_lurin" : "boletas_pago";
+const coleccionBoletas = collection(db, "artifacts", appId, "public", "data", pathBoletas);
+
+// 1. Inyectar el HTML de las carpetas (Con cierre táctil y tecla ESC)
+document.body.insertAdjacentHTML('beforeend', `
+<!-- 🔥 FIX: Agregamos onclick="this.style.display='none'" al fondo oscuro -->
+<div class="modal-overlay" id="modalMisBoletas" style="z-index: 9999;" onclick="this.style.display='none'">
+    <div class="modal-content modal-v2" style="max-width: 500px; width: 92%; padding: 25px; max-height: 85vh; overflow-y: auto;" onclick="event.stopPropagation()">
+        
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalMisBoletas').style.display='none'">×</button>
+        <h3 class="mb-2" style="color: #8b5cf6; font-weight: 900; font-size: 1.3rem;"><i class="fa-solid fa-folder-open text-3xl block mb-2"></i> Mis Boletas Oficiales</h3>
+        <p class="text-sm text-muted mb-4">Haz clic en un año para abrir la carpeta y descargar tus reportes.</p>
+        
+        <div id="contenedorCarpetasBoletas" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 5px;">
+            <!-- JS inyecta las carpetas aquí -->
+        </div>
+        
+    </div>
+</div>
+`);
+
+// 🔥 FIX: Escuchar la tecla "Escape" en el teclado para cerrar la ventana
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+        let modalBoletas = document.getElementById("modalMisBoletas");
+        if (modalBoletas && modalBoletas.style.display === "flex") {
+            modalBoletas.style.display = "none";
+        }
+    }
+});
+
+window.abrirModalMisBoletas = async () => {
+    let contenedor = document.getElementById("contenedorCarpetasBoletas");
+    contenedor.innerHTML = `<div class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-3xl opacity-50 mb-2 block"></i><br>Desbloqueando bóveda segura...</div>`;
+    document.getElementById("modalMisBoletas").style.display = "flex";
+
+    try {
+        const { getDocs } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        
+        // 🔒 CANDADO DE SEGURIDAD: Solo descarga las boletas del usuario logueado
+        let q = query(coleccionBoletas, where("tecnico", "==", miNombreNOC));
+        let snap = await getDocs(q);
+
+        let boletasAgrupadas = {};
+
+        snap.forEach(doc => {
+            let b = doc.data();
+            if (!boletasAgrupadas[b.anio]) boletasAgrupadas[b.anio] = [];
+            boletasAgrupadas[b.anio].push(b);
+        });
+
+        let anios = Object.keys(boletasAgrupadas).sort((a,b) => b - a); // Ordenar de año actual hacia atrás (2026, 2025, 2024...)
+
+        if (anios.length === 0) {
+            contenedor.innerHTML = `<div class="text-center text-muted py-8"><i class="fa-solid fa-folder-minus text-4xl mb-2 opacity-30 block"></i><br>Aún no tienes documentos en tu bóveda.</div>`;
+            return;
+        }
+
+        contenedor.innerHTML = "";
+        anios.forEach(anio => {
+            let htmlMeses = "";
+            // Ordenar los meses para que Enero salga arriba o Diciembre arriba
+            boletasAgrupadas[anio].sort((a,b) => b.mes.localeCompare(a.mes)); 
+            
+            boletasAgrupadas[anio].forEach(bol => {
+                let iconStr = bol.nombreArchivo.toLowerCase().includes('.pdf') ? '<i class="fa-solid fa-file-pdf" style="color: #ef4444; font-size: 1.5rem;"></i>' : '<i class="fa-solid fa-file-image" style="color: #10b981; font-size: 1.5rem;"></i>';
+                
+                htmlMeses += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); background: var(--bg-app); margin-left: 20px; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                        <div style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
+                            ${iconStr}
+                            <div style="overflow: hidden;">
+                                <b style="color: var(--text-main); font-size: 13px; text-transform: uppercase;">${bol.nombreMes} ${anio}</b><br>
+                                <span style="font-size: 10px; color: var(--text-muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">${bol.nombreArchivo}</span>
+                            </div>
+                        </div>
+                        <button style="background: rgba(139, 92, 246, 0.1); color: var(--purple); border: 1px solid var(--purple); padding: 8px 15px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; flex-shrink: 0;" onmouseover="this.style.background='var(--purple)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(139, 92, 246, 0.1)'; this.style.color='var(--purple)';" onclick="window.open('${bol.url}', '_blank')">
+                            <i class="fa-solid fa-download"></i> Ver
+                        </button>
+                    </div>
+                `;
+            });
+
+            contenedor.innerHTML += `
+                <div style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 10px;">
+                    <div style="padding: 15px; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                        <b style="color: var(--text-main); font-size: 16px;"><i class="fa-solid fa-folder-closed" style="color: #f59e0b; font-size: 1.3rem; margin-right: 8px;"></i> Cierre Anual ${anio}</b>
+                        <i class="fa-solid fa-chevron-down" style="color: var(--text-muted);"></i>
+                    </div>
+                    <div style="padding: 15px 15px 5px 0; display: none;">
+                        ${htmlMeses}
+                    </div>
+                </div>
+            `;
+        });
+
+    } catch(e) {
+        console.error(e);
+        contenedor.innerHTML = `<div class="text-center text-danger py-8"><i class="fa-solid fa-triangle-exclamation text-3xl mb-2 block"></i> Error de conexión segura.</div>`;
+    }
+};
+</script>
+</body>
+</html>

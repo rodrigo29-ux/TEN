@@ -374,7 +374,7 @@ tbody tr:last-child td { border-bottom: none; }
 .map-pin-dot { width: 6px; height: 6px; background: var(--danger); border-radius: 50%; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); box-shadow: 0 0 10px var(--danger); }
 .reject-box { margin-top: 20px; padding: 20px; background: rgba(239, 68, 68, 0.05); border: 1px dashed var(--danger); border-radius: 8px; display: none; }
 
-#toast { visibility: hidden; min-width: 250px; background-color: var(--accent); color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; transform: translateX(-50%); font-weight: 800; font-size: 0.9rem; box-shadow: 0 10px 30px rgba(0,229,255,0.3); }
+#toast { visibility: hidden; min-width: 250px; background-color: var(--accent); color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 9999999; left: 50%; bottom: 30px; transform: translateX(-50%); font-weight: 800; font-size: 0.9rem; box-shadow: 0 10px 30px rgba(0,229,255,0.3); }
 #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
 @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
 @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
@@ -454,8 +454,50 @@ thead th {
 }
 
 /* ================= RESPONSIVE / VISTA MÓVIL (TIPO APP) ================= */
-.mobile-menu-btn { display: none; }
+.mobile-menu-btn { display: flex; margin-right: 15px; }
 .sidebar-overlay { display: none; }
+
+/* ================= SIDEBAR COLLAPSED (VISTA PC) ================= */
+@media (min-width: 901px) {
+    .app-sidebar {
+        transition: width 0.3s ease;
+        overflow-x: hidden;
+        white-space: nowrap; /* Evita que el texto baje de línea al encogerse */
+    }
+    .app-sidebar.collapsed {
+        width: 75px;
+    }
+    .app-sidebar.collapsed .sidebar-brand,
+    .app-sidebar.collapsed .user-details,
+    .app-sidebar.collapsed .nav-section {
+        display: none; /* Oculta títulos y nombre de usuario */
+    }
+    .app-sidebar.collapsed .sidebar-header {
+        justify-content: center;
+        padding: 0;
+    }
+    .app-sidebar.collapsed .sidebar-logo {
+        margin-right: 0;
+    }
+    .app-sidebar.collapsed .sidebar-user {
+        justify-content: center;
+        padding: 20px 0;
+    }
+    .app-sidebar.collapsed .nav-btn {
+        font-size: 0; /* Truco maestro: Reduce el texto a 0 para ocultarlo sin borrar el HTML */
+        gap: 0;
+        justify-content: center;
+        padding: 12px 0;
+    }
+    .app-sidebar.collapsed .nav-btn i {
+        font-size: 1.2rem; /* Mantiene el ícono grande */
+        margin: 0;
+    }
+    .app-sidebar.collapsed .nav-btn span, 
+    .app-sidebar.collapsed #lblEstadoBD {
+        display: none;
+    }
+}
 
 @media (max-width: 900px) {
     /* 1. Arreglar el Menú Hamburguesa y Sidebar */
@@ -607,3 +649,395 @@ thead th {
         display: none; 
     }
 }
+
+/* ========================================= */
+/* CORRECCIÓN: EVITAR CHOQUE DE TEXTOS EN MÓVIL */
+/* ========================================= */
+@media (max-width: 768px) {
+    #tablaTrabajos tr td:nth-child(2) {
+        padding-right: 120px !important;
+        box-sizing: border-box !important;
+        word-break: break-word !important;
+    }
+}
+
+/* ========================================= */
+/* NUEVOS COLORES PARA ESTADOS LOGÍSTICOS */
+/* ========================================= */
+.ep-proceso { color: var(--purple) !important; }
+.ep-norealizado { color: #64748b !important; }
+
+/* ============================================================
+   MENÚ ACORDEÓN (ESTILOS SEGUROS)
+   ============================================================ */
+.nav-section {
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    transition: color 0.2s ease;
+}
+.nav-section:hover {
+    color: var(--accent);
+}
+/* Flecha rotatoria */
+.nav-section .toggle-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%) rotate(0deg);
+    transition: transform 0.3s ease;
+}
+/* Cuando el menú se cierra, la flecha gira */
+.nav-section.is-closed .toggle-icon {
+    transform: translateY(-50%) rotate(-90deg);
+}
+
+/* Ocultar botones (Clase inyectada por JS) */
+.app-sidebar:not(.collapsed) .hide-by-accordion {
+    display: none !important;
+}
+
+/* Si la barra está encogida (75px), desaparecemos las flechas porque no hay texto */
+.app-sidebar.collapsed .toggle-icon {
+    display: none;
+}
+/* =========================================================
+   UX PREMIUM (MICRO-INTERACCIONES)
+   ========================================================= */
+
+/* 1. Pulso de Conexión a Internet */
+.status-pulse { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 0 rgba(16,185,129,0.7); animation: pulse-green 2s infinite; margin-right: 6px; }
+.status-pulse.offline { background: var(--danger); animation: pulse-red 2s infinite; box-shadow: 0 0 0 0 rgba(239,68,68,0.7); }
+@keyframes pulse-green { 70% {box-shadow: 0 0 0 6px transparent;} 100% {box-shadow: 0 0 0 0 transparent;} }
+@keyframes pulse-red { 70% {box-shadow: 0 0 0 6px transparent;} 100% {box-shadow: 0 0 0 0 transparent;} }
+
+/* 2. Tooltip Flotante para "Smart Copy" */
+.copy-tooltip { position: fixed; background: #10b981; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 900; pointer-events: none; z-index: 9999; animation: floatUp 0.8s ease forwards; box-shadow: 0 4px 12px rgba(16,185,129,0.4); }
+@keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(0.8); } 20% { transform: translateY(-10px) scale(1.1); } 100% { opacity: 0; transform: translateY(-30px) scale(1); } }
+.smart-copy { cursor: pointer; transition: color 0.2s; position: relative; }
+.smart-copy:hover { color: var(--accent) !important; text-decoration: underline dashed; }
+
+/* 3. Skeleton Loading (Carga Fantasma) */
+.skeleton-box { background: linear-gradient(90deg, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.05) 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite; border-radius: 4px; height: 14px; margin-bottom: 8px; width: 100%; }
+[data-theme="dark"] .skeleton-box { background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%); }
+@keyframes skeleton-loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+/* =========================================================
+   CORRECCIÓN RESPONSIVE: TOPBAR MÓVIL Y BOTONES
+   ========================================================= */
+@media (max-width: 600px) {
+    .app-topbar {
+        padding: 0 10px !important; /* Ganamos un poquito de espacio a los lados */
+    }
+    .topbar-right {
+        gap: 5px !important; /* Juntamos un poquito más los botones */
+    }
+    #indicadorRed {
+        display: none !important; /* Ocultamos totalmente el indicador Online en celular para hacer espacio vital */
+    }
+    .zone-selector-container {
+        padding: 4px 8px !important;
+        max-width: 105px !important; /* Evita que el nombre "Cono Norte" empuje los botones */
+    }
+    .zone-select {
+        font-size: 0.75rem !important; /* Letra un poco más pequeña */
+    }
+    .topbar-btn {
+        width: 30px !important;
+        height: 30px !important;
+        font-size: 0.85rem !important;
+    }
+}
+
+/* ==========================================
+   FIX PARA PDF EN BLANCO CON GRÁFICOS
+   ========================================== */
+#contenedorExportPDF canvas {
+    /* Forzamos que el canvas siempre se renderice opaco y con dimensiones estrictas */
+    background-color: transparent !important;
+    opacity: 1 !important;
+}
+
+#zonaImpresionPDF {
+    /* Obligamos a que el renderizado de impresión tome las dimensiones exactas */
+    width: 794px !important;
+    max-width: 794px !important;
+    height: auto !important;
+}
+
+/* ==========================================
+   FIX DEFINITIVO PARA EXPORTAR PDF
+   ========================================== */
+/* Desactiva sticky y otros efectos problemáticos SOLO en la plantilla PDF */
+#zonaImpresionPDF,
+#zonaImpresionPDF * {
+    -webkit-transform: none !important;
+    transform: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    animation: none !important;
+    transition: none !important;
+    filter: none !important;
+    box-shadow: none !important;
+}
+
+#zonaImpresionPDF thead th,
+#zonaImpresionPDF thead tr,
+#zonaImpresionPDF th {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+    background-color: #f1f5f9 !important;
+}
+
+/* =========================================================
+   FIX: OPTIMIZACIÓN DE MODALES PARA CELULARES (DISEÑO MÓVIL)
+   ========================================================= */
+@media (max-width: 768px) {
+    /* 1. Ajustar los márgenes del modal para ganar espacio vital */
+    .modal-content.modal-v2 {
+        width: 95% !important;
+        padding: 20px 15px !important;
+        border-radius: 16px !important;
+    }
+
+    /* 2. Evitar que el título choque con la "X" de cerrar */
+    .modal-title {
+        font-size: 1.2rem !important;
+        margin-right: 25px !important; /* Espacio para que la X no estorbe */
+        line-height: 1.3 !important;
+    }
+
+    /* 3. Pestañas (Tabs): Evitar que se aplasten y permitir deslizar (Scroll horizontal) */
+    .modal-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 10px !important;
+        gap: 8px !important;
+        scrollbar-width: none; /* Ocultar barra de scroll en Firefox */
+    }
+    .modal-tabs::-webkit-scrollbar {
+        display: none; /* Ocultar barra de scroll en Chrome/Safari */
+    }
+    .tab-btn {
+        flex-shrink: 0 !important; /* 🔥 LA MAGIA: Evita que el botón se aplaste */
+        padding: 8px 14px !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* 4. Arreglar el botón "Buscar" que se corta a la derecha */
+    .search-box > div {
+        flex-wrap: nowrap !important;
+    }
+    .search-box input {
+        flex: 1 1 auto !important;
+        min-width: 0 !important; /* Evita que el input largo empuje al botón fuera de la pantalla */
+    }
+    .search-box button {
+        flex-shrink: 0 !important; /* El botón mantiene su tamaño real y legible */
+        padding: 10px 15px !important;
+    }
+    
+    /* 5. Asegurar que las cajas de "Tipo de Vivienda" y "Zona" no se aplasten */
+    #camposClienteComunes > div[style*="display: flex"] {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+    /* =========================================================
+       FIX: MODAL DE CONFIGURACIÓN Y USUARIOS (DISEÑO MÓVIL)
+       ========================================================= */
+       
+    /* 6. Arreglar el formulario de crear nuevo Plan */
+    #contentConfigPlanes > div[style*="display:flex"] {
+        flex-direction: column !important; /* Pone Precio, Nombre y Botón uno debajo del otro */
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+    
+    #contentConfigPlanes button.btn-primary {
+        width: 100% !important; /* El botón de añadir ocupará todo el ancho */
+        margin-top: 5px !important;
+    }
+
+    /* 7. Arreglar la cabecera de la pestaña Usuarios */
+    #contentConfigUsuarios > div[style*="display: flex"] {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 15px !important;
+    }
+    
+    #contentConfigUsuarios button.btn-primary {
+        width: 100% !important; /* El botón de Nuevo Usuario ocupará todo el ancho */
+    }
+
+    /* 8. Tablas Responsive (Planes y Usuarios) */
+    #contentConfigPlanes .table-wrapper,
+    #contentConfigUsuarios .table-wrapper {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+    
+    /* Convertimos las filas de las tablas de configuración en tarjetas flotantes */
+    #contentConfigPlanes tbody tr,
+    #contentConfigUsuarios tbody tr {
+        display: block !important;
+        background: var(--bg-panel) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 10px !important;
+        margin-bottom: 12px !important;
+        padding: 12px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+        position: relative;
+    }
+
+    #contentConfigPlanes td,
+    #contentConfigUsuarios td {
+        display: block !important;
+        border: none !important;
+        padding: 4px 0 !important;
+        text-align: left !important;
+    }
+
+    /* 9. Ajustes específicos para la tabla de Planes */
+    #contentConfigPlanes td:first-child {
+        font-size: 1.2rem !important;
+        margin-bottom: 5px;
+        padding-right: 45px !important; /* Evita que el precio se monte con el basurero */
+    }
+    #contentConfigPlanes td:nth-child(3) {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%); /* Centra el botón verticalmente */
+        right: 15px;
+        padding: 0 !important;
+    }
+
+    /* 10. REESCRITURA TOTAL: Ajustes específicos para la tabla de Usuarios */
+    #contentConfigUsuarios table tbody tr {
+        display: block !important;
+        position: relative !important;
+        padding: 15px !important;
+        border-radius: 12px !important;
+        margin-bottom: 15px !important;
+        background: var(--bg-panel) !important;
+        border: 1px solid var(--border) !important;
+        height: auto !important;
+    }
+    
+    #contentConfigUsuarios table tbody tr td {
+        display: block !important; /* Fuerza a que ocupe toda la línea */
+        width: 100% !important;
+        padding: 0 !important;
+        text-align: left !important;
+        border: none !important;
+        float: none !important;
+        clear: both !important; /* Evita que los elementos floten a los lados */
+    }
+
+    /* Celda 1: Email y Botón de Editar */
+    #contentConfigUsuarios table tbody tr td:nth-child(1) {
+        position: relative !important;
+        margin-bottom: 50px !important; /* Espacio masivo garantizado para la celda 2 */
+        min-height: 45px !important; 
+    }
+    
+    /* El correo electrónico */
+    #contentConfigUsuarios table tbody tr td:nth-child(1) b {
+        display: block !important;
+        word-break: break-all !important; 
+        font-size: 0.95rem !important;
+        line-height: 1.3 !important;
+        padding-right: 70px !important; 
+        margin-bottom: 8px !important; 
+    }
+    
+    /* El botón de editar nombre */
+    #contentConfigUsuarios table tbody tr td:nth-child(1) span {
+        display: inline-block !important;
+        padding: 6px 12px !important;
+        margin: 0 !important;
+    }
+
+    /* Celda 2: Dropdown de Rol */
+    #contentConfigUsuarios table tbody tr td:nth-child(2) {
+        /* Desanclamos el selector y lo ponemos debajo de forma rígida */
+        position: absolute !important;
+        top: 60px !important; /* Lo bajamos a la fuerza */
+        right: 15px !important; /* Lo pegamos a la derecha */
+        width: 170px !important; /* Lo hacemos más pequeño */
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    #contentConfigUsuarios table tbody tr td:nth-child(2) select {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 6px !important;
+        font-size: 0.8rem !important; /* Texto más chico para que quepa */
+    }
+
+    /* Celda 3: La etiqueta de Estado (ACTIVO / BLOQUEADO) */
+    #contentConfigUsuarios table tbody tr td:nth-child(3) {
+        position: absolute !important;
+        top: 15px !important;
+        right: 15px !important;
+        width: auto !important;
+    }
+
+    /* Celda 4: Los botones de acción */
+    #contentConfigUsuarios table tbody tr td:last-child {
+        display: flex !important;
+        justify-content: space-between !important;
+        gap: 10px !important;
+        border-top: 1px dashed var(--border) !important; 
+        padding-top: 15px !important;
+    }
+    
+    #contentConfigUsuarios table tbody tr td:last-child button {
+        flex: 1 !important;
+        padding: 12px !important; 
+        font-size: 1.1rem !important; 
+        margin: 0 !important;
+    }
+
+    /* ===================================================
+       FIX: ELIMINAR TEMBLOR HORIZONTAL (BAMBOLEO)
+       =================================================== */
+    body, html {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        position: relative !important;
+    }
+
+    /* Quitamos los márgenes negativos que desbordan la pantalla en móvil */
+    #contenedorTabsBajas {
+        margin: 0 0 15px 0 !important;
+        padding: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Aseguramos que el panel de filtros no rompa el ancho de la pantalla */
+    .control-panel {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+}
+
+/* ESTILOS PARA ETIQUETAS DE MENCIONES EN CHAT */
+.mencion-tag {
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.mencion-ventas { color: var(--accent); background: rgba(0, 229, 255, 0.1); border: 1px solid var(--accent); }
+.mencion-soporte { color: var(--info); background: rgba(14, 165, 233, 0.1); border: 1px solid var(--info); }
+.mencion-cobranzas { color: var(--purple); background: rgba(168, 85, 247, 0.1); border: 1px solid var(--purple); }
+.mencion-admins { color: var(--danger); background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); }

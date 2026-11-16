@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post-Venta y Calidad - TEN NOC</title>
+    <meta name="theme-color" content="#0f172a">
+    
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- ✅ FIX: Librería de Excel (faltaba) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        .badge-seg-pendiente { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid var(--warning); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .badge-seg-ok { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .badge-seg-problema { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="dashboard-view" style="display: none;">
+    <div class="app-layout">
+        
+        <!-- SIDEBAR -->
+        <div class="sidebar-overlay" onclick="window.toggleSidebar()"></div>
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <img src="logo.png" alt="TEN Logo" class="sidebar-logo">
+                <span class="sidebar-brand">TEN <b>NOC</b></span>
+            </div>
+            
+            <div class="sidebar-user">
+                <div class="avatar"><i class="fa-solid fa-headset"></i></div>
+                <div class="user-details">
+                    <span class="user-role" id="lblUsuarioActivo">Cargando...</span>
+                    <span class="user-status"><i class="fa-solid fa-circle"></i> Área Comercial</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <p class="nav-section">NAVEGACIÓN</p>
+                <button type="button" class="nav-btn" onclick="window.location.href='index.html'">
+                    <i class="fa-solid fa-arrow-left"></i> Volver al Inicio
+                </button>
+
+                <p class="nav-section">ÁREA COMERCIAL</p>
+                <button type="button" class="nav-btn active" style="background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; color: #3b82f6;">
+                    <i class="fa-solid fa-clipboard-check"></i> Calidad / Post-Venta
+                </button>
+                <button type="button" class="nav-btn" onclick="window.abrirModalHistorial()" style="color: #0ea5e9; font-weight: bold;">
+                    <i class="fa-solid fa-list-check"></i> Registro de Actividad
+                </button>
+                <button type="button" class="nav-btn" onclick="window.location.href='modulo_retencion.html'" style="color: #ec4899;">
+                    <i class="fa-solid fa-headset"></i> Módulo Retención
+                </button>
+                <button type="button" class="nav-btn" onclick="window.location.href='modulo_comisiones.html'" style="color: #10b981;">
+                    <i class="fa-solid fa-hand-holding-dollar"></i> Pago Comisiones
+                </button>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="app-main">
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <button type="button" class="topbar-btn mobile-menu-btn" onclick="window.toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                    <h2 style="font-size: 1.2rem; margin: 0; color: var(--text-main);"><i class="fa-solid fa-clipboard-check text-blue"></i> Seguimiento de Instalaciones</h2>
+                </div>
+                
+                <div class="topbar-right">
+                    <button type="button" class="topbar-btn btn-logout" onclick="window.cerrarSesion()" title="Cerrar Sesión">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="app-content" style="display: block;">
+                
+                <!-- KPIs de Post-Venta -->
+                <div class="kpi-grid mb-4" style="align-items: flex-start;">
+                    <div class="kpi-box box-warning">
+                        <div class="kpi-icon"><i class="fa-solid fa-phone-volume"></i></div>
+                        <div class="kpi-data">
+                            <span class="kpi-num" id="kpiPendientes">0</span>
+                            <span class="kpi-label">Por Llamar</span>
+                        </div>
+                    </div>
+                    <div class="kpi-box box-success">
+                        <div class="kpi-icon"><i class="fa-solid fa-check-double"></i></div>
+                        <div class="kpi-data">
+                            <span class="kpi-num" id="kpiFinalizados">0</span>
+                            <span class="kpi-label">Finalizados (OK)</span>
+                        </div>
+                    </div>
+                    <div class="kpi-box box-danger">
+                        <div class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div class="kpi-data">
+                            <span class="kpi-num" id="kpiProblemas">0</span>
+                            <span class="kpi-label">Con Problemas</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="control-panel mb-4">
+                    <div class="filtros-grupo">
+                        <div class="filtro-item">
+                            <label>Estado del Seguimiento:</label>
+                            <select id="filtroEstado" class="form-control" onchange="window.renderizarTabla()">
+                                <option value="pendientes">Pendientes de Contactar</option>
+                                <option value="problemas">Casos con Problemas / Faltantes</option>
+                                <option value="finalizados">Seguimientos Finalizados (Archivados)</option>
+                                <option value="todos">Ver Todos</option>
+                            </select>
+                        </div>
+                        <div class="filtro-item">
+                            <label>Desde:</label>
+                            <input type="date" id="filtroFechaDesde" class="form-control highlight-border-accent" onchange="window.renderizarTabla()">
+                        </div>
+                        <div class="filtro-item">
+                            <label>Hasta:</label>
+                            <input type="date" id="filtroFechaHasta" class="form-control highlight-border-accent" onchange="window.renderizarTabla()">
+                        </div>
+                        <div class="filtro-item">
+                            <label>Gestor (Usuario):</label>
+                            <select id="filtroGestor" class="form-control" onchange="window.renderizarTabla()">
+                                <option value="todos">Todos los Gestores</option>
+                                <option value="SIN GESTIONAR">⏳ Sin Gestionar Aún</option>
+                                <!-- El Robot inyectará los usuarios aquí automáticamente -->
+                            </select>
+                        </div>
+                        <div class="filtro-item flex-2">
+                            <label>Buscar Cliente:</label>
+                            <input type="text" id="buscador" class="form-control" placeholder="Escribe DNI o Nombre..." onkeyup="window.renderizarTabla()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INDICADOR DE FILTROS DINÁMICO -->
+                <div id="contenedorIndicador" style="margin-bottom: 15px; padding: 12px; background: rgba(59, 130, 246, 0.05); border: 1px dashed #3b82f6; border-radius: 8px; display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <span id="lblIndicadorBandeja" style="font-weight: 900; color: #3b82f6; font-size: 1.1rem;">0 instalaciones encontradas</span>
+                    
+                    <button type="button" onclick="window.exportarSeguimientoExcel()" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2); transition: 0.2s;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+                        <i class="fa-solid fa-file-excel"></i> Exportar a Excel
+                    </button>
+                </div>
+
+                <!-- Tabla -->
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;"><i class="fa-solid fa-user"></i> Cliente y Contacto</th>
+                                <th style="width: 25%;"><i class="fa-solid fa-network-wired"></i> Detalles del Alta</th>
+                                <th style="width: 35%;"><i class="fa-solid fa-comments"></i> Estado Post-Venta</th>
+                                <th style="width: 15%; text-align: center;"><i class="fa-solid fa-bolt"></i> Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaSeguimiento">
+                            <tr><td colspan="4" class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Cargando información...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal Gestión Post-Venta -->
+<div class="modal-overlay" id="modalGestion" onclick="window.cerrarModal()">
+    <div class="modal-content modal-v2 max-w-md" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModal()">×</button>
+        <h3 class="modal-title mb-4" style="color: #3b82f6;"><i class="fa-solid fa-headset"></i> Gestión Post-Venta</h3>
+        
+        <input type="hidden" id="segTrabajoId">
+
+        <div style="background: rgba(0,0,0,0.05); padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border);">
+            <strong id="lblCliNombre" style="font-size: 1.1rem; color: var(--text-main); display: block;">Nombre Cliente</strong>
+            <span id="lblCliDetalles" style="font-size: 0.85rem; color: var(--text-muted);">Instalado: Fecha | Técnico: Nombre</span>
+        </div>
+
+        <div class="form-group">
+            <label style="color: var(--accent); font-weight: bold;"><i class="fa-regular fa-calendar-check"></i> Fecha de 1er Pago Acordada:</label>
+            <input type="date" id="segFechaPago" class="form-control highlight-border-accent">
+        </div>
+
+        <div class="form-group">
+            <label>Estado de Calidad:</label>
+            <select id="segCalidad" class="form-control highlight-border-warning" style="font-weight: bold;" onchange="window.toggleAgendarLlamada()">
+                <option value="Sin Contactar">⏳ Sin Contactar</option>
+                <option value="Todo OK">✅ Todo OK - Cliente Conforme</option>
+                <option value="Falta Equipo">📦 Faltó entregar equipo (Avisar a NOC)</option>
+                <option value="Queja">❌ Queja / Mala instalación</option>
+                <option value="Volver a llamar">📞 Volver a llamar (Agendar fecha)</option>
+                <option value="No contestó">📵 No contestó (Archivar)</option>
+            </select>
+        </div>
+
+        <!-- CAJA OCULTA PARA AGENDAR LLAMADA (Solo aparece si elige "Volver a llamar") -->
+        <div id="boxAgendarLlamada" style="display: none; background: rgba(59, 130, 246, 0.05); padding: 12px; border-radius: 8px; border: 1px dashed #3b82f6; margin-bottom: 15px;">
+            <label style="color: #3b82f6; font-weight: bold; font-size: 12px; margin-bottom: 8px; display: block;"><i class="fa-solid fa-clock"></i> Programar siguiente llamada:</label>
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <input type="date" id="segFechaLlamada" class="form-control highlight-border-accent">
+                </div>
+                <div style="flex: 1;">
+                    <input type="time" id="segHoraLlamada" class="form-control highlight-border-accent">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Notas de Seguimiento:</label>
+            <textarea id="segNotas" class="form-control" rows="3" placeholder="Ej: Se le informó que su fecha de pago son los 15 de cada mes. Quedó muy conforme con el servicio..."></textarea>
+        </div>
+
+        <!-- ENCUESTA DE SATISFACCIÓN -->
+        <div style="background: rgba(59, 130, 246, 0.05); border: 1px dashed #3b82f6; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                <label style="color: #3b82f6; font-weight: bold; margin: 0;"><i class="fa-solid fa-star"></i> Encuesta de Satisfacción</label>
+                <button type="button" id="btnEnviarWspEncuesta" style="background: #25D366; color: white; border: none; font-size: 11px; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; width: auto; flex-shrink: 0;"><i class="fa-brands fa-whatsapp" style="font-size: 14px;"></i> Enviar al Cliente</button>
+            </div>
+            
+            <p id="lblEncuestaOrigen" style="font-size: 10px; color: var(--text-muted); margin-bottom: 15px; font-style: italic;">Llénala tú si estás en llamada, o envíale el link al cliente.</p>
+
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-size: 11px;">1. ¿Internet funcionando perfectamente?</label>
+                <select id="encP1" class="form-control" style="font-size: 12px; padding: 4px 8px; height: auto;">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Sí">✅ Sí, activo y estable</option>
+                    <option value="No">❌ No, hay problemas</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-size: 11px;">2. ¿Técnico realizó pruebas y conectó Wi-Fi?</label>
+                <select id="encP2" class="form-control" style="font-size: 12px; padding: 4px 8px; height: auto;">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Sí">✅ Sí lo hizo</option>
+                    <option value="No">❌ No lo hizo</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-size: 11px;">3. Atención y amabilidad del técnico:</label>
+                <select id="encP3" class="form-control" style="font-size: 12px; padding: 4px 8px; height: auto;">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Excelente">🌟 Excelente</option>
+                    <option value="Buena">👍 Buena</option>
+                    <option value="Regular">😐 Regular</option>
+                    <option value="Mala">👎 Mala</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-size: 11px;">4. Limpieza y orden del cableado:</label>
+                <select id="encP4" class="form-control" style="font-size: 12px; padding: 4px 8px; height: auto;">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Limpio">✨ Todo limpio y ordenado</option>
+                    <option value="Desordenado">🗑️ Dejó desordenado</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 11px; color: var(--warning); font-weight: bold;">5. Nivel de Satisfacción Final:</label>
+                <select id="encP5" class="form-control highlight-border-warning" style="font-size: 12px; padding: 4px 8px; height: auto; font-weight: bold; color: var(--warning);">
+                    <option value="">-- Puntaje 1 al 5 --</option>
+                    <option value="5">⭐⭐⭐⭐⭐ (5) Muy Satisfecho</option>
+                    <option value="4">⭐⭐⭐⭐ (4) Satisfecho</option>
+                    <option value="3">⭐⭐⭐ (3) Regular</option>
+                    <option value="2">⭐⭐ (2) Insatisfecho</option>
+                    <option value="1">⭐ (1) Muy Insatisfecho</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="modal-buttons mt-6" style="flex-direction: column; gap: 10px;">
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <button type="button" class="btn-cancelar" style="flex: 1;" onclick="window.cerrarModal()">Cancelar</button>
+                <button type="button" class="btn-guardar" style="flex: 1; background: var(--warning); color: #000;" onclick="window.guardarSeguimiento(false)"><i class="fa-solid fa-save"></i> Guardar Progreso</button>
+            </div>
+            <button type="button" class="btn-guardar" style="width: 100%; background: var(--success);" onclick="window.guardarSeguimiento(true)"><i class="fa-solid fa-check-double"></i> Finalizar y Archivar Seguimiento</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Registro de Actividad (AUDITORÍA) -->
+<div class="modal-overlay" id="modalHistorial" onclick="window.cerrarModalHistorial()">
+    <div class="modal-content modal-v2" style="max-width: 850px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModalHistorial()">×</button>
+        <h3 class="modal-title mb-4"><i class="fa-solid fa-list-check" style="color: #0ea5e9;"></i> Registro de Actividad</h3>
+        
+        <div class="control-panel" style="margin-bottom: 15px;">
+            <div class="filtros-grupo">
+                <div class="filtro-item">
+                    <label style="color: var(--accent);"><i class="fa-solid fa-calendar-day"></i> Desde:</label>
+                    <input type="date" id="filtroHistorialDesde" class="form-control highlight-border-accent" onchange="window.renderizarHistorial()">
+                </div>
+                <div class="filtro-item">
+                    <label style="color: var(--accent);"><i class="fa-solid fa-calendar-day"></i> Hasta:</label>
+                    <input type="date" id="filtroHistorialHasta" class="form-control highlight-border-accent" onchange="window.renderizarHistorial()">
+                </div>
+                <div class="filtro-item">
+                    <label><i class="fa-solid fa-calendar-days"></i> Mes:</label>
+                    <select id="filtroHistorialMes" class="form-control" onchange="window.renderizarHistorial()">
+                        <option value="todos">Todos los Meses</option>
+                        <option value="01">Enero</option>
+                        <option value="02">Febrero</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Mayo</option>
+                        <option value="06">Junio</option>
+                        <option value="07">Julio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+                <div class="filtro-item">
+                    <label><i class="fa-solid fa-user-tie"></i> Gestor:</label>
+                    <select id="filtroGestorHistorial" class="form-control" onchange="window.renderizarHistorial()">
+                        <option value="todos">Todos los Gestores</option>
+                        <!-- El Robot inyectará los usuarios aquí automáticamente -->
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+            <div style="flex: 1; background: rgba(0, 229, 255, 0.05); border: 1px dashed var(--accent); padding: 12px; border-radius: 8px; text-align: center; min-width: 120px;">
+                <b style="font-size: 1.5rem; color: var(--accent);" id="kpiHistLlamadas">0</b><br>
+                <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">TOTAL GESTIONES</span>
+            </div>
+            <div style="flex: 1; background: rgba(16, 185, 129, 0.05); border: 1px dashed var(--success); padding: 12px; border-radius: 8px; text-align: center; min-width: 120px;">
+                <b style="font-size: 1.5rem; color: var(--success);" id="kpiHistAtendidos">0</b><br>
+                <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">FINALIZADOS</span>
+            </div>
+            <div style="flex: 1; background: rgba(239, 68, 68, 0.05); border: 1px dashed var(--danger); padding: 12px; border-radius: 8px; text-align: center; min-width: 120px;">
+                <b style="font-size: 1.5rem; color: var(--danger);" id="kpiHistFallidos">0</b><br>
+                <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">CON PROBLEMAS</span>
+            </div>
+        </div>
+
+        <div class="table-wrapper" style="flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+            <table style="width: 100%;">
+                <thead style="position: sticky; top: 0; background: var(--bg-panel); z-index: 10;">
+                    <tr>
+                        <th style="width: 15%; padding: 12px;">Hora Exacta</th>
+                        <th style="width: 15%; padding: 12px;">Gestor</th>
+                        <th style="width: 35%; padding: 12px;">Cliente</th>
+                        <th style="width: 35%; padding: 12px;">Acción Realizada</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaHistorial">
+                    <!-- Se llena con JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="toast">Mensaje</div>
+
+<!-- FIREBASE Y LÓGICA MÓDULO -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import { getFirestore, collection, doc, updateDoc, onSnapshot, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    // TRADUCTOR DE 24H A 12H (AM/PM) PARA ESTE MÓDULO
+    window.formato12h = (hora24) => {
+    if (!hora24 || !hora24.includes(":")) return hora24 || "--:--";
+    let p = hora24.split(":"); let h = parseInt(p[0], 10);
+    let ampm = h >= 12 ? "PM" : "AM"; h = h % 12; h = h ? h : 12; 
+    let hStr = h < 10 ? "0" + h : h; return `${hStr}:${p[1]} ${ampm}`;
+};
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+        authDomain: "ten-soporte.firebaseapp.com",
+        projectId: "ten-soporte",
+        storageBucket: "ten-soporte.firebasestorage.app",
+        messagingSenderId: "498950424371",
+        appId: "1:498950424371:web:fce299a98cf8e57f822046",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
+
+    // 🌍 ENRUTADOR DE EXCEL (Los trabajos se comparten, SOLO se separan los clientes)
+    const zonaSede = localStorage.getItem("ten_zona_activa") || "norte";
+    window.dbLocalSede = zonaSede === "lurin" ? "TEN_DB_CLIENTES_LURIN" : "TEN_DB_CLIENTES";
+
+    // OJO: Si estás en retención, pon "clientes_base" en vez de "clientes_V2"
+    const pathClientes = zonaSede === "lurin" ? "clientes_lurin" : "clientes_V2"; 
+
+    // Dejamos las bases de datos originales fijas para no perder el historial
+    const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4");
+    const coleccionCobranzas = collection(db, "artifacts", appId, "public", "data", "cobranzas_v1");
+    const coleccionClientes = collection(db, "artifacts", appId, "public", "data", pathClientes);
+    const coleccionUsuarios = collection(db, "artifacts", appId, "public", "data", "usuarios_sistema");
+
+    let dbSeguimientos = [];
+
+    // ==========================================
+    // SEGURIDAD Y AUTH
+    // ==========================================
+    window.cerrarSesion = () => {
+        localStorage.removeItem('ten_rol');
+        localStorage.removeItem('ten_email');
+        localStorage.removeItem('ten_nombre_tecnico');
+        signOut(auth).then(() => window.location.href = 'index.html');
+    };
+
+    onAuthStateChanged(auth, async (user) => { 
+    if (!user) { window.location.href = 'index.html'; return; }
+    const email = user.email.toLowerCase();
+    
+    const correosAdminGlobal = ["admin@ten.com", "rpacotaipe@ten.com", "eolortegui@ten.com", "jpalomino@ten.com", "dpacotaipe@ten.com"];
+    const correosAdminLurin = ["ecuta@ten.com", "strujillo@ten.com"];
+    const coordinadoresVentas = ["carlos@ten.com", "jrodriguez@ten.com", "mventocilla@ten.com", "cpacotaipe@ten.com"];
+    const areaCobranzas = ["crivera@ten.com", "oalvino@ten.com"];
+
+    let isAutorizado = false;
+    let nombrePantalla = email.split("@")[0].toUpperCase();
+    
+    // 🎯 REGLA NUEVA: solo admin global y admin lurín ven TODO el historial
+    window.esAdminModulo = correosAdminGlobal.includes(email) || correosAdminLurin.includes(email);
+
+    if (correosAdminGlobal.includes(email) || correosAdminLurin.includes(email) || coordinadoresVentas.includes(email) || areaCobranzas.includes(email)) {
+        isAutorizado = true;
+    }
+
+    try {
+        const q = query(coleccionUsuarios, where("email", "==", email));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            let u = snap.docs[0].data();
+            nombrePantalla = u.nombre || nombrePantalla;
+            if (u.bloqueado) isAutorizado = false;
+            else if (["admin", "admin_lurin", "ventas", "cobranzas"].includes(u.rol)) isAutorizado = true;
+            else isAutorizado = false;
+            
+            // 🎯 Si el rol es admin o admin_lurin, es admin del módulo
+            if (u.rol === "admin" || u.rol === "admin_lurin") window.esAdminModulo = true;
+            if (u.bloqueado) window.esAdminModulo = false;
+        }
+    } catch(e) { console.error("Error validando rol:", e); }
+
+    if (!isAutorizado) { window.location.href = 'index.html'; return; }
+
+    window.nombreUsuarioGlobal = nombrePantalla; // Asegura que exista globalmente
+
+    localStorage.setItem('ten_email', email); // Respaldo local antibug
+    
+    // Encendemos el auto-completado de usuarios
+    if(typeof window.cargarListasDesplegables === "function") window.cargarListasDesplegables();
+
+    document.getElementById("dashboard-view").style.display = "block";
+    document.getElementById("lblUsuarioActivo").innerHTML = `<span style="font-size:10px; color:var(--text-muted); font-weight:900;">POST-VENTA</span><br><span style="font-size:14px; color:#3b82f6; font-weight:900;">${nombrePantalla}</span>`;
+
+    cargarDatosSeguimiento();
+});
+    // ==========================================
+    // CARGAR DATOS EN VIVO
+    // ==========================================
+    function cargarDatosSeguimiento() {
+        const q = query(coleccionTrabajos, where("tipoTarea", "==", "alta"), where("estado", "==", "atendido"));
+        onSnapshot(q, (snapshot) => {
+            dbSeguimientos = [];
+            let zonaActiva = localStorage.getItem("ten_zona_activa") || "norte";
+            
+            snapshot.forEach((doc) => { 
+                let t = doc.data();
+                // FILTRO MÁGICO: Solo atrapa las instalaciones de la zona actual
+                if ((t.zona || "Norte").toLowerCase() === zonaActiva.toLowerCase()) {
+                    dbSeguimientos.push({ id: doc.id, ...t }); 
+                }
+            });
+            window.renderizarTabla();
+        });
+    }
+
+    // ==========================================
+    // RENDERIZAR TABLA CON FILTROS AVANZADOS Y CONTADOR
+    // ==========================================
+    window.renderizarTabla = () => {
+        const tbody = document.getElementById("tablaSeguimiento");
+        const filtroEstado = document.getElementById("filtroEstado").value;
+        const filtroGestor = document.getElementById("filtroGestor")?.value || "todos";
+        const filtroDesde = document.getElementById("filtroFechaDesde")?.value || "";
+        const filtroHasta = document.getElementById("filtroFechaHasta")?.value || "";
+        const buscador = document.getElementById("buscador").value.toLowerCase();
+
+        let countP = 0, countF = 0, countProb = 0;
+        
+        dbSeguimientos.forEach(t => {
+            if (t.seguimientoFinalizado) countF++;
+            else if (t.segCalidad === "Falta Equipo" || t.segCalidad === "Queja") countProb++;
+            else countP++; 
+        });
+
+        document.getElementById("kpiPendientes").innerText = countP;
+        document.getElementById("kpiFinalizados").innerText = countF;
+        document.getElementById("kpiProblemas").innerText = countProb;
+
+        tbody.innerHTML = "";
+        window.datosFiltradosSeguimiento = []; // 👈 INYECCIÓN: Limpiamos la memoria del Excel
+        
+        let tOrdenado = [...dbSeguimientos].sort((a, b) => {
+            let termA = a.seguimientoFinalizado ? 1 : 0;
+            let termB = b.seguimientoFinalizado ? 1 : 0;
+            if (termA !== termB) return termA - termB;
+            return (b.fecha || "").localeCompare(a.fecha || "");
+        });
+
+        let cantidadFiltrados = 0;
+
+        tOrdenado.forEach(t => {
+            // Filtro Rango de Fechas
+            if (filtroDesde && t.fecha < filtroDesde) return;
+            if (filtroHasta && t.fecha > filtroHasta) return;
+
+            let textoBusqueda = `${t.cliente} ${t.dni} ${t.tel} ${t.vendedor || ""} ${t.dir || ""}`.toLowerCase();
+            if (buscador && !textoBusqueda.includes(buscador)) return;
+
+            let estCalidad = t.segCalidad || "Sin Contactar";
+            let finalizado = t.seguimientoFinalizado === true;
+
+            if (filtroEstado === "pendientes" && finalizado) return;
+            if (filtroEstado === "finalizados" && !finalizado) return;
+            if (filtroEstado === "problemas" && estCalidad !== "Falta Equipo" && estCalidad !== "Queja") return;
+            
+            // Filtro del Gestor que atendió
+            if (filtroGestor !== "todos") {
+                let gestorActual = t.segUsuario ? t.segUsuario.toUpperCase() : "SIN GESTIONAR";
+                if (gestorActual !== filtroGestor) return;
+            }
+
+            cantidadFiltrados++;
+            window.datosFiltradosSeguimiento.push(t); // 👈 INYECCIÓN: Guardamos el cliente en la memoria del Excel
+
+            // ASIGNACIÓN DE COLORES
+            let badgeClass = "badge-seg-pendiente";
+            if (estCalidad === "Falta Equipo" || estCalidad === "Queja") {
+                badgeClass = "badge-seg-problema";
+            } else if (finalizado || estCalidad === "Todo OK") {
+                badgeClass = estCalidad === "No contestó" ? "badge-seg-pendiente" : "badge-seg-ok";
+            } else if (estCalidad === "Volver a llamar") {
+                badgeClass = "badge-seg-pendiente"; 
+            }
+
+            let diasDesde = t.fecha ? Math.floor((new Date() - new Date(t.fecha)) / 86400000) : 0;
+            let colorDias = diasDesde > 15 ? "var(--danger)" : diasDesde > 7 ? "var(--warning)" : "var(--success)";
+
+            let infoCli = `
+                <span style="font-weight: 800; color: var(--text-main); font-size: 13px; display: block;">${t.cliente}</span>
+                <span style="font-family: monospace; font-size: 11px; color: var(--text-muted); display: block;">DNI: ${t.dni || "-"}</span>
+                <span style="font-size: 11px; color: var(--accent); font-weight: bold; display: block;"><i class="fa-solid fa-phone"></i> ${t.tel || "-"}</span>
+            `;
+
+            let infoAlta = `
+                <span style="font-size: 11px; font-weight: bold; color: var(--purple); display: block;">${t.detalle || "Alta de Internet"}</span>
+                <span style="font-size: 11px; color: var(--text-muted); display: block;"><i class="fa-regular fa-calendar-check"></i> Inst: ${t.fecha || "-"}</span>
+                <span style="font-size: 11px; color: var(--text-muted); display: block;"><i class="fa-solid fa-user-tie"></i> Vend: ${t.vendedor || "-"}</span>
+                <span style="font-size: 11px; color: var(--text-muted); display: block;"><i class="fa-solid fa-helmet-safety"></i> Tec: ${Array.isArray(t.tecnicos) ? t.tecnicos.join(", ") : t.tecnicos}</span>
+                <span style="font-size: 11px; color: ${colorDias}; font-weight: bold; display: block; margin-top: 4px;"><i class="fa-regular fa-clock"></i> Hace ${diasDesde} días</span>
+            `;
+
+            let htmlLlamada = "";
+            if (estCalidad === "Volver a llamar" && t.segFechaLlamada) {
+                htmlLlamada = `<br><span style="font-size: 11px; color: #3b82f6; font-weight: bold; display: inline-block; margin-top: 5px;"><i class="fa-solid fa-phone-volume"></i> Agendado: ${t.segFechaLlamada} ${window.formato12h(t.segHoraLlamada)}</span>`;
+            }
+
+            // 🔥 LOGICA NUEVA PARA EL ESTADO
+            let textoEstado = finalizado ? (estCalidad === "No contestó" ? '<i class="fa-solid fa-phone-slash"></i> NO CONTESTÓ (ARCHIVADO)' : '<i class="fa-solid fa-lock"></i> ARCHIVADO') : estCalidad;
+
+            let infoSeg = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="${badgeClass}" style="${estCalidad === 'No contestó' ? 'color: var(--text-muted); border-color: var(--border); background: rgba(0,0,0,0.05);' : ''}">${textoEstado}</span>
+                    ${t.segUsuario ? `<span style="font-size: 9px; font-weight: bold; background: rgba(59, 130, 246, 0.1); color: #3b82f6; padding: 2px 6px; border-radius: 4px; border: 1px dashed #3b82f6;"><i class="fa-solid fa-user-check"></i> Gestor: ${t.segUsuario}</span>` : ''}
+                </div>
+                ${htmlLlamada}
+                ${t.segFechaPago ? `<span style="font-size: 11px; color: var(--success); font-weight: bold; display: block; margin-top: 5px;"><i class="fa-regular fa-calendar-check"></i> 1er Pago: ${t.segFechaPago}</span>` : ''}
+                ${t.segNotas ? `<div style="font-size: 10px; color: var(--text-muted); margin-top: 5px; font-style: italic;">"${t.segNotas}"</div>` : '<div style="font-size: 10px; color: var(--text-muted); margin-top: 5px;">Sin notas registradas.</div>'}
+            `;
+            let btnAccion = finalizado 
+                ? `<button class="btn-action-ui" onclick="window.abrirModalGestion('${t.id}')" style="background: rgba(148, 163, 184, 0.1); color: var(--text-muted); border: 1px solid var(--border);"><i class="fa-solid fa-eye"></i> Ver / Editar</button>`
+                : `<button class="btn-action-ui" onclick="window.abrirModalGestion('${t.id}')" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid #3b82f6;"><i class="fa-solid fa-phone-volume"></i> Gestionar</button>`;
+
+            let tr = document.createElement("tr");
+            tr.innerHTML = `<td>${infoCli}</td><td>${infoAlta}</td><td>${infoSeg}</td><td style="text-align:center;">${btnAccion}</td>`;
+            tbody.appendChild(tr);
+        });
+
+        if (tbody.innerHTML === "") tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-8">No hay instalaciones para hacer seguimiento con estos filtros.</td></tr>`;
+
+        // MOSTRAR EL RESULTADO DEL CONTADOR EN PANTALLA
+        let boxInd = document.getElementById("contenedorIndicador");
+        if (boxInd) {
+            document.getElementById("lblIndicadorBandeja").innerText = `🎯 ${cantidadFiltrados} instalaciones encontradas`;
+            boxInd.style.display = "flex";
+        }
+    };
+
+    // ==========================================
+    // LÓGICA DEL MODAL DE GESTIÓN
+    // ==========================================
+    window.toggleAgendarLlamada = () => {
+        let val = document.getElementById("segCalidad").value;
+        document.getElementById("boxAgendarLlamada").style.display = (val === "Volver a llamar") ? "block" : "none";
+    };
+
+    window.abrirModalGestion = (id) => {
+        let t = dbSeguimientos.find(x => x.id === id);
+        if (!t) return;
+
+        document.getElementById("segTrabajoId").value = id;
+        document.getElementById("lblCliNombre").innerText = t.cliente;
+        document.getElementById("lblCliDetalles").innerText = `Instalado: ${t.fecha} | Técnico: ${Array.isArray(t.tecnicos) ? t.tecnicos.join(", ") : t.tecnicos}`;
+
+        let hoy = new Date().toISOString().split('T')[0];
+        document.getElementById("segFechaPago").value = t.segFechaPago || hoy;
+        
+        document.getElementById("segCalidad").value = t.segCalidad || "Sin Contactar";
+        document.getElementById("segFechaLlamada").value = t.segFechaLlamada || "";
+        document.getElementById("segHoraLlamada").value = t.segHoraLlamada || "";
+        document.getElementById("segNotas").value = t.segNotas || "";
+
+        window.toggleAgendarLlamada(); // Dispara la visualización de las fechas si es necesario
+
+        document.getElementById("encP1").value = t.encP1 || "";
+        document.getElementById("encP2").value = t.encP2 || "";
+        document.getElementById("encP3").value = t.encP3 || "";
+        document.getElementById("encP4").value = t.encP4 || "";
+        document.getElementById("encP5").value = t.encP5 || "";
+
+        let lblOrigen = document.getElementById("lblEncuestaOrigen");
+        if (t.encuestaPorCliente) {
+            lblOrigen.innerHTML = "✅ <b style='color: var(--success);'>El cliente llenó esta encuesta vía web.</b>";
+        } else {
+            lblOrigen.innerHTML = "Llénala tú si estás en llamada, o envíale el link al cliente.";
+        }
+
+        // GENERADOR DE LINK DE WHATSAPP (A prueba de fallos Vercel)
+        let btnWsp = document.getElementById("btnEnviarWspEncuesta");
+        let telNum = t.tel ? t.tel.replace(/\D/g, '') : "";
+        if (telNum.length > 5) {
+            btnWsp.style.display = "inline-flex";
+            let rutaActual = window.location.pathname;
+            let rutaBase = rutaActual.substring(0, rutaActual.lastIndexOf('/'));
+            let zonaUrl = localStorage.getItem("ten_zona_activa") || "norte";
+            let linkEncuesta = `${window.location.origin}${rutaBase}/encuesta.html?id=${id}&z=${zonaUrl}`;
+            let nombreCli = t.cliente.split(" ")[0];
+            
+            let mensajeWsp = `¡Hola ${nombreCli}! 🌟 Gracias por confiar en nosotros.\n\nAyúdanos a mejorar calificando tu reciente instalación en este breve enlace (te tomará menos de 1 minuto):\n\n🔗 ${linkEncuesta}\n\n¡Tu opinión es muy importante!`;
+            let urlWsp = `https://wa.me/51${telNum}?text=${encodeURIComponent(mensajeWsp)}`;
+            btnWsp.onclick = () => window.open(urlWsp, '_blank');
+        } else {
+            btnWsp.style.display = "none";
+        }
+
+        document.getElementById("modalGestion").style.display = "flex";
+    };
+
+    window.cerrarModal = () => {
+        document.getElementById("modalGestion").style.display = "none";
+    };
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === "Escape" && document.getElementById("modalGestion").style.display === "flex") {
+            window.cerrarModal();
+        }
+    });
+
+    // ==========================================
+    // GUARDADO INTELIGENTE (Agendamiento añadido)
+    // ==========================================
+    window.guardarSeguimiento = async (finalizar) => {
+        let id = document.getElementById("segTrabajoId").value;
+        let fPago = document.getElementById("segFechaPago").value;
+        let calidad = document.getElementById("segCalidad").value;
+        let notas = document.getElementById("segNotas").value.trim();
+        let fechaLlamada = document.getElementById("segFechaLlamada").value;
+        let horaLlamada = document.getElementById("segHoraLlamada").value;
+
+        if (finalizar && (calidad === "Sin Contactar" || calidad === "Volver a llamar")) {
+            mostrarToast("⚠️ No puedes archivar el caso si está pendiente o requiere volver a llamar.");
+            return;
+        }
+
+        if (calidad === "Volver a llamar" && !fechaLlamada) {
+            mostrarToast("⚠️ Debes indicar la Fecha para programar la llamada.");
+            return;
+        }
+
+        let t = dbSeguimientos.find(x => x.id === id);
+        if (!t) { mostrarToast("❌ Trabajo no encontrado."); return; }
+
+        mostrarToast("⏳ Guardando...");
+
+        try {
+            // 🧠 Recolector de Nombre Infalible (Sin listas estáticas)
+            let usuarioAccion = window.nombreUsuarioGlobal;
+            if (!usuarioAccion) {
+                let emailLocal = localStorage.getItem('ten_email') || (auth.currentUser ? auth.currentUser.email : "");
+                usuarioAccion = emailLocal ? emailLocal.split('@')[0].toUpperCase() : "DESCONOCIDO";
+            }
+
+            let updateData = {
+                segFechaPago: fPago,
+                segCalidad: calidad,
+                segNotas: notas,
+                segFechaLlamada: fechaLlamada,
+                segHoraLlamada: horaLlamada,
+                seguimientoFinalizado: finalizar,
+                encP1: document.getElementById("encP1").value,
+                encP2: document.getElementById("encP2").value,
+                encP3: document.getElementById("encP3").value,
+                encP4: document.getElementById("encP4").value,
+                encP5: document.getElementById("encP5").value,
+                segUsuario: usuarioAccion, // <-- AQUI ATRAPA AL USUARIO INVISIBLEMENTE
+                tsUltimaGestion: Date.now(),
+                fechaUltimaGestion: new Date().toISOString().split("T")[0]
+            };
+
+            let msgFinal = finalizar ? "✅ Seguimiento Archivado Exitosamente." : "✅ Progreso Guardado.";
+            let seGeneroTareaNoc = false;
+
+            if (calidad === "Falta Equipo" || calidad === "Queja") {
+                if (!t.tareaNocGenerada) {
+                    await addDoc(coleccionTrabajos, {
+                        tipoTarea: "averia",
+                        cliente: t.cliente || "Cliente",
+                        dni: t.dni || "",
+                        tel: t.tel || "",
+                        dir: t.dir || "",
+                        zona: t.zona || "Norte",
+                        fecha: new Date().toISOString().split("T")[0],
+                        estado: "pendiente",
+                        tecnicos: ["Sin Asignar"],
+                        detalle: calidad === "Falta Equipo" ? "Entrega de equipo faltante" : "Revisión por queja post-venta",
+                        notas: `[URGENTE POST-VENTA] ${notas}`,
+                        vendedor: "ÁREA DE CALIDAD"
+                    });
+                    
+                    updateData.tareaNocGenerada = true; 
+                    seGeneroTareaNoc = true;
+                }
+            } else {
+                updateData.tareaNocGenerada = false;
+            }
+
+            const refDoc = doc(db, "artifacts", appId, "public", "data", "trabajos_v4", id);
+            await updateDoc(refDoc, updateData);
+
+            window.cerrarModal();
+
+            if (seGeneroTareaNoc) {
+                msgFinal = "⚠️ Problema detectado. Se ha enviado una tarea automática al NOC.";
+            } else if (calidad === "Volver a llamar") {
+                msgFinal = "📅 Llamada agendada correctamente.";
+            }
+            
+            mostrarToast(msgFinal);
+
+        } catch(e) {
+            console.error(e);
+            mostrarToast("❌ Error al guardar.");
+        }
+    };
+
+    window.toggleSidebar = () => {
+        document.querySelector('.app-sidebar').classList.toggle('show');
+        document.querySelector('.sidebar-overlay').classList.toggle('show');
+    };
+
+    // ==========================================
+    // REGISTRO DE ACTIVIDAD (AUDITORÍA)
+    // ==========================================
+    window.abrirModalHistorial = () => {
+        let hoy = new Date().toISOString().split("T")[0];
+        document.getElementById("filtroHistorialDesde").value = hoy;
+        document.getElementById("filtroHistorialHasta").value = hoy;
+        document.getElementById("filtroHistorialMes").value = "todos";
+        
+        // 1. OBTENER GESTORES DINÁMICAMENTE DE LA BASE DE DATOS
+        let gestoresUnicos = new Set();
+        dbSeguimientos.forEach(t => {
+            if (t.segUsuario) {
+                gestoresUnicos.add(t.segUsuario.toUpperCase());
+            }
+        });
+        
+        let selG = document.getElementById("filtroGestorHistorial");
+        let htmlGestores = '<option value="todos">Todos los Gestores</option>';
+        [...gestoresUnicos].sort().forEach(g => {
+            htmlGestores += `<option value="${g}">${g}</option>`;
+        });
+
+        // 2. REGLA DE PERMISOS ESTRICTA (Admins y Coord. de Ventas)
+        let esCoordinadorOAdmin = window.esAdminModulo || localStorage.getItem('ten_rol') === 'ventas';
+        
+        if (!esCoordinadorOAdmin) {
+            // Usuario Normal: Vaciamos la lista y lo bloqueamos en su propio nombre
+            let miNombre = window.nombreUsuarioGlobal ? window.nombreUsuarioGlobal.toUpperCase() : "GESTOR";
+            
+            selG.innerHTML = `<option value="${miNombre}">${miNombre}</option>`;
+            selG.value = miNombre;
+            selG.disabled = true;
+            selG.style.opacity = "0.6";
+            selG.style.cursor = "not-allowed";
+            selG.title = "Solo puedes ver tu propio historial de llamadas";
+        } else {
+            // Admin o Coordinador de Ventas: Tienen el poder absoluto
+            selG.innerHTML = htmlGestores;
+            selG.value = "todos";
+            selG.disabled = false;
+            selG.style.opacity = "1";
+            selG.style.cursor = "pointer";
+            selG.title = "";
+        }
+        
+        window.renderizarHistorial();
+        document.getElementById("modalHistorial").style.display = "flex";
+    };
+
+    window.cerrarModalHistorial = () => { document.getElementById("modalHistorial").style.display = "none"; };
+
+    // ==========================================
+    // ROBOT: AUTO-RELLENAR LISTAS DESPLEGABLES 
+    // ==========================================
+    window.cargarListasDesplegables = () => {
+        onSnapshot(coleccionUsuarios, (snapshot) => {
+            let gestores = [];
+            snapshot.forEach(doc => {
+                let u = doc.data();
+                if(!u.bloqueado && ["ventas", "vendedor", "cobranzas", "admin", "admin_lurin"].includes(u.rol)) {
+                    let nombreReal = u.nombre || u.email.split("@")[0].toUpperCase();
+                    gestores.push(nombreReal);
+                }
+            });
+            gestores.sort(); 
+
+            // Solo rellenamos el filtro Principal (El del Historial ya se auto-rellena arriba)
+            const filtroG = document.getElementById("filtroGestor");
+            if (filtroG) {
+                let valG = filtroG.value;
+                filtroG.innerHTML = '<option value="todos">Todos los Gestores</option><option value="SIN GESTIONAR">⏳ Sin Gestionar Aún</option>';
+                gestores.forEach(g => filtroG.innerHTML += `<option value="${g}">${g}</option>`);
+                filtroG.value = gestores.includes(valG) ? valG : "todos";
+            }
+        });
+    };
+
+    window.renderizarHistorial = () => {
+        let filtroDesde = document.getElementById("filtroHistorialDesde").value;
+        let filtroHasta = document.getElementById("filtroHistorialHasta").value;
+        let filtroMes = document.getElementById("filtroHistorialMes").value;
+        let gestorFiltro = document.getElementById("filtroGestorHistorial").value;
+        let tbody = document.getElementById("tablaHistorial");
+        
+        // REGLA ESTRICTA EN EL MOTOR DE BÚSQUEDA
+        let esCoordinadorOAdmin = window.esAdminModulo || localStorage.getItem('ten_rol') === 'ventas';
+
+        if (!esCoordinadorOAdmin) {
+            gestorFiltro = window.nombreUsuarioGlobal ? window.nombreUsuarioGlobal.toUpperCase() : "GESTOR";
+        }
+
+        let finalizados = 0, conProblemas = 0, totalGestiones = 0;
+
+        let historial = dbSeguimientos.filter(t => {
+            let fechaGestion = t.fechaUltimaGestion || t.fecha;
+            if (!fechaGestion) return false;
+
+            // Filtros de fecha y mes
+            if (filtroDesde && fechaGestion < filtroDesde) return false;
+            if (filtroHasta && fechaGestion > filtroHasta) return false;
+            if (filtroMes !== "todos") {
+                let mesGestion = fechaGestion.split("-")[1];
+                if (mesGestion !== filtroMes) return false;
+            }
+
+            // Filtro Gestor
+            let gestorRegistro = (t.segUsuario || "GESTOR").toUpperCase();
+            if (gestorFiltro !== "todos" && gestorRegistro !== gestorFiltro) return false;
+
+            if (!t.tsUltimaGestion && !t.seguimientoFinalizado && (!t.segCalidad || t.segCalidad === "Sin Contactar")) return false;
+
+            return true;
+        });
+
+        historial.sort((a,b) => (b.tsUltimaGestion || 0) - (a.tsUltimaGestion || 0));
+
+        tbody.innerHTML = "";
+        historial.forEach(t => {
+            totalGestiones++;
+            let calidad = t.segCalidad || "Sin Contactar";
+            let estadoAccion = "";
+            
+            if (t.seguimientoFinalizado || calidad === "Todo OK") {
+                finalizados++;
+                if (calidad === "No contestó") {
+                    estadoAccion = `<span style="background: rgba(148, 163, 184, 0.1); color: var(--text-muted); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;"><i class="fa-solid fa-phone-slash"></i> ARCHIVADO (NO CONTESTÓ)</span>`;
+                } else {
+                    estadoAccion = `<span style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;"><i class="fa-solid fa-check"></i> FINALIZADO OK</span>`;
+                }
+            } else if (calidad === "Falta Equipo" || calidad === "Queja") {
+                conProblemas++;
+                estadoAccion = `<span style="background: rgba(239, 68, 68, 0.1); color: var(--danger); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;"><i class="fa-solid fa-triangle-exclamation"></i> ${calidad.toUpperCase()}</span>`;
+            } else {
+                estadoAccion = `<span style="background: rgba(0, 229, 255, 0.1); color: var(--accent); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;"><i class="fa-solid fa-phone"></i> ${calidad.toUpperCase()}</span>`;
+            }
+
+            let horaReal = t.tsUltimaGestion ? new Date(t.tsUltimaGestion).toLocaleTimeString("es-PE", {hour: '2-digit', minute:'2-digit'}) : "--:--";
+            let fechaReal = t.fechaUltimaGestion || t.fecha || "";
+            
+            let nombreGestor = (t.segUsuario || "N/A").toUpperCase();
+            if (nombreGestor === "GESTOR") nombreGestor = `<span style="color:var(--warning);"><i class="fa-solid fa-ghost"></i> Antiguo/Desconocido</span>`;
+
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="font-weight: bold; color: var(--text-muted); font-size: 11px;">${fechaReal}<br><b style="color: var(--text-main); font-size: 13px;">${horaReal}</b></td>
+                    <td style="font-weight: bold; color: var(--text-main);">${nombreGestor}</td>
+                    <td><b style="font-size: 12px; display: block; color: var(--text-main);">${t.cliente}</b><span style="font-size: 10px; color: var(--text-muted);"><i class="fa-solid fa-id-card"></i> ${t.dni}</span></td>
+                    <td>${estadoAccion}<div style="font-size: 10px; color: var(--text-muted); margin-top: 4px; font-style: italic;">${t.segNotas ? '"' + t.segNotas + '"' : 'Sin notas de texto'}</div></td>
+                </tr>
+            `;
+        });
+
+        if (historial.length === 0) tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-muted"><i class="fa-solid fa-mug-hot text-2xl mb-2 block"></i><br>No hay actividad registrada con estos filtros.</td></tr>`;
+
+        document.getElementById("kpiHistLlamadas").innerText = totalGestiones;
+        document.getElementById("kpiHistAtendidos").innerText = finalizados;
+        document.getElementById("kpiHistFallidos").innerText = conProblemas;
+    };
+
+    // ==========================================
+    // EXPORTAR A EXCEL BLINDADO (ANTI-CRASH)
+    // ==========================================
+    window.exportarSeguimientoExcel = () => {
+        if (!window.datosFiltradosSeguimiento || window.datosFiltradosSeguimiento.length === 0) {
+            mostrarToast("⚠️ No hay datos en la tabla para exportar.");
+            return;
+        }
+        
+        // 1. Mostramos el mensaje visual
+        mostrarToast("⏳ Generando Excel... Por favor espera.");
+
+        // 2. Le damos un respiro de 100ms al navegador antes del trabajo pesado
+        setTimeout(() => {
+            try {
+                // ✅ FIX: Verificación defensiva por si la librería no cargó (red lenta, CDN caído, etc)
+                if (typeof XLSX === "undefined") {
+                    mostrarToast("❌ La librería de Excel no cargó. Verifica tu conexión a internet.");
+                    console.error("[Exportar] XLSX no está definido. Falta el <script src='xlsx.full.min.js'> en el <head>.");
+                    return;
+                }
+
+                let dataExport = window.datosFiltradosSeguimiento.map(t => {
+                    return {
+                        "FECHA INSTALACIÓN": t.fecha || "-",
+                        "CLIENTE": t.cliente || "Sin Nombre",
+                        "DNI": t.dni || "-",
+                        "TELÉFONOS": t.tel || "-",
+                        "ZONA": t.zona || "-",
+                        "TIPO DE SERVICIO": t.detalle || t.tipoServicio || "-",
+                        "VENDEDOR": t.vendedor || "-",
+                        "TÉCNICO QUE INSTALÓ": Array.isArray(t.tecnicos) ? t.tecnicos.join(", ") : (t.tecnicos || "Sin Asignar"),
+                        "ESTADO CALIDAD": t.segCalidad || "Sin Contactar",
+                        "FECHA ACORDADA DE PAGO": t.segFechaPago || "-",
+                        "LLAMADA REPROGRAMADA": t.segFechaLlamada ? `${t.segFechaLlamada} ${t.segHoraLlamada || ""}` : "-",
+                        "NOTAS DEL GESTOR": t.segNotas || "-",
+                        "GESTOR POST-VENTA": t.segUsuario || "SIN GESTIONAR",
+                        "P1 (Internet Funcionando)": t.encP1 || "-",
+                        "P2 (Pruebas WiFi)": t.encP2 || "-",
+                        "P3 (Atención Técnico)": t.encP3 || "-",
+                        "P4 (Limpieza)": t.encP4 || "-",
+                        "P5 (Puntaje 1 al 5)": t.encP5 || "-",
+                        "ORIGEN ENCUESTA": t.encuestaPorCliente ? "Cliente la llenó vía Web" : "Gestor llenó en llamada"
+                    };
+                });
+
+                const ws = XLSX.utils.json_to_sheet(dataExport);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Calidad_PostVenta");
+                
+                // 3. Formato estricto internacional (YYYY-MM-DD) sin caracteres invisibles
+                let hoySeguro = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(wb, `Seguimiento_Instalaciones_${hoySeguro}.xlsx`);
+                
+                mostrarToast("✅ Excel descargado correctamente.");
+            } catch (error) {
+                console.error("Error al exportar:", error);
+                mostrarToast("❌ Ocurrió un error al generar el archivo.");
+            }
+        }, 100);
+    };
+
+    function mostrarToast(msg) {
+        const t = document.getElementById("toast");
+        t.innerHTML = msg; t.className = "show";
+        setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEN - Liquidación de Comisiones</title>
+    <meta name="theme-color" content="#0f172a">
+
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        .comisiones-header { display: flex; gap: 20px; align-items: center; margin-bottom: 20px; }
+        .desglose-venta { font-size: 11px; padding: 8px 0; border-bottom: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .desglose-venta:last-child { border-bottom: none; }
+        .tag-vivienda { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .tag-casa { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); }
+        .tag-condominio { background: rgba(168, 85, 247, 0.1); color: var(--purple); border: 1px solid var(--purple); }
+        .monto-positivo { color: var(--success); font-weight: 900; font-size: 15px; }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        
+        /* Detalles / Acordeón para ventas caídas */
+        details summary::-webkit-details-marker { display: none; }
+        details > summary { list-style: none; }
+        .lista-pendientes { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+
+        /* DISEÑO PREMIUM PARA EL ESTADO DE PAGO */
+        .pago-badge { display: flex; align-items: center; justify-content: center; gap: 5px; padding: 6px 10px; border-radius: 6px; font-size: 10px; font-weight: 900; width: 100%; letter-spacing: 0.5px; margin: 0; }
+        .pago-pendiente { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .pago-completado { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .pago-parcial { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .pago-sin-ventas { background: rgba(148, 163, 184, 0.1); color: var(--text-muted); border: 1px dashed var(--border); }
+    </style>
+</head>
+<body>
+
+<div id="dashboard-view" style="display: block;">
+    <div class="app-layout">
+        
+        <aside class="app-sidebar show">
+            <div class="sidebar-header">
+                <img src="logo.png" alt="TEN Logo" class="sidebar-logo" onerror="this.style.display='none'">
+                <span class="sidebar-brand">TEN <b>COMISIONES</b></span>
+            </div>
+            
+            <div class="sidebar-user">
+                <div class="avatar"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                <div class="user-details">
+                    <span class="user-role" style="font-size: 10px; color: var(--text-muted); font-weight: 900;">ADMINISTRACIÓN</span><br>
+                    <span class="user-status" style="color: var(--accent); font-weight: 900;">LIQUIDACIÓN Y PAGOS</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <p class="nav-section">NAVEGACIÓN</p>
+                <button type="button" class="nav-btn" onclick="window.location.href='index.html'" style="background: rgba(0, 229, 255, 0.1); color: var(--accent); border: 1px solid var(--accent);">
+                    <i class="fa-solid fa-arrow-left"></i> Volver al Dashboard
+                </button>
+            </nav>
+        </aside>
+
+        <main class="app-main">
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <h2 style="color: var(--accent); margin: 0; display: flex; align-items: center; gap: 10px; font-size: 1.2rem;">
+                        <i class="fa-solid fa-wallet"></i> Control de Pago a Vendedores
+                    </h2>
+                </div>
+                <div class="topbar-right">
+                    <button type="button" class="topbar-btn" onclick="window.toggleTema()" title="Cambiar Tema"><i class="fa-solid fa-moon"></i></button>
+                    <button type="button" class="topbar-btn btn-logout" onclick="window.cerrarSesion()" title="Cerrar Sesión"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+            </header>
+
+            <div class="app-content">
+                
+                <div class="control-panel mb-4">
+                    <div class="filtros-grupo" style="flex-wrap: wrap;">
+                        <div class="filtro-item" style="flex: 1; min-width: 140px;">
+                            <label><i class="fa-solid fa-calendar-days"></i> MES</label>
+                            <select id="filtroMes" class="form-control" onchange="window.limpiarRangoYProcesar()">
+                                <option value="todos">Todos los Meses</option>
+                                <option value="01">Enero</option>
+                                <option value="02">Febrero</option>
+                                <option value="03">Marzo</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Mayo</option>
+                                <option value="06">Junio</option>
+                                <option value="07">Julio</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
+                        </div>
+                        <div class="filtro-item" style="flex: 0.5; min-width: 100px;">
+                            <label><i class="fa-solid fa-calendar-check"></i> AÑO</label>
+                            <select id="filtroAnio" class="form-control" onchange="window.procesarComisiones()">
+                                <option value="todos">Todos</option>
+                                <option value="2024">2024</option>
+                                <option value="2025">2025</option>
+                                <option value="2026" selected>2026</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filtro-item" style="flex: 1; min-width: 140px;">
+                            <label style="color: var(--warning);"><i class="fa-solid fa-calendar-plus"></i> DESDE (Día):</label>
+                            <input type="date" id="filtroDesde" class="form-control highlight-border-warning" onchange="window.limpiarMesYProcesar()">
+                        </div>
+                        <div class="filtro-item" style="flex: 1; min-width: 140px;">
+                            <label style="color: var(--warning);"><i class="fa-solid fa-calendar-minus"></i> HASTA (Día):</label>
+                            <input type="date" id="filtroHasta" class="form-control highlight-border-warning" onchange="window.limpiarMesYProcesar()">
+                        </div>
+
+                        <div class="filtro-item" style="flex: 1; min-width: 150px;">
+                            <label><i class="fa-solid fa-user-tie"></i> VENDEDOR</label>
+                            <select id="filtroVendedor" class="form-control highlight-border-accent" onchange="window.procesarComisiones()">
+                                <option value="todos">Todos los Vendedores</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-stats-grid show-admin-grid">
+                    <div class="stat-card">
+                        <div class="card-header"><h3><i class="fa-solid fa-chart-column text-success"></i> Comparativa de Comisiones (S/)</h3></div>
+                        <div class="chart-container" style="height: 200px;"><canvas id="graficoComisiones"></canvas></div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="card-header"><h3><i class="fa-solid fa-sack-dollar text-purple"></i> TOTALES Y EFECTIVIDAD</h3></div>
+                        <div class="kpi-grid">
+                            <div class="kpi-box box-success" style="flex-direction: column; text-align: center;">
+                                <div class="kpi-icon" style="margin-bottom: 10px; justify-content: center;"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                                <div class="kpi-data" style="align-items: center;">
+                                    <span class="kpi-num" id="kpiTotalDinero" style="font-size: 2rem;">S/ 0.00</span>
+                                    <span class="kpi-label">Desembolso en el Rango</span>
+                                </div>
+                            </div>
+                            <div class="kpi-box box-warning" style="flex-direction: column; text-align: center;">
+                                <div class="kpi-icon" style="margin-bottom: 10px; justify-content: center;"><i class="fa-solid fa-bolt"></i></div>
+                                <div class="kpi-data" style="align-items: center;">
+                                    <span class="kpi-num" id="kpiEfectividadGlobal" style="font-size: 2rem;">0%</span>
+                                    <span class="kpi-label">Efectividad Global (Instaladas / Creadas)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 25px; margin-bottom: 10px;">
+                    <div>
+                        <h3 style="margin: 0; color: var(--text-main); font-size: 1.1rem;"><i class="fa-solid fa-table-list text-accent"></i> Resumen de Nómina y Pagos</h3>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 5px 0 0 0;"><i class="fa-solid fa-circle-info text-warning"></i> El monto se calcula en base al <b>Precio Total</b> de la mensualidad (incluyendo cable si aplica).</p>
+                    </div>
+                    <button class="btn-success" onclick="window.exportarComisionesExcel()" style="padding: 8px 15px; border: none; border-radius: 6px; cursor: pointer; color: white; background: var(--success); font-weight: bold; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);">
+                        <i class="fa-solid fa-file-excel"></i> Descargar Planilla Excel
+                    </button>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead style="position: sticky; top: 0; background: var(--bg-app); z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                            <tr>
+                                <th style="width: 15%;"><i class="fa-solid fa-user-tie"></i> Vendedor</th>
+                                <th style="width: 10%; text-align:center;"><i class="fa-solid fa-chart-simple"></i> Efectividad</th>
+                                <th style="width: 45%;"><i class="fa-solid fa-list-check"></i> Desglose Ventas (Planes y Porcentajes)</th>
+                                <th style="width: 15%; text-align:right;"><i class="fa-solid fa-money-bill-wave"></i> Monto (S/)</th>
+                                <th style="width: 15%; text-align:center;"><i class="fa-solid fa-check-to-slot"></i> Estado Pago</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaComisiones">
+                            <tr><td colspan="5" class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Conectando y calculando comisiones...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<div id="toast">Mensaje</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+        authDomain: "ten-soporte.firebaseapp.com",
+        projectId: "ten-soporte",
+        storageBucket: "ten-soporte.firebasestorage.app",
+        messagingSenderId: "498950424371",
+        appId: "1:498950424371:web:fce299a98cf8e57f822046",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    
+    const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
+
+    // 🌍 ENRUTADOR DE EXCEL (Los trabajos se comparten, SOLO se separan los clientes)
+    const zonaSede = localStorage.getItem("ten_zona_activa") || "norte";
+    window.dbLocalSede = zonaSede === "lurin" ? "TEN_DB_CLIENTES_LURIN" : "TEN_DB_CLIENTES";
+
+    // OJO: Si estás en retención, pon "clientes_base" en vez de "clientes_V2"
+    const pathClientes = zonaSede === "lurin" ? "clientes_lurin" : "clientes_V2"; 
+
+    // Dejamos las bases de datos originales fijas para no perder el historial
+    const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4");
+    const coleccionCobranzas = collection(db, "artifacts", appId, "public", "data", "cobranzas_v1");
+    const coleccionClientes = collection(db, "artifacts", appId, "public", "data", pathClientes);
+    const coleccionUsuarios = collection(db, "artifacts", appId, "public", "data", "usuarios_sistema");
+
+    let trabajosComisiones = [];
+    let dataParaExcel = []; 
+    let chartComisiones = null;
+    window.ultimoResumenVendedores = {}; 
+
+    // 🔒 CONTROL DE ACCESO
+    onAuthStateChanged(auth, (user) => {
+        if (!user) { window.location.href = "index.html"; return; }
+        let rol = localStorage.getItem('ten_rol');
+        if (rol !== 'admin' && rol !== 'ventas') { window.location.href = "index.html"; return; }
+        cargarDatosFirebase();
+    });
+
+    window.limpiarRangoYProcesar = () => { document.getElementById("filtroDesde").value = ""; document.getElementById("filtroHasta").value = ""; window.procesarComisiones(); };
+    window.limpiarMesYProcesar = () => { document.getElementById("filtroMes").value = "todos"; window.procesarComisiones(); };
+
+    function cargarDatosFirebase() {
+        onSnapshot(coleccionTrabajos, (snapshot) => {
+            trabajosComisiones = [];
+            let vendedoresSet = new Set(); 
+            let zonaActiva = localStorage.getItem("ten_zona_activa") || "norte";
+
+            snapshot.forEach(docSnap => {
+                let t = docSnap.data();
+                
+                // FILTRO MÁGICO: Ignorar ventas de otras zonas
+                if ((t.zona || "Norte").toLowerCase() !== zonaActiva.toLowerCase()) return;
+                
+                if(t.vendedor) t.vendedor = t.vendedor.toUpperCase().replace(/\.VENTAS/g, ""); 
+                
+                if (t.tipoTarea === "alta") {
+                    trabajosComisiones.push({id: docSnap.id, ...t});
+                    if (t.vendedor) vendedoresSet.add(t.vendedor);
+                }
+            });
+            
+            let mesActual = String(new Date().getMonth() + 1).padStart(2, '0');
+            let desde = document.getElementById("filtroDesde").value;
+            let hasta = document.getElementById("filtroHasta").value;
+            
+            if(document.getElementById("filtroMes").value === "todos" && !desde && !hasta) {
+                document.getElementById("filtroMes").value = mesActual;
+            }
+
+            let selVendedor = document.getElementById("filtroVendedor");
+            let vendedorActual = selVendedor.value;
+            selVendedor.innerHTML = '<option value="todos">Todos los Vendedores</option>';
+            [...vendedoresSet].sort().forEach(v => { selVendedor.innerHTML += `<option value="${v}">${v}</option>`; });
+            if ([...vendedoresSet].includes(vendedorActual)) selVendedor.value = vendedorActual;
+            
+            window.procesarComisiones();
+        });
+    }
+
+    window.procesarComisiones = () => {
+        let mesFiltro = document.getElementById("filtroMes").value;
+        let anioFiltro = document.getElementById("filtroAnio").value;
+        let desdeFiltro = document.getElementById("filtroDesde").value;
+        let hastaFiltro = document.getElementById("filtroHasta").value;
+        let vendedorFiltro = document.getElementById("filtroVendedor").value;
+
+        let ventasFiltradas = trabajosComisiones.filter(t => {
+            if (!t.fecha) return false;
+            if (desdeFiltro || hastaFiltro) {
+                if (desdeFiltro && t.fecha < desdeFiltro) return false;
+                if (hastaFiltro && t.fecha > hastaFiltro) return false;
+            } else {
+                let partes = t.fecha.split("-"); 
+                if ((mesFiltro !== "todos" && partes[1] !== mesFiltro) || (anioFiltro !== "todos" && partes[0] !== anioFiltro)) return false;
+            }
+            return (vendedorFiltro === "todos" || (t.vendedor || "").toUpperCase() === vendedorFiltro);
+        });
+
+        let resumenVendedores = {};
+        dataParaExcel = []; 
+
+        ventasFiltradas.forEach(t => {
+            let vendedor = (t.vendedor || "Sin Vendedor").toUpperCase();
+            let precioBase = parseFloat(String(t.precio || "0").replace(/[^0-9.]/g, '')) || 0;
+            let tipoVivienda = t.tipoVivienda || "Casa Propia";
+            let esAtendido = (t.estado === "atendido");
+            let estaPagado = t.comisionPagada === true;
+
+            let porcentajePorDefecto = 100;
+            if (vendedor.includes("ANGEL")) porcentajePorDefecto = 110; 
+            else if (vendedor.includes("MABEL")) porcentajePorDefecto = tipoVivienda === "Condominio" ? 50 : 100;
+
+            let porcentajeAplicado = t.porcentajeComision !== undefined ? t.porcentajeComision : porcentajePorDefecto;
+            let montoGanado = precioBase * (porcentajeAplicado / 100);
+            
+            if (!resumenVendedores[vendedor]) {
+                resumenVendedores[vendedor] = { totalRegistradas: 0, totalInstaladas: 0, montoTotal: 0, pagadasCount: 0, desglose: [], desglosePendientes: [] };
+            }
+
+            resumenVendedores[vendedor].totalRegistradas++;
+            
+            if (esAtendido) {
+                resumenVendedores[vendedor].totalInstaladas++;
+                resumenVendedores[vendedor].montoTotal += montoGanado;
+                resumenVendedores[vendedor].pagadasCount += (estaPagado ? 1 : 0);
+                
+                resumenVendedores[vendedor].desglose.push({
+                    id: t.id, cliente: t.cliente, fecha: formatoFechaLocal(t.fecha),
+                    plan: t.detalle || "Plan de Fibra", precioBase: precioBase,
+                    tipoVivienda: tipoVivienda, porcentaje: porcentajeAplicado,
+                    montoGanado: montoGanado, pagado: estaPagado
+                });
+
+                dataParaExcel.push({
+                    "FECHA INSTALADA": formatoFechaLocal(t.fecha),
+                    "VENDEDOR": vendedor, "CLIENTE": t.cliente, "DNI": t.dni || "",
+                    "ZONA": t.zona || "", "PLAN ELEGIDO": t.detalle || "",
+                    "TIPO VIVIENDA": tipoVivienda, "PRECIO TOTAL (S/)": precioBase,
+                    "PORCENTAJE APLICADO (%)": porcentajeAplicado,
+                    "COMISIÓN (S/)": montoGanado.toFixed(2), "ESTADO PAGO": estaPagado ? "PAGADO" : "PENDIENTE"
+                });
+            } else {
+                resumenVendedores[vendedor].desglosePendientes.push({
+                    cliente: t.cliente, fecha: formatoFechaLocal(t.fecha),
+                    estado: t.estado || "pendiente", plan: t.detalle || "Plan de Fibra"
+                });
+            }
+        });
+
+        window.ultimoResumenVendedores = resumenVendedores; 
+        renderizarUI(resumenVendedores);
+    };
+
+    function renderizarUI(resumen) {
+        let totalGeneralDinero = 0; let totalGeneralInstaladas = 0; let totalGeneralCreadas = 0;
+        let labelsGrafico = []; let dataMontoGrafico = [];
+        let tbody = document.getElementById("tablaComisiones"); tbody.innerHTML = "";
+
+        let arrayVendedores = Object.entries(resumen).sort((a, b) => b[1].montoTotal - a[1].montoTotal);
+
+        for (const [vendedor, data] of arrayVendedores) {
+            totalGeneralDinero += data.montoTotal; totalGeneralInstaladas += data.totalInstaladas; totalGeneralCreadas += data.totalRegistradas;
+            labelsGrafico.push(vendedor); dataMontoGrafico.push(data.montoTotal);
+            
+            let porcentajeEfectividad = data.totalRegistradas > 0 ? Math.round((data.totalInstaladas / data.totalRegistradas) * 100) : 0;
+            let colorEfectividad = porcentajeEfectividad >= 70 ? "var(--success)" : porcentajeEfectividad >= 40 ? "var(--warning)" : "var(--danger)";
+
+            let desgloseHtml = data.desglose.map(d => {
+                let tagVivienda = d.tipoVivienda === "Condominio" ? "tag-condominio" : "tag-casa";
+                let iconoVivienda = d.tipoVivienda === "Condominio" ? "fa-building" : "fa-house";
+                let checkPago = d.pagado ? `<i class="fa-solid fa-circle-check text-success" title="Pagado"></i>` : `<i class="fa-solid fa-circle-exclamation text-danger" title="Pendiente"></i>`;
+                
+                return `
+                <div class="desglose-venta">
+                    <div style="flex: 3;">
+                        <b style="color: var(--text-main); font-size: 12px;">${d.cliente}</b> <span style="color: var(--text-muted); font-size: 10px;">(${d.fecha}) ${checkPago}</span><br>
+                        <span style="color: var(--accent); font-weight: bold;">${d.plan} (Precio Total: S/ ${d.precioBase})</span>
+                    </div>
+                    <div style="flex: 1.5; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <span class="tag-vivienda ${tagVivienda}"><i class="fa-solid ${iconoVivienda}"></i> ${d.tipoVivienda}</span>
+                        <div style="display: inline-flex; align-items: center; background: var(--bg-app); border: 1px solid var(--accent); border-radius: 4px; padding: 2px 5px;" title="Editar porcentaje de comisión">
+                            <i class="fa-solid fa-pen" style="font-size: 9px; color: var(--accent); margin-right: 4px;"></i>
+                            <input type="number" value="${d.porcentaje}" oninput="window.actualizarPorcentajeConRetraso('${d.id}', this.value)" style="width: 40px; border: none; background: transparent; color: var(--accent); font-weight: 900; text-align: center; font-size: 12px; outline: none;" min="0">
+                            <span style="font-size: 11px; color: var(--accent); margin-left: 2px; font-weight: bold;">%</span>
+                        </div>
+                    </div>
+                    <div style="flex: 1; text-align: right;"><span class="monto-positivo">+ S/ ${d.montoGanado.toFixed(2)}</span></div>
+                </div>`;
+            }).join("");
+            
+            if(desgloseHtml === "") desgloseHtml = `<span style="color:var(--text-muted); font-size:11px;">No hay ventas instaladas en este periodo.</span>`;
+
+            let pendientesHtml = "";
+            if (data.desglosePendientes.length > 0) {
+                let itemsPendientes = data.desglosePendientes.map(p => {
+                    let colorEst = p.estado === 'rechazada' ? 'color: var(--danger);' : 'color: var(--warning);';
+                    let iconEst = p.estado === 'rechazada' ? 'fa-xmark' : 'fa-clock';
+                    return `
+                    <div style="font-size:10px; padding: 6px 0; border-bottom: 1px dashed rgba(0,0,0,0.1); display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:var(--text-muted);"><b>${p.cliente}</b> <span style="opacity:0.6;">(${p.fecha})</span></span>
+                        <span style="${colorEst} font-weight:bold; text-transform:uppercase;"><i class="fa-solid ${iconEst}"></i> ${p.estado.replace('_', ' ')}</span>
+                    </div>`;
+                }).join("");
+
+                pendientesHtml = `
+                <details style="margin-top: 15px; background: rgba(0,0,0,0.03); padding: 8px 12px; border-radius: 6px; border: 1px dashed var(--border);">
+                    <summary style="font-size: 11px; color: var(--text-muted); font-weight: bold; cursor: pointer; outline: none;"><i class="fa-solid fa-layer-group"></i> Ver Pendientes / Rechazadas (${data.desglosePendientes.length}) <i class="fa-solid fa-caret-down" style="float: right; margin-top: 2px;"></i></summary>
+                    <div class="lista-pendientes">${itemsPendientes}</div>
+                </details>`;
+            }
+
+            // ==============================================================
+            // DISEÑO PREMIUM DEL PANEL DE PAGO
+            // ==============================================================
+            let estadoPagoHTML = "";
+            let containerStyle = "display: flex; flex-direction: column; gap: 8px; background: var(--bg-panel); padding: 12px; border-radius: 10px; border: 1px solid var(--border); align-items: center; min-width: 130px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);";
+            let btnPagar = "background: var(--success); color: white; border: none; border-radius: 6px; padding: 8px 10px; font-size: 11px; font-weight: 800; cursor: pointer; width: 100%; box-shadow: 0 4px 6px rgba(16,185,129,0.2); transition: all 0.2s ease; text-transform: uppercase;";
+            let btnRevertir = "background: transparent; color: var(--text-muted); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 11px; font-weight: bold; cursor: pointer; width: 100%; transition: all 0.2s ease;";
+
+            if (data.totalInstaladas === 0) {
+                estadoPagoHTML = `
+                    <div style="${containerStyle} justify-content: center; background: transparent; box-shadow: none;">
+                        <span class="pago-badge pago-sin-ventas"><i class="fa-solid fa-folder-open"></i> SIN VENTAS</span>
+                    </div>
+                `;
+            } else if (data.pagadasCount === data.totalInstaladas) {
+                estadoPagoHTML = `
+                    <div style="${containerStyle} border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.02);">
+                        <span class="pago-badge pago-completado"><i class="fa-solid fa-check-circle"></i> 100% PAGADO</span>
+                        <button class="btn-action-ui" onclick="window.marcarPagoMasivo('${vendedor}', false)" style="${btnRevertir}" onmouseover="this.style.color='#ef4444'; this.style.borderColor='#ef4444'; this.style.background='rgba(239,68,68,0.05)';" onmouseout="this.style.color='var(--text-muted)'; this.style.borderColor='var(--border)'; this.style.background='transparent';"><i class="fa-solid fa-rotate-left"></i> Revertir Pago</button>
+                    </div>
+                `;
+            } else if (data.pagadasCount > 0) {
+                estadoPagoHTML = `
+                    <div style="${containerStyle} border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.02);">
+                        <span class="pago-badge pago-parcial"><i class="fa-solid fa-clock"></i> PARCIAL (${data.pagadasCount}/${data.totalInstaladas})</span>
+                        <button class="btn-action-ui" onclick="window.marcarPagoMasivo('${vendedor}', true)" style="${btnPagar}" onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='translateY(0)';"><i class="fa-solid fa-check-double"></i> Pagar Resto</button>
+                    </div>
+                `;
+            } else {
+                estadoPagoHTML = `
+                    <div style="${containerStyle} border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.02);">
+                        <span class="pago-badge pago-pendiente"><i class="fa-solid fa-circle-xmark"></i> PENDIENTE</span>
+                        <button class="btn-action-ui" onclick="window.marcarPagoMasivo('${vendedor}', true)" style="${btnPagar}" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(16,185,129,0.4)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(16,185,129,0.2)';"><i class="fa-solid fa-hand-holding-dollar"></i> Pagar Todo</button>
+                    </div>
+                `;
+            }
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><b style="color:var(--text-main); font-size:14px; text-transform: uppercase;">${vendedor}</b></td>
+                    <td style="text-align:center;">
+                        <b style="font-size: 14px; color: ${colorEfectividad};">${data.totalInstaladas} / ${data.totalRegistradas}</b><br>
+                        <span style="font-size: 10px; font-weight: bold; color: ${colorEfectividad}; background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px;">${porcentajeEfectividad}% Efect.</span>
+                    </td>
+                    <td>
+                        <div style="max-height: 250px; overflow-y: auto; background: transparent; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                            ${desgloseHtml}
+                            ${pendientesHtml}
+                        </div>
+                    </td>
+                    <td style="text-align:right;"><b style="color:var(--success); font-size: 1.4rem;">S/ ${data.montoTotal.toFixed(2)}</b></td>
+                    <td style="text-align:center; vertical-align: middle;">
+                        ${estadoPagoHTML}
+                    </td>
+                </tr>
+            `;
+        }
+
+        if(arrayVendedores.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-muted"><i class="fa-solid fa-mug-hot text-3xl mb-3 block"></i><br>No hay registros creados con los filtros actuales.</td></tr>`;
+        }
+
+        let efectividadGeneral = totalGeneralCreadas > 0 ? Math.round((totalGeneralInstaladas / totalGeneralCreadas) * 100) : 0;
+        document.getElementById("kpiTotalDinero").innerText = `S/ ${totalGeneralDinero.toFixed(2)}`;
+        document.getElementById("kpiEfectividadGlobal").innerText = `${efectividadGeneral}%`;
+        document.getElementById("kpiEfectividadGlobal").style.color = efectividadGeneral >= 70 ? "var(--success)" : efectividadGeneral >= 40 ? "var(--warning)" : "var(--danger)";
+        renderizarGrafico(labelsGrafico, dataMontoGrafico);
+    }
+
+    let timeoutPorcentaje = null;
+    window.actualizarPorcentajeConRetraso = (idTrabajo, nuevoValor) => {
+        clearTimeout(timeoutPorcentaje); 
+        timeoutPorcentaje = setTimeout(async () => {
+            let porcentajeNum = parseFloat(nuevoValor);
+            if (isNaN(porcentajeNum) || porcentajeNum < 0) porcentajeNum = 0; 
+            
+            mostrarToast("⏳ Guardando porcentaje...");
+            try {
+                await updateDoc(doc(coleccionTrabajos, idTrabajo), { porcentajeComision: porcentajeNum });
+                mostrarToast("✅ Recalculando total...");
+            } catch (error) { mostrarToast("❌ Error al guardar."); }
+        }, 800); 
+    };
+
+    window.marcarPagoMasivo = async (vendedor, estadoPago) => {
+        let datos = window.ultimoResumenVendedores[vendedor];
+        if (!datos || datos.desglose.length === 0) return;
+
+        let accionStr = estadoPago ? "PAGADAS" : "PENDIENTES";
+        
+        // 1. CREAMOS EL MODAL HERMOSO DINÁMICAMENTE
+        let overlay = document.createElement("div");
+        overlay.id = "modalPagoDinamico";
+        overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:9999; display:flex; align-items:center; justify-content:center; animation: fadeIn 0.2s ease-out;";
+
+        let icono = estadoPago ? "fa-hand-holding-dollar" : "fa-rotate-left";
+        let colorIcono = estadoPago ? "var(--success)" : "var(--danger)";
+        let titulo = estadoPago ? "¿Confirmar Pago?" : "¿Revertir Pago?";
+        let txtBoton = estadoPago ? "Sí, Pagar Restante" : "Sí, Revertir";
+        if(estadoPago && datos.pagadasCount === 0) txtBoton = "Sí, Pagar Todo";
+
+        overlay.innerHTML = `
+            <div style="background:var(--bg-panel); border:1px solid var(--border); padding:25px; border-radius:15px; text-align:center; max-width:350px; width:90%; box-shadow:0 15px 30px rgba(0,0,0,0.5);">
+                <i class="fa-solid ${icono}" style="font-size:3.5rem; color:${colorIcono}; margin-bottom:15px; display:block;"></i>
+                <h3 style="color:var(--text-main); font-size:1.2rem; font-weight:900; margin-bottom:10px;">${titulo}</h3>
+                <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom:20px; line-height:1.4;">¿Estás seguro de marcar las <b>${datos.desglose.length}</b> ventas mostradas de <b style="color:var(--text-main); text-transform:uppercase;">${vendedor}</b> como <b style="color:${colorIcono};">${accionStr}</b>?</p>
+                
+                <div style="display:flex; gap:10px;">
+                    <button id="btnCancelarPagoDin" style="flex:1; background:transparent; border:1px solid var(--border); color:var(--text-muted); padding:10px; border-radius:8px; font-weight:bold; cursor:pointer; transition: 0.2s;" onmouseover="this.style.background='var(--bg-app)'" onmouseout="this.style.background='transparent'">Cancelar</button>
+                    <button id="btnConfirmarPagoDin" style="flex:1; background:${colorIcono}; color:#fff; border:none; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">${txtBoton}</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        // ========================================================
+        // 🔒 FUNCIONES PARA CERRAR EL MODAL (Click Afuera y ESC)
+        // ========================================================
+        const cerrarModalDinamico = () => {
+            overlay.remove();
+            document.removeEventListener('keydown', teclaEsc);
+        };
+
+        const teclaEsc = (e) => {
+            if (e.key === "Escape") cerrarModalDinamico();
+        };
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) cerrarModalDinamico();
+        });
+
+        document.addEventListener('keydown', teclaEsc);
+
+        // ========================================================
+
+        // 2. ACCIÓN: BOTÓN CANCELAR
+        document.getElementById("btnCancelarPagoDin").onclick = cerrarModalDinamico;
+
+        // 3. ACCIÓN: BOTÓN CONFIRMAR (CONECTA CON FIREBASE)
+        document.getElementById("btnConfirmarPagoDin").onclick = async () => {
+            let btnC = document.getElementById("btnConfirmarPagoDin");
+            btnC.innerText = "⏳ Procesando...";
+            btnC.disabled = true;
+            btnC.style.opacity = "0.7";
+            document.getElementById("btnCancelarPagoDin").style.pointerEvents = "none";
+
+            mostrarToast("⏳ Actualizando estado de pago...");
+            try {
+                const batch = writeBatch(db);
+                let autorizador = localStorage.getItem('ten_nombre_tecnico') || "ADMIN";
+                
+                datos.desglose.forEach(d => {
+                    const refDoc = doc(coleccionTrabajos, d.id);
+                    batch.update(refDoc, { comisionPagada: estadoPago, comisionPagadaPor: estadoPago ? autorizador : null });
+                });
+                
+                await batch.commit();
+                mostrarToast(`✅ Ventas marcadas como ${accionStr}.`);
+            } catch (error) { 
+                mostrarToast("❌ Error al actualizar."); 
+                console.error(error);
+            } finally {
+                cerrarModalDinamico(); // Usamos la nueva función para limpiar todo sin dejar basura
+            }
+        };
+    };
+
+    window.exportarComisionesExcel = () => {
+        if (dataParaExcel.length === 0) { alert("No hay datos para exportar."); return; }
+
+        let datosOrdenados = dataParaExcel.sort((a, b) => a["VENDEDOR"].localeCompare(b["VENDEDOR"]));
+        let totalDineroExcel = datosOrdenados.reduce((acc, curr) => acc + parseFloat(curr["COMISIÓN (S/)"]), 0);
+
+        datosOrdenados.push({
+            "FECHA INSTALADA": "TOTAL GENERAL DESEMBOLSADO:", "VENDEDOR": "", "CLIENTE": "", "DNI": "",
+            "ZONA": "", "PLAN ELEGIDO": "", "TIPO VIVIENDA": "", "PRECIO TOTAL (S/)": "",
+            "PORCENTAJE APLICADO (%)": "", "COMISIÓN (S/)": totalDineroExcel.toFixed(2), "ESTADO PAGO": ""
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(datosOrdenados);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Planilla_Comisiones");
+        
+        let nombreReporte = "Mes_Todos";
+        let desde = document.getElementById("filtroDesde").value;
+        let hasta = document.getElementById("filtroHasta").value;
+        if (desde || hasta) nombreReporte = `Rango_${desde || 'X'}_al_${hasta || 'X'}`;
+        else {
+            let sel = document.getElementById("filtroMes");
+            if(sel.value !== "todos") nombreReporte = sel.options[sel.selectedIndex].text;
+        }
+
+        XLSX.writeFile(workbook, `Reporte_Nómina_Ventas_${nombreReporte}.xlsx`);
+    };
+
+    function renderizarGrafico(labels, dataMonto) {
+        const canvas = document.getElementById("graficoComisiones");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+
+        if (chartComisiones) chartComisiones.destroy();
+
+        let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, "#10b981"); 
+        gradient.addColorStop(1, "#047857");
+
+        chartComisiones = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Liquidación (S/)",
+                    data: dataMonto,
+                    backgroundColor: gradient,
+                    borderRadius: 6,
+                    barThickness: 45
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#94a3b8" } },
+                    x: { grid: { display: false }, ticks: { color: "#94a3b8", font: { size: 11, weight: 'bold' } } }
+                }
+            }
+        });
+    }
+
+    function formatoFecha(fs) {
+        if (!fs) return ""; let p = String(fs).split("-");
+        return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : fs;
+    }
+    function formatoFechaLocal(fs) { return formatoFecha(fs); }
+    function mostrarToast(msg) {
+        const t = document.getElementById("toast");
+        if(t) { t.innerHTML = msg; t.className = "show"; setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000); }
+    }
+    
+    window.cerrarSesion = () => { signOut(auth).then(() => window.location.href="index.html"); };
+    
+    window.toggleTema = () => {
+        const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+        const newTheme = currentTheme === "light" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", newTheme);
+        localStorage.setItem("temaTen", newTheme);
+        window.procesarComisiones(); 
+    };
+
+    document.documentElement.setAttribute("data-theme", localStorage.getItem("temaTen") || "dark");
+</script>
+
+</body>
+</html>

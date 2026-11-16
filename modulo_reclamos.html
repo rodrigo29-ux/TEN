@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Reclamos - TEN NOC</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css"> 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        .header-reclamos { display: flex; align-items: center; justify-content: space-between; padding: 15px 25px; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+        .header-reclamos h1 { margin: 0; font-size: 1.2rem; font-weight: 900; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
+        .container-reclamos { padding: 25px; max-width: 1600px; margin: 0 auto; height: 100vh; overflow-y: auto; }
+        
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 10px; }
+        .tab-btn { background: transparent; border: none; color: var(--text-muted); font-size: 14px; font-weight: 800; padding: 8px 15px; cursor: pointer; border-radius: 8px; transition: 0.3s; font-family: 'Nunito', sans-serif; text-transform: uppercase; }
+        .tab-btn.active { background: var(--bg-panel); color: var(--text-main); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .tab-btn:hover:not(.active) { color: var(--text-main); background: rgba(255,255,255,0.05); }
+
+        .reclamos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .card-reclamo { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; position: relative; overflow: hidden; }
+        .card-reclamo:hover { border-color: #3b82f6; transform: translateY(-3px); }
+        
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .ticket-id { font-size: 12px; font-weight: 900; background: #1e293b; color: #38bdf8; padding: 4px 8px; border-radius: 6px; letter-spacing: 1px; }
+        [data-theme="light"] .ticket-id { background: #e0f2fe; color: #0284c7; }
+        .fecha-reclamo { font-size: 11px; color: var(--text-muted); font-weight: 700; }
+        
+        .card-body { flex: 1; }
+        .cliente-nombre { font-size: 16px; font-weight: 900; color: var(--text-main); margin: 0 0 5px 0; }
+        .cliente-datos { font-size: 12px; color: var(--text-muted); font-weight: 700; margin-bottom: 10px; display: flex; gap: 10px; }
+        
+        .badge-tipo { display: inline-block; font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; margin-bottom: 10px; }
+        .tipo-tecnica { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; }
+        .tipo-comercial { background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; color: #f59e0b; }
+        
+        .detalle-box { background: rgba(0,0,0,0.1); padding: 12px; border-radius: 8px; font-size: 13px; color: var(--text-main); line-height: 1.5; font-style: italic; border-left: 3px solid #64748b; }
+        [data-theme="light"] .detalle-box { background: #f1f5f9; }
+
+        .card-actions { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-action { flex: 1; padding: 10px; border: none; border-radius: 8px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 12px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        
+        .btn-resolver { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid #10b981; }
+        .btn-resolver:hover { background: #10b981; color: white; }
+        
+        .btn-noc { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid #f59e0b; }
+        .btn-noc:hover { background: #f59e0b; color: white; }
+        
+        /* NUEVO BOTÓN ELIMINAR */
+        .btn-eliminar { background: rgba(239, 68, 68, 0.05); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); flex: 0 0 42px; padding: 0; }
+        .btn-eliminar:hover { background: #ef4444; color: white; border-color: #ef4444; }
+
+        .btn-foto { background: rgba(56, 189, 248, 0.1); color: #38bdf8; border: 1px solid #38bdf8; }
+        .btn-foto:hover { background: #38bdf8; color: white; }
+        .btn-volver { background: transparent; border: 1px solid var(--border); color: var(--text-main); padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+        
+        .estado-cerrado { position: absolute; top: 15px; right: -30px; background: var(--border); color: var(--text-muted); font-size: 10px; font-weight: 900; padding: 5px 30px; transform: rotate(45deg); text-transform: uppercase; }
+        .estado-cerrado.escalado { background: #ef4444; color: white; }
+        .estado-cerrado.resuelto { background: #10b981; color: white; }
+
+        .form-control-busqueda { padding: 10px; background: var(--bg-app); border: 1px solid var(--border); color: var(--text-main); border-radius: 8px; font-family: 'Nunito', sans-serif; font-weight: 700; outline: none; }
+
+        .mobile-only { display: none; }
+        @media (max-width: 900px) {
+            .mobile-only { display: inline-flex; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-layout">
+        
+        <!-- SIDEBAR UNIFICADO CON ACORDEÓN -->
+        <div class="sidebar-overlay" onclick="window.toggleSidebar()"></div>
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <img src="logo.png" alt="TEN Logo" class="sidebar-logo">
+                <span class="sidebar-brand">TEN <b>NOC</b></span>
+            </div>
+            
+            <div class="sidebar-user">
+                <div class="avatar"><i class="fa-solid fa-book-open-reader"></i></div>
+                <div class="user-details">
+                    <span class="user-role" id="lblUsuarioActivo">Gestión Reclamos</span>
+                    <span class="user-status"><i class="fa-solid fa-circle text-success"></i> Área Comercial</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <p class="nav-section" onclick="window.toggleSubMenu(this)" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                    <span><i class="fa-solid fa-house"></i> PRINCIPAL</span>
+                    <i class="fa-solid fa-chevron-down toggle-icon" style="font-size: 10px; transition: transform 0.3s;"></i>
+                </p>
+                <button type="button" class="nav-btn" onclick="window.location.href='index.html'">
+                    <i class="fa-solid fa-arrow-left"></i> Volver al ERP
+                </button>
+
+                <p class="nav-section" onclick="window.toggleSubMenu(this)" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                    <span><i class="fa-solid fa-book"></i> RECLAMOS</span>
+                    <i class="fa-solid fa-chevron-down toggle-icon" style="font-size: 10px; transition: transform 0.3s;"></i>
+                </p>
+                <button type="button" class="nav-btn active" style="background: rgba(59,130,246,0.1); border-left: 4px solid #3b82f6; color: #3b82f6;">
+                    <i class="fa-solid fa-inbox"></i> Bandeja de Reclamos
+                </button>
+                <button type="button" class="nav-btn" onclick="window.location.href='reclamos.html'" target="_blank" style="color: #10b981;">
+                    <i class="fa-solid fa-external-link-alt"></i> Formulario Público
+                </button>
+            </nav>
+        </aside>
+
+        <div style="flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden;">
+            <div class="header-reclamos">
+                <h1><i class="fa-solid fa-book-open-reader" style="color: #3b82f6;"></i> Sala de Control - Reclamos</h1>
+                <button onclick="window.toggleSidebar()" class="btn-volver mobile-only"><i class="fa-solid fa-bars"></i> Menú</button>
+            </div>
+
+            <div class="container-reclamos">
+                
+                <div class="tabs">
+                    <button class="tab-btn active" id="tabPendientes" onclick="cambiarVista('Pendientes')">
+                        <i class="fa-solid fa-inbox"></i> Bandeja de Entrada (<span id="countPendientes">0</span>)
+                    </button>
+                    <button class="tab-btn" id="tabHistorial" onclick="cambiarVista('Historial')">
+                        <i class="fa-solid fa-archive"></i> Historial (0)
+                    </button>
+                </div>
+
+                <!-- Búsqueda y Filtros -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <input type="text" id="buscadorReclamos" placeholder="Buscar por ticket, DNI o cliente..." class="form-control-busqueda" style="flex: 1; min-width: 250px; max-width: 400px;" onkeyup="window.renderizarReclamos()">
+                    <select id="filtroTipoReclamo" class="form-control-busqueda" style="width: 200px;" onchange="window.renderizarReclamos()">
+                        <option value="todos">Todos los tipos</option>
+                        <option value="Avería Técnica">Solo Averías</option>
+                        <option value="Queja Comercial">Solo Comerciales</option>
+                    </select>
+                </div>
+
+                <div class="reclamos-grid" id="gridReclamos"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module">
+        // IMPORTAMOS DELETEDOC
+        import { getApp, getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, updateDoc, doc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        let app;
+        if (getApps().length === 0) {
+            const firebaseConfig = {
+                apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+                authDomain: "ten-soporte.firebaseapp.com",
+                projectId: "ten-soporte",
+                storageBucket: "ten-soporte.firebasestorage.app",
+                messagingSenderId: "498950424371",
+                appId: "1:498950424371:web:fce299a98cf8e57f822046",
+            };
+            app = initializeApp(firebaseConfig);
+        } else {
+            app = getApp();
+        }
+
+        const db = getFirestore(app);
+        const colReclamos = collection(db, "reclamaciones");
+        const colTrabajos = collection(db, "artifacts", "ten-noc-app", "public", "data", "trabajos_v4");
+
+        let baseReclamos = [];
+        let vistaActual = 'Pendientes';
+
+        onSnapshot(colReclamos, (snapshot) => {
+            baseReclamos = [];
+            let zonaActiva = localStorage.getItem("ten_zona_activa") || "norte";
+            
+            snapshot.forEach(d => { 
+                let r = d.data();
+                // Si el reclamo no tiene zona (antiguos) se asume norte. Solo mostramos los de nuestra sede.
+                if ((r.zona || "norte").toLowerCase() === zonaActiva.toLowerCase()) {
+                    baseReclamos.push({ id_fb: d.id, ...r }); 
+                }
+            });
+            baseReclamos.sort((a,b) => b.ts - a.ts);
+            
+            let countP = baseReclamos.filter(r => r.estado === "Recibido").length;
+            let countH = baseReclamos.filter(r => r.estado !== "Recibido").length;
+            
+            document.getElementById("countPendientes").innerText = countP;
+            document.getElementById("tabHistorial").innerHTML = `<i class="fa-solid fa-archive"></i> Historial (${countH})`;
+
+            renderizarReclamos();
+        });
+
+        window.cambiarVista = (vista) => {
+            vistaActual = vista;
+            document.getElementById("tabPendientes").classList.remove("active");
+            document.getElementById("tabHistorial").classList.remove("active");
+            document.getElementById("tab" + vista).classList.add("active");
+            renderizarReclamos();
+        };
+
+        window.renderizarReclamos = () => {
+            let contenedor = document.getElementById("gridReclamos");
+            contenedor.innerHTML = "";
+
+            const buscador = (document.getElementById("buscadorReclamos")?.value || "").toLowerCase();
+            const filtroTipo = document.getElementById("filtroTipoReclamo")?.value || "todos";
+
+            let filtrados = baseReclamos.filter(r => {
+                if (vistaActual === 'Pendientes' && r.estado !== "Recibido") return false;
+                if (vistaActual === 'Historial' && r.estado === "Recibido") return false;
+                if (filtroTipo !== "todos" && r.tipo !== filtroTipo) return false;
+                if (buscador) {
+                    const txt = `${r.ticket} ${r.dni} ${r.cliente} ${r.celular}`.toLowerCase();
+                    if (!txt.includes(buscador)) return false;
+                }
+                return true;
+            });
+
+            if (filtrados.length === 0) {
+                contenedor.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 50px; color: var(--text-muted); font-weight:800;"><i class="fa-solid fa-mug-hot text-4xl mb-3 block"></i> Bandeja limpia. No hay casos aquí.</div>`;
+                return;
+            }
+
+            filtrados.forEach(r => {
+                let d = new Date(r.fecha);
+                let fechaStr = d.toLocaleDateString() + " " + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                let claseTipo = r.tipo === "Avería Técnica" ? "tipo-tecnica" : "tipo-comercial";
+                
+                let htmlBotones = '';
+                let cintaCerrada = '';
+
+                if (r.estado === "Recibido") {
+                    htmlBotones = `
+                        <div class="card-actions">
+                            <button class="btn-action btn-resolver" onclick="window.resolverCaso('${r.id_fb}')">
+                                <i class="fa-solid fa-check-double"></i> Resuelto
+                            </button>
+                            <button class="btn-action btn-noc" onclick="window.escalarAlNOC('${r.id_fb}')">
+                                <i class="fa-solid fa-truck-fast"></i> Al NOC
+                            </button>
+                            <button class="btn-action btn-eliminar" onclick="window.eliminarReclamo('${r.id_fb}')" title="Eliminar (Prueba/Spam)">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    let txtEstado = r.estado === "Resuelto" ? "RESUELTO" : "EN NOC";
+                    let classEstado = r.estado === "Resuelto" ? "resuelto" : "escalado";
+                    cintaCerrada = `<div class="estado-cerrado ${classEstado}">${txtEstado}</div>`;
+                    let notaExtra = r.notaResolucion ? `<div style="font-size:11px; color:var(--success); margin-bottom:10px;"><b>Nota:</b> ${r.notaResolucion}</div>` : '';
+                    
+                    htmlBotones = `
+                        ${notaExtra}
+                        <div class="card-actions">
+                            <button class="btn-action btn-eliminar" style="flex:1;" onclick="window.eliminarReclamo('${r.id_fb}')">
+                                <i class="fa-solid fa-trash-can"></i> Eliminar Registro
+                            </button>
+                        </div>
+                    `;
+                }
+
+                let btnFoto = r.foto ? `<button class="btn-action btn-foto" style="margin-top:10px; width:100%;" onclick="window.open('${r.foto}', '_blank')"><i class="fa-solid fa-image"></i> Ver Foto de Evidencia</button>` : '';
+
+                contenedor.innerHTML += `
+                    <div class="card-reclamo">
+                        ${cintaCerrada}
+                        <div class="card-header">
+                            <span class="ticket-id">${r.ticket}</span>
+                            <span class="fecha-reclamo">${fechaStr}</span>
+                        </div>
+                        <div class="card-body">
+                            <span class="badge-tipo ${claseTipo}">${r.tipo}</span>
+                            <h3 class="cliente-nombre"><i class="fa-regular fa-user"></i> ${r.cliente}</h3>
+                            <div class="cliente-datos">
+                                <span><i class="fa-regular fa-id-card"></i> ${r.dni}</span>
+                                <span><i class="fa-solid fa-phone"></i> ${r.celular}</span>
+                            </div>
+                            <div class="detalle-box">"${r.detalle}"</div>
+                            ${btnFoto}
+                        </div>
+                        ${htmlBotones}
+                    </div>
+                `;
+            });
+        };
+
+        window.resolverCaso = async (idReclamo) => {
+            const { value: nota } = await Swal.fire({
+                title: '¿Marcar como Resuelto?',
+                input: 'textarea',
+                inputLabel: 'Nota de resolución (opcional)',
+                inputPlaceholder: 'Ej: Se llamó al cliente y se le explicó el saldo pendiente...',
+                showCancelButton: true,
+                confirmButtonColor: '#10b981',
+                confirmButtonText: 'Sí, cerrar caso'
+            });
+            if (nota !== undefined) {
+                await updateDoc(doc(db, "reclamaciones", idReclamo), { 
+                    estado: "Resuelto",
+                    notaResolucion: nota || "Cerrado sin nota adicional.",
+                    tsResolucion: Date.now(),
+                    agenteResolucion: "Área Comercial"
+                });
+                Swal.fire({ title: 'Resuelto', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            }
+        };
+
+        window.escalarAlNOC = async (idReclamo) => {
+            const r = baseReclamos.find(x => x.id_fb === idReclamo);
+            if (!r) {
+                Swal.fire('Error', 'No se encontró el reclamo.', 'error');
+                return;
+            }
+
+            const { value: formValues } = await Swal.fire({
+                title: 'Enviar Avería al NOC',
+                html: `
+                    <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Completa los datos para el técnico:</p>
+                    <input id="swalZona" class="swal2-input" placeholder="Zona (Norte / Lurin)" value="Norte">
+                    <input id="swalDir" class="swal2-input" placeholder="Dirección exacta del cliente">
+                    <input id="swalRef" class="swal2-input" placeholder="Referencia (opcional)">
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Sí, enviar técnicos',
+                confirmButtonColor: '#ef4444',
+                preConfirm: () => {
+                    return {
+                        zona: document.getElementById('swalZona').value.trim() || "Norte",
+                        dir: document.getElementById('swalDir').value.trim() || "Llamar al cliente para coordinar",
+                        referencia: document.getElementById('swalRef').value.trim() || ""
+                    };
+                }
+            });
+
+            if (!formValues) return;
+
+            try {
+                let hoy = new Date(); 
+                let fechaHoy = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+
+                await addDoc(colTrabajos, {
+                    tipoTarea: "averia",
+                    cliente: r.cliente,
+                    dni: r.dni,
+                    tel: r.celular,                     
+                    dir: formValues.dir,                
+                    referencia: formValues.referencia,
+                    zona: formValues.zona,              
+                    fecha: fechaHoy,
+                    horaInicio: "",
+                    horaFin: "",
+                    estado: "pendiente",
+                    tecnicos: ["Sin Asignar"],
+                    detalle: "🔴 Punto rojo",
+                    infoRed: "",
+                    notas: `[RECLAMO OFICIAL ${r.ticket}] ${r.detalle}`,
+                    vendedor: "RECLAMOS WEB",
+                    fechaCreacionExacta: new Date().toLocaleString('es-PE'),
+                    ts: Date.now()
+                });
+
+                await updateDoc(doc(db, "reclamaciones", idReclamo), { 
+                    estado: "Escalado NOC",
+                    tsEscalado: Date.now()
+                });
+
+                Swal.fire({ title: '¡Avería Inyectada!', text: 'El NOC acaba de recibir el caso.', icon: 'success' });
+            } catch (e) {
+                console.error(e);
+                Swal.fire('Error', 'No se pudo escalar el caso.', 'error');
+            }
+        };
+
+        // FUNCIÓN ELIMINAR TICKET DE LA BASE DE DATOS
+        window.eliminarReclamo = async (idReclamo) => {
+            Swal.fire({
+                title: '¿Eliminar Reclamo?',
+                text: "Esta acción no se puede deshacer. Úsalo para pruebas o spam.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        await deleteDoc(doc(db, "reclamaciones", idReclamo));
+                        Swal.fire({ title: 'Eliminado', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+                    } catch (error) {
+                        console.error("Error al eliminar:", error);
+                        Swal.fire('Error', 'No se pudo eliminar el ticket', 'error');
+                    }
+                }
+            });
+        };
+
+        // Lógica de Sidebar
+        window.toggleSidebar = () => {
+            document.querySelector('.app-sidebar').classList.toggle('show');
+            document.querySelector('.sidebar-overlay').classList.toggle('show');
+        };
+        window.toggleSubMenu = (header) => {
+            const sidebar = document.querySelector('.app-sidebar');
+            if (sidebar && sidebar.classList.contains('collapsed')) return;
+            header.classList.toggle('is-closed');
+            let next = header.nextElementSibling;
+            while (next && !next.classList.contains('nav-section')) {
+                if (header.classList.contains('is-closed')) next.classList.add('hide-by-accordion');
+                else next.classList.remove('hide-by-accordion');
+                next = next.nextElementSibling;
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calidad Averías - TEN NOC</title>
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+
+    <style>
+        .badge-seg-pendiente { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid var(--warning); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .badge-seg-ok { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .badge-seg-problema { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+        .badge-seg-nocontesta { background: rgba(100, 116, 139, 0.1); color: var(--text-muted); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="dashboard-view" style="display: none;">
+    <div class="app-layout">
+        
+        <!-- SIDEBAR -->
+        <div class="sidebar-overlay" onclick="window.toggleSidebar()"></div>
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <img src="logo.png" alt="TEN Logo" class="sidebar-logo">
+                <span class="sidebar-brand">TEN <b>NOC</b></span>
+            </div>
+            
+            <div class="sidebar-user">
+                <div class="avatar" style="background: rgba(245, 158, 11, 0.1); color: var(--warning);"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+                <div class="user-details">
+                    <span class="user-role" id="lblUsuarioActivo">Cargando...</span>
+                    <span class="user-status"><i class="fa-solid fa-circle text-warning"></i> Área Comercial</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <p class="nav-section">NAVEGACIÓN</p>
+                <button type="button" class="nav-btn" onclick="window.location.href='index.html'">
+                    <i class="fa-solid fa-arrow-left"></i> Volver al Inicio
+                </button>
+
+                <p class="nav-section">ÁREA COMERCIAL</p>
+                <button type="button" class="nav-btn" onclick="window.location.href='modulo_seguimiento.html'" style="color: #3b82f6;">
+                    <i class="fa-solid fa-clipboard-check"></i> Calidad / Altas
+                </button>
+                <button type="button" class="nav-btn active" style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--warning); color: var(--warning);">
+                    <i class="fa-solid fa-screwdriver-wrench"></i> Calidad / Averías
+                </button>
+                <button type="button" class="nav-btn" onclick="window.abrirModalHistorial()" style="color: #0ea5e9; font-weight: bold;">
+                    <i class="fa-solid fa-list-check"></i> Registro de Actividad
+                </button>
+                <button type="button" class="nav-btn" onclick="window.location.href='modulo_retencion.html'" style="color: #ec4899;">
+                    <i class="fa-solid fa-headset"></i> Módulo Retención
+                </button>
+                <button type="button" class="nav-btn" onclick="window.location.href='modulo_comisiones.html'" style="color: #10b981;">
+                    <i class="fa-solid fa-hand-holding-dollar"></i> Pago Comisiones
+                </button>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="app-main">
+            <header class="app-topbar">
+                <div class="topbar-left">
+                    <button type="button" class="topbar-btn mobile-menu-btn" onclick="window.toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                    <h2 style="font-size: 1.2rem; margin: 0; color: var(--text-main);"><i class="fa-solid fa-screwdriver-wrench text-warning"></i> Seguimiento de Averías y Soportes</h2>
+                </div>
+                
+                <div class="topbar-right">
+                    <button type="button" class="topbar-btn btn-logout" onclick="window.cerrarSesion()" title="Cerrar Sesión">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="app-content" style="display: block;">
+                
+                <!-- KPIs de Post-Venta -->
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div class="kpi-box box-warning" style="flex: 1; min-width: 150px; margin: 0;">
+                        <div class="kpi-icon"><i class="fa-solid fa-phone-volume"></i></div>
+                        <div class="kpi-data">
+                            <span class="kpi-num" id="kpiPendientes">0</span>
+                            <span class="kpi-label">Por Llamar</span>
+                        </div>
+                    </div>
+                    <div class="kpi-box box-success" style="flex: 1; min-width: 150px; margin: 0;">
+                        <div class="kpi-icon"><i class="fa-solid fa-check-double"></i></div>
+                        <div class="kpi-data">
+                            <span class="kpi-num" id="kpiOk">0</span>
+                            <span class="kpi-label">Todo OK</span>
+                        </div>
+                    </div>
+                    <div class="kpi-box box-danger" style="flex: 1; min-width: 150px; margin: 0;">
+                        <div class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div class="kpi-data">
+                            <span class="kpi-num" id="kpiReincidencias">0</span>
+                            <span class="kpi-label">Reincidencias</span>
+                        </div>
+                    </div>
+                    <div class="kpi-box" style="flex: 1; min-width: 150px; margin: 0; background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2);">
+                        <div class="kpi-icon" style="color: var(--purple); background: rgba(139, 92, 246, 0.1);"><i class="fa-solid fa-face-frown"></i></div>
+                        <div class="kpi-data">
+                            <span class="kpi-num" id="kpiQuejas" style="color: var(--purple);">0</span>
+                            <span class="kpi-label">Quejas</span>
+                        </div>
+                    </div>
+                    <div class="kpi-box" style="flex: 1; min-width: 150px; margin: 0; background: rgba(100, 116, 139, 0.05); border: 1px solid rgba(100, 116, 139, 0.2);">
+                        <div class="kpi-icon" style="color: var(--text-muted); background: rgba(100, 116, 139, 0.1);"><i class="fa-solid fa-phone-slash"></i></div>
+                        <div class="kpi-data">
+                            <span class="kpi-num" id="kpiNoContesta" style="color: var(--text-muted);">0</span>
+                            <span class="kpi-label">No Contesta</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros Avanzados -->
+                <div class="control-panel mb-4">
+                    <div class="filtros-grupo">
+                        <div class="filtro-item">
+                            <label style="color: var(--warning);"><i class="fa-solid fa-filter"></i> Estado del Seguimiento:</label>
+                            <select id="filtroEstado" class="form-control highlight-border-warning" onchange="window.renderizarTabla()" style="font-weight: bold;">
+                                <option value="pendientes">⏳ Solo Pendientes (Global)</option>
+                                <option value="Sin Contactar">➖ Pendiente: Sin Contactar</option>
+                                <option value="Volver a llamar">📞 Pendiente: Volver a llamar</option>
+                                <option value="No contesta">📵 Finalizado: No contesta</option>
+                                <option value="Todo OK">✅ Finalizado: Todo OK</option>
+                                <option value="problemas">🚨 Reincidencias / Quejas</option>
+                                <option value="finalizados">🔒 Todos los Archivados</option>
+                                <option value="todos">Ver Absolutamente Todos</option>
+                            </select>
+                        </div>
+                        <div class="filtro-item">
+                            <label><i class="fa-solid fa-helmet-safety"></i> Técnico (Reparador):</label>
+                            <select id="filtroTecnico" class="form-control" onchange="window.renderizarTabla()">
+                                <option value="todos">Todos los Técnicos</option>
+                            </select>
+                        </div>
+                        <div class="filtro-item">
+                            <label><i class="fa-solid fa-layer-group"></i> Tipo de Avería:</label>
+                            <select id="filtroTipoAveria" class="form-control" onchange="window.renderizarTabla()" style="border-color: rgba(239, 68, 68, 0.5);">
+                                <option value="todos">Todos los Tipos</option>
+                                <option value="🔴 Punto rojo">🔴 Punto rojo (LOS)</option>
+                                <option value="🔌 Sin Internet">🔌 Sin Internet</option>
+                                <option value="🐢 Internet lento">🐢 Internet lento</option>
+                                <option value="📺 Problemas con el IPTV">📺 Problemas con el IPTV</option>
+                                <option value="📡 Problemas con el cable">📡 Problemas con el cable (CATV)</option>
+                                <option value="🔄 Cambio de equipo">🔄 Cambio de equipo (Router)</option>
+                                <option value="🚚 Traslado">🚚 Traslado</option>
+                                <option value="🏠 Reubicación de servicio">🏠 Reubicación de servicio</option>
+                                <option value="🔐 Cambio de contraseña">🔐 Cambio de contraseña</option>
+                                <option value="Otros">📝 Otros</option>
+                            </select>
+                        </div>
+                        <div class="filtro-item">
+                            <label>Desde:</label>
+                            <input type="date" id="filtroFechaDesde" class="form-control highlight-border-accent" onchange="window.renderizarTabla()">
+                        </div>
+                        <div class="filtro-item">
+                            <label>Hasta:</label>
+                            <input type="date" id="filtroFechaHasta" class="form-control highlight-border-accent" onchange="window.renderizarTabla()">
+                        </div>
+                        <div class="filtro-item">
+                            <label>Gestor (Usuario):</label>
+                            <select id="filtroGestor" class="form-control" onchange="window.renderizarTabla()">
+                                <option value="todos">Todos los Gestores</option>
+                                <option value="SIN GESTIONAR">⏳ Sin Gestionar Aún</option>
+                                <option value="RPACOTAIPE">R. Pacotaipe</option>
+                                <option value="MVENTOCILLA">Mili (MVENTOCILLA)</option>
+                                <option value="JRODRIGUEZ">Carlos (JRODRIGUEZ)</option>
+                                <option value="CPACOTAIPE">C. Pacotaipe</option>
+                                <option value="CRIVERA">Crivera</option>
+                            </select>
+                        </div>
+                        <div class="filtro-item flex-2">
+                            <label>Buscar Cliente:</label>
+                            <input type="text" id="buscador" class="form-control" placeholder="Escribe DNI o Nombre..." onkeyup="window.renderizarTabla()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INDICADOR DE FILTROS DINÁMICO -->
+                <div id="contenedorIndicador" style="margin-bottom: 15px; padding: 12px; background: rgba(245, 158, 11, 0.05); border: 1px dashed var(--warning); border-radius: 8px; text-align: center; display: none;">
+                    <span id="lblIndicadorBandeja" style="font-weight: 900; color: var(--warning); font-size: 1.1rem;">0 averías encontradas</span>
+                </div>
+
+                <!-- Tabla -->
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 25%;"><i class="fa-solid fa-user"></i> Cliente y Contacto</th>
+                                <th style="width: 25%;"><i class="fa-solid fa-network-wired"></i> Detalles de la Avería</th>
+                                <th style="width: 35%;"><i class="fa-solid fa-comments"></i> Estado Post-Reparación</th>
+                                <th style="width: 15%; text-align: center;"><i class="fa-solid fa-bolt"></i> Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaSeguimiento">
+                            <tr><td colspan="4" class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Cargando información...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal Gestión Avería Post-Venta -->
+<div class="modal-overlay" id="modalGestion" onclick="window.cerrarModal()">
+    <div class="modal-content modal-v2 max-w-md" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModal()">×</button>
+        <h3 class="modal-title mb-4" style="color: var(--warning);"><i class="fa-solid fa-headset"></i> Gestión Post-Avería</h3>
+        
+        <input type="hidden" id="segTrabajoId">
+
+        <div style="background: rgba(0,0,0,0.05); padding: 12px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border);">
+            <strong id="lblCliNombre" style="font-size: 1.1rem; color: var(--text-main); display: block;">Nombre Cliente</strong>
+            <span id="lblCliDetalles" style="font-size: 0.85rem; color: var(--text-muted);">Reparado: Fecha | Técnico: Nombre</span>
+        </div>
+
+        <div class="form-group">
+            <label>Estado de Calidad:</label>
+            <select id="segCalidad" class="form-control highlight-border-warning" style="font-weight: bold;" onchange="window.toggleAgendarLlamada()">
+                <option value="Sin Contactar">⏳ Sin Contactar</option>
+                <option value="Todo OK">✅ Todo OK - Problema Resuelto</option>
+                <option value="Reincidencia">🚨 REINCIDENCIA (Sigue fallando / Alerta al NOC)</option>
+                <option value="Queja">❌ Queja / Mala atención del técnico</option>
+                <option value="Volver a llamar">📞 Volver a llamar (Agendar fecha)</option>
+                <option value="No contesta">📵 No contesta (Finalizar / Archivar)</option>
+            </select>
+        </div>
+
+        <!-- CAJA OCULTA PARA AGENDAR LLAMADA -->
+        <div id="boxAgendarLlamada" style="display: none; background: rgba(245, 158, 11, 0.05); padding: 12px; border-radius: 8px; border: 1px dashed var(--warning); margin-bottom: 15px;">
+            <label style="color: var(--warning); font-weight: bold; font-size: 12px; margin-bottom: 8px; display: block;"><i class="fa-solid fa-clock"></i> Programar siguiente llamada:</label>
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;"><input type="date" id="segFechaLlamada" class="form-control highlight-border-accent"></div>
+                <div style="flex: 1;"><input type="time" id="segHoraLlamada" class="form-control highlight-border-accent"></div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Notas de Seguimiento:</label>
+            <textarea id="segNotas" class="form-control" rows="3" placeholder="Ej: El cliente confirma que el punto rojo desapareció y su velocidad está normal..."></textarea>
+        </div>
+
+        <!-- ENCUESTA DE AVERÍAS -->
+        <div style="background: rgba(245, 158, 11, 0.05); border: 1px dashed var(--warning); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                <label style="color: var(--warning); font-weight: bold; margin: 0;"><i class="fa-solid fa-star"></i> Encuesta de Reparación</label>
+                <button type="button" id="btnEnviarWspEncuesta" style="background: #25D366; color: white; border: none; font-size: 11px; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; width: auto; flex-shrink: 0;"><i class="fa-brands fa-whatsapp" style="font-size: 14px;"></i> Enviar al Cliente</button>
+            </div>
+            
+            <p id="lblEncuestaOrigen" style="font-size: 10px; color: var(--text-muted); margin-bottom: 15px; font-style: italic;">Llénala tú si estás en llamada, o envíale el link al cliente.</p>
+
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-size: 11px;">1. ¿Su servicio ya funciona con normalidad?</label>
+                <select id="encP1" class="form-control" style="font-size: 12px; padding: 4px 8px; height: auto;">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Sí">✅ Sí, problema resuelto</option>
+                    <option value="No">❌ No, sigue fallando</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-size: 11px;">2. ¿El técnico le explicó la causa de la avería?</label>
+                <select id="encP2" class="form-control" style="font-size: 12px; padding: 4px 8px; height: auto;">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Sí">✅ Sí lo hizo</option>
+                    <option value="No">❌ No lo hizo</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-size: 11px;">3. Amabilidad y trato del técnico:</label>
+                <select id="encP3" class="form-control" style="font-size: 12px; padding: 4px 8px; height: auto;">
+                    <option value="">-- Seleccionar --</option>
+                    <option value="Excelente">🌟 Excelente</option>
+                    <option value="Buena">👍 Buena</option>
+                    <option value="Regular">😐 Regular</option>
+                    <option value="Mala">👎 Mala</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 11px; color: var(--warning); font-weight: bold;">4. Nivel de Satisfacción Final:</label>
+                <select id="encP5" class="form-control highlight-border-warning" style="font-size: 12px; padding: 4px 8px; height: auto; font-weight: bold; color: var(--warning);">
+                    <option value="">-- Puntaje 1 al 5 --</option>
+                    <option value="5">⭐⭐⭐⭐⭐ (5) Muy Satisfecho</option>
+                    <option value="4">⭐⭐⭐⭐ (4) Satisfecho</option>
+                    <option value="3">⭐⭐⭐ (3) Regular</option>
+                    <option value="2">⭐⭐ (2) Insatisfecho</option>
+                    <option value="1">⭐ (1) Muy Insatisfecho</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="modal-buttons mt-6" style="flex-direction: column; gap: 10px;">
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <button type="button" class="btn-cancelar" style="flex: 1;" onclick="window.cerrarModal()">Cancelar</button>
+                <button type="button" class="btn-guardar" style="flex: 1; background: var(--warning); color: #000;" onclick="window.guardarSeguimiento(false)"><i class="fa-solid fa-save"></i> Guardar Progreso</button>
+            </div>
+            <button type="button" class="btn-guardar" style="width: 100%; background: var(--success);" onclick="window.guardarSeguimiento(true)"><i class="fa-solid fa-check-double"></i> Finalizar y Archivar Seguimiento</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Registro de Actividad (AUDITORÍA AVERÍAS) -->
+<div class="modal-overlay" id="modalHistorial" onclick="window.cerrarModalHistorial()">
+    <div class="modal-content modal-v2" style="max-width: 850px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="window.cerrarModalHistorial()">×</button>
+        <h3 class="modal-title mb-4"><i class="fa-solid fa-list-check" style="color: #0ea5e9;"></i> Registro de Actividad - Averías</h3>
+        
+        <div class="control-panel" style="margin-bottom: 15px;">
+            <div class="filtros-grupo">
+                <div class="filtro-item">
+                    <label style="color: var(--accent);"><i class="fa-solid fa-calendar-day"></i> Desde:</label>
+                    <input type="date" id="filtroHistorialDesde" class="form-control highlight-border-accent" onchange="window.renderizarHistorial()">
+                </div>
+                <div class="filtro-item">
+                    <label style="color: var(--accent);"><i class="fa-solid fa-calendar-day"></i> Hasta:</label>
+                    <input type="date" id="filtroHistorialHasta" class="form-control highlight-border-accent" onchange="window.renderizarHistorial()">
+                </div>
+                <div class="filtro-item">
+                    <label><i class="fa-solid fa-calendar-days"></i> Mes:</label>
+                    <select id="filtroHistorialMes" class="form-control" onchange="window.renderizarHistorial()">
+                        <option value="todos">Todos los Meses</option>
+                        <option value="01">Enero</option>
+                        <option value="02">Febrero</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Mayo</option>
+                        <option value="06">Junio</option>
+                        <option value="07">Julio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+                <div class="filtro-item">
+                    <label><i class="fa-solid fa-user-tie"></i> Gestor:</label>
+                    <select id="filtroGestorHistorial" class="form-control" onchange="window.renderizarHistorial()">
+                        <option value="todos">Todos los Gestores</option>
+                        <option value="MVENTOCILLA">Mili (MVENTOCILLA)</option>
+                        <option value="JRODRIGUEZ">Carlos (JRODRIGUEZ)</option>
+                        <option value="CPACOTAIPE">C. Pacotaipe</option>
+                        <option value="CRIVERA">Crivera</option>
+                        <option value="OALVINO">Oalvino</option>
+                        <option value="RPACOTAIPE">R. Pacotaipe</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+            <div style="flex: 1; background: rgba(0, 229, 255, 0.05); border: 1px dashed var(--accent); padding: 12px; border-radius: 8px; text-align: center; min-width: 120px;">
+                <b style="font-size: 1.5rem; color: var(--accent);" id="kpiHistLlamadas">0</b><br>
+                <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">TOTAL GESTIONES</span>
+            </div>
+            <div style="flex: 1; background: rgba(16, 185, 129, 0.05); border: 1px dashed var(--success); padding: 12px; border-radius: 8px; text-align: center; min-width: 120px;">
+                <b style="font-size: 1.5rem; color: var(--success);" id="kpiHistAtendidos">0</b><br>
+                <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">RESUELTAS OK</span>
+            </div>
+            <div style="flex: 1; background: rgba(239, 68, 68, 0.05); border: 1px dashed var(--danger); padding: 12px; border-radius: 8px; text-align: center; min-width: 120px;">
+                <b style="font-size: 1.5rem; color: var(--danger);" id="kpiHistFallidos">0</b><br>
+                <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">REINCIDENCIAS / QUEJAS</span>
+            </div>
+        </div>
+
+        <div class="table-wrapper" style="flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+            <table style="width: 100%;">
+                <thead style="position: sticky; top: 0; background: var(--bg-panel); z-index: 10;">
+                    <tr>
+                        <th style="width: 15%; padding: 12px;">Hora Exacta</th>
+                        <th style="width: 15%; padding: 12px;">Gestor</th>
+                        <th style="width: 35%; padding: 12px;">Cliente</th>
+                        <th style="width: 35%; padding: 12px;">Acción Realizada</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaHistorial"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="toast">Mensaje</div>
+
+<!-- FIREBASE Y LÓGICA MÓDULO -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import { getFirestore, collection, doc, updateDoc, onSnapshot, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+        authDomain: "ten-soporte.firebaseapp.com",
+        projectId: "ten-soporte",
+        storageBucket: "ten-soporte.firebasestorage.app",
+        messagingSenderId: "498950424371",
+        appId: "1:498950424371:web:fce299a98cf8e57f822046",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
+
+    // 🌍 ENRUTADOR DE EXCEL (Los trabajos se comparten, SOLO se separan los clientes)
+    const zonaSede = localStorage.getItem("ten_zona_activa") || "norte";
+    window.dbLocalSede = zonaSede === "lurin" ? "TEN_DB_CLIENTES_LURIN" : "TEN_DB_CLIENTES";
+
+    // OJO: Si estás en retención, pon "clientes_base" en vez de "clientes_V2"
+    const pathClientes = zonaSede === "lurin" ? "clientes_lurin" : "clientes_V2"; 
+
+    // Dejamos las bases de datos originales fijas para no perder el historial
+    const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4");
+    const coleccionCobranzas = collection(db, "artifacts", appId, "public", "data", "cobranzas_v1");
+    const coleccionClientes = collection(db, "artifacts", appId, "public", "data", pathClientes);
+    const coleccionUsuarios = collection(db, "artifacts", appId, "public", "data", "usuarios_sistema");
+
+    let dbSeguimientos = [];
+
+    // ==========================================
+    // SEGURIDAD Y AUTH
+    // ==========================================
+    window.cerrarSesion = () => {
+        localStorage.removeItem('ten_rol');
+        localStorage.removeItem('ten_email');
+        localStorage.removeItem('ten_nombre_tecnico');
+        signOut(auth).then(() => window.location.href = 'index.html');
+    };
+
+    onAuthStateChanged(auth, async (user) => { 
+    if (!user) { window.location.href = 'index.html'; return; }
+    const email = user.email.toLowerCase();
+    
+    const correosAdminGlobal = ["admin@ten.com", "rpacotaipe@ten.com", "eolortegui@ten.com", "jpalomino@ten.com", "dpacotaipe@ten.com"];
+    const correosAdminLurin = ["ecuta@ten.com", "strujillo@ten.com"];
+    const coordinadoresVentas = ["carlos@ten.com", "jrodriguez@ten.com", "mventocilla@ten.com", "cpacotaipe@ten.com"];
+    const areaCobranzas = ["crivera@ten.com", "oalvino@ten.com"];
+
+    let isAutorizado = false;
+    let nombrePantalla = email.split("@")[0].toUpperCase();
+    
+    // 🎯 Regla base: admin global o admin lurín ven todo
+    window.esAdminModulo = correosAdminGlobal.includes(email) || correosAdminLurin.includes(email);
+
+    if (correosAdminGlobal.includes(email) || correosAdminLurin.includes(email) || coordinadoresVentas.includes(email) || areaCobranzas.includes(email)) {
+        isAutorizado = true;
+    }
+
+    try {
+        const q = query(coleccionUsuarios, where("email", "==", email));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            let u = snap.docs[0].data();
+            nombrePantalla = u.nombre || nombrePantalla;
+            
+            if (u.bloqueado) {
+                isAutorizado = false;
+                window.esAdminModulo = false;
+            } else if (["admin", "admin_lurin", "ventas", "cobranzas"].includes(u.rol)) {
+                isAutorizado = true;
+                // 🎯 Si el rol es admin, es admin del módulo
+                if (u.rol === "admin" || u.rol === "admin_lurin") {
+                    window.esAdminModulo = true;
+                }
+            } else {
+                isAutorizado = false;
+            }
+        }
+    } catch(e) { console.error("Error validando rol:", e); }
+
+    if (!isAutorizado) { window.location.href = 'index.html'; return; }
+    
+    window.nombreUsuarioGlobal = nombrePantalla;
+
+    document.getElementById("dashboard-view").style.display = "block";
+    document.getElementById("lblUsuarioActivo").innerHTML = `<span style="font-size:10px; color:var(--text-muted); font-weight:900;">POST-VENTA (AVERÍAS)</span><br><span style="font-size:14px; color:var(--warning); font-weight:900;">${nombrePantalla}</span>`;
+
+    cargarDatosSeguimientoAverias();
+});
+
+    // ==========================================
+    // CARGAR DATOS EN VIVO (SOLO AVERIAS)
+    // ==========================================
+    function cargarDatosSeguimientoAverias() {
+        const q = query(coleccionTrabajos, where("tipoTarea", "==", "averia"), where("estado", "==", "atendido"));
+        onSnapshot(q, (snapshot) => {
+            dbSeguimientos = [];
+            let zonaActiva = localStorage.getItem("ten_zona_activa") || "norte";
+            let tecnicosUnicos = new Set(); // Recolector automático de técnicos
+            
+            snapshot.forEach((doc) => { 
+                let t = doc.data();
+                if ((t.zona || "Norte").toLowerCase() === zonaActiva.toLowerCase()) {
+                    dbSeguimientos.push({ id: doc.id, ...t }); 
+                    
+                    // Extraer los técnicos que repararon averías para llenar el filtro
+                    let asig = Array.isArray(t.tecnicos) ? t.tecnicos : [t.tecnicos || "Sin Asignar"];
+                    asig.forEach(tech => {
+                        if(tech !== "Sin Asignar" && tech !== "Todos") tecnicosUnicos.add(tech);
+                    });
+                }
+            });
+            
+            // Inyectamos los técnicos recolectados al filtro
+            let selTec = document.getElementById("filtroTecnico");
+            if (selTec) {
+                let valPrev = selTec.value;
+                let htmlTec = '<option value="todos">Todos los Técnicos</option>';
+                [...tecnicosUnicos].sort().forEach(tech => { htmlTec += `<option value="${tech}">${tech}</option>`; });
+                selTec.innerHTML = htmlTec;
+                if ([...tecnicosUnicos].includes(valPrev)) selTec.value = valPrev;
+            }
+
+            window.renderizarTabla();
+        });
+    }
+
+    // ==========================================
+    // RENDERIZAR TABLA CON FILTROS Y CONTADOR
+    // ==========================================
+    
+    // 🔥 FIX: Le damos a este archivo su propio convertidor de horas para evitar crasheos
+    window.formato12h = (hora24) => {
+        if (!hora24 || !hora24.includes(":")) return hora24 || "--:--";
+        let p = hora24.split(":");
+        let h = parseInt(p[0], 10);
+        let ampm = h >= 12 ? "PM" : "AM";
+        h = h % 12;
+        h = h ? h : 12; 
+        let hStr = h < 10 ? "0" + h : h;
+        return `${hStr}:${p[1]} ${ampm}`;
+    };
+
+    window.renderizarTabla = () => {
+        const tbody = document.getElementById("tablaSeguimiento");
+        const filtroEstado = document.getElementById("filtroEstado").value;
+        const filtroTecnico = document.getElementById("filtroTecnico")?.value || "todos";
+        const filtroGestor = document.getElementById("filtroGestor")?.value || "todos";
+        const filtroTipoAveria = document.getElementById("filtroTipoAveria")?.value || "todos";
+        const filtroDesde = document.getElementById("filtroFechaDesde")?.value || "";
+        const filtroHasta = document.getElementById("filtroFechaHasta")?.value || "";
+        const buscador = document.getElementById("buscador").value.toLowerCase();
+
+        // 🔥 NUEVOS CONTADORES DESGLOSADOS
+        let countPendientes = 0, countOk = 0, countReincidencias = 0, countQuejas = 0, countNoContesta = 0;
+        let cantidadFiltrados = 0;
+        
+        tbody.innerHTML = "";
+        
+        let tOrdenado = [...dbSeguimientos].sort((a, b) => {
+            let diferenciaFechas = (b.fecha || "").localeCompare(a.fecha || "");
+            if (diferenciaFechas !== 0) return diferenciaFechas;
+            let termA = a.seguimientoFinalizado ? 1 : 0;
+            let termB = b.seguimientoFinalizado ? 1 : 0;
+            return termA - termB;
+        });
+
+        // Aplicación de los filtros a cada fila
+        tOrdenado.forEach(t => {
+            // Filtro Rango de Fechas
+            if (filtroDesde && t.fecha < filtroDesde) return;
+            if (filtroHasta && t.fecha > filtroHasta) return;
+
+            // Filtro Técnico
+            if (filtroTecnico !== "todos") {
+                let asig = Array.isArray(t.tecnicos) ? t.tecnicos : [t.tecnicos || "Sin Asignar"];
+                if (!asig.includes(filtroTecnico)) return;
+            }
+
+            // Filtro Tipo de Avería
+            if (filtroTipoAveria !== "todos") {
+                let det = t.detalle || "";
+                if (det !== filtroTipoAveria && !det.includes(filtroTipoAveria)) return;
+            }
+
+            // Filtro de Texto (Buscador)
+            let textoBusqueda = `${t.cliente} ${t.dni} ${t.tel} ${t.detalle || ""} ${t.dir || ""}`.toLowerCase();
+            if (buscador && !textoBusqueda.includes(buscador)) return;
+
+            // Filtro del Gestor
+            if (filtroGestor !== "todos") {
+                let gestorActual = t.segUsuario ? t.segUsuario.toUpperCase() : "SIN GESTIONAR";
+                if (gestorActual !== filtroGestor) return;
+            }
+
+            // Filtro de Estado
+            let estCalidad = t.segCalidad || "Sin Contactar";
+            let finalizado = t.seguimientoFinalizado === true;
+
+            if (filtroEstado !== "todos") {
+                if (filtroEstado === "pendientes" && finalizado) return;
+                if (filtroEstado === "finalizados" && !finalizado) return;
+                if (filtroEstado === "problemas" && estCalidad !== "Reincidencia" && estCalidad !== "Queja") return;
+                
+                if (["Sin Contactar", "Volver a llamar", "No contesta", "Todo OK"].includes(filtroEstado)) {
+                    if (estCalidad !== filtroEstado) return;
+                }
+            }
+
+            // SUMAMOS A LOS NUEVOS KPIS (Calculo exacto sobre el filtro)
+            cantidadFiltrados++;
+            
+            if (estCalidad === "Todo OK") {
+                countOk++;
+            } else if (estCalidad === "Reincidencia") {
+                countReincidencias++;
+            } else if (estCalidad === "Queja") {
+                countQuejas++;
+            } else if (estCalidad === "No contesta") {
+                countNoContesta++;
+            } else {
+                // Caerán aquí "Sin Contactar" o "Volver a llamar"
+                countPendientes++; 
+            }
+
+            // ASIGNACIÓN DE COLORES PARA LA FILA
+            let badgeClass = "badge-seg-pendiente";
+            if (estCalidad === "Reincidencia" || estCalidad === "Queja") {
+                badgeClass = "badge-seg-problema";
+            } else if (estCalidad === "No contesta") {
+                badgeClass = "badge-seg-nocontesta";
+            } else if (finalizado || estCalidad === "Todo OK") {
+                badgeClass = "badge-seg-ok";
+            }
+
+            let diasDesde = t.fecha ? Math.floor((new Date() - new Date(t.fecha)) / 86400000) : 0;
+            let colorDias = diasDesde > 7 ? "var(--danger)" : diasDesde > 3 ? "var(--warning)" : "var(--success)";
+
+            let infoCli = `
+                <span style="font-weight: 800; color: var(--text-main); font-size: 13px; display: block;">${t.cliente}</span>
+                <span style="font-family: monospace; font-size: 11px; color: var(--text-muted); display: block;">DNI: ${t.dni || "-"}</span>
+                <span style="font-size: 11px; color: var(--accent); font-weight: bold; display: block;"><i class="fa-solid fa-phone"></i> ${t.tel || "-"}</span>
+            `;
+
+            let infoAlta = `
+                <span style="font-size: 11px; font-weight: bold; color: var(--danger); display: block;"><i class="fa-solid fa-triangle-exclamation"></i> ${t.detalle || "Problema Técnico"}</span>
+                <span style="font-size: 11px; color: var(--text-muted); display: block;"><i class="fa-regular fa-calendar-check"></i> Reparado: ${t.fecha || "-"}</span>
+                <span style="font-size: 11px; color: var(--text-muted); display: block;"><i class="fa-solid fa-helmet-safety"></i> Tec: ${Array.isArray(t.tecnicos) ? t.tecnicos.join(", ") : t.tecnicos}</span>
+                <span style="font-size: 11px; color: ${colorDias}; font-weight: bold; display: block; margin-top: 4px;"><i class="fa-regular fa-clock"></i> Hace ${diasDesde} días</span>
+            `;
+
+            let htmlLlamada = "";
+            if (estCalidad === "Volver a llamar" && t.segFechaLlamada) {
+                htmlLlamada = `<br><span style="font-size: 11px; color: #3b82f6; font-weight: bold; display: inline-block; margin-top: 5px;"><i class="fa-solid fa-phone-volume"></i> Agendado: ${t.segFechaLlamada} ${window.formato12h(t.segHoraLlamada)}</span>`;
+            }
+
+            let textoBadge = finalizado ? (estCalidad === 'No contesta' ? '<i class="fa-solid fa-phone-slash"></i> NO CONTESTA' : '<i class="fa-solid fa-lock"></i> ARCHIVADO') : estCalidad;
+
+            let infoSeg = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="${badgeClass}">${textoBadge}</span>
+                    ${t.segUsuario ? `<span style="font-size: 9px; font-weight: bold; background: rgba(245, 158, 11, 0.1); color: var(--warning); padding: 2px 6px; border-radius: 4px; border: 1px dashed var(--warning);"><i class="fa-solid fa-user-check"></i> Gestor: ${t.segUsuario}</span>` : ''}
+                </div>
+                ${htmlLlamada}
+                ${t.segNotas ? `<div style="font-size: 10px; color: var(--text-muted); margin-top: 5px; font-style: italic;">"${t.segNotas}"</div>` : '<div style="font-size: 10px; color: var(--text-muted); margin-top: 5px;">Sin notas registradas.</div>'}
+            `;
+
+            let btnAccion = finalizado 
+                ? `<button class="btn-action-ui" onclick="window.abrirModalGestion('${t.id}')" style="background: rgba(148, 163, 184, 0.1); color: var(--text-muted); border: 1px solid var(--border);"><i class="fa-solid fa-eye"></i> Ver / Editar</button>`
+                : `<button class="btn-action-ui" onclick="window.abrirModalGestion('${t.id}')" style="background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid var(--warning);"><i class="fa-solid fa-phone-volume"></i> Gestionar</button>`;
+
+            let tr = document.createElement("tr");
+            tr.innerHTML = `<td>${infoCli}</td><td>${infoAlta}</td><td>${infoSeg}</td><td style="text-align:center;">${btnAccion}</td>`;
+            tbody.appendChild(tr);
+        });
+
+        // ACTUALIZAMOS LOS NÚMEROS DE LAS 5 TARJETAS SUPERIORES AL FINAL
+        document.getElementById("kpiPendientes").innerText = countPendientes;
+        document.getElementById("kpiOk").innerText = countOk;
+        document.getElementById("kpiReincidencias").innerText = countReincidencias;
+        document.getElementById("kpiQuejas").innerText = countQuejas;
+        document.getElementById("kpiNoContesta").innerText = countNoContesta;
+
+        if (tbody.innerHTML === "") tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-8">No hay averías para hacer seguimiento con estos filtros.</td></tr>`;
+
+        // MOSTRAR EL RESULTADO DEL CONTADOR EN PANTALLA
+        let boxInd = document.getElementById("contenedorIndicador");
+        if (boxInd) {
+            document.getElementById("lblIndicadorBandeja").innerText = `🎯 ${cantidadFiltrados} averías encontradas`;
+            boxInd.style.display = "block";
+        }
+    };
+
+    // ==========================================
+    // LÓGICA DEL MODAL DE GESTIÓN
+    // ==========================================
+    window.toggleAgendarLlamada = () => {
+        let val = document.getElementById("segCalidad").value;
+        document.getElementById("boxAgendarLlamada").style.display = (val === "Volver a llamar") ? "block" : "none";
+    };
+
+    window.abrirModalGestion = (id) => {
+        let t = dbSeguimientos.find(x => x.id === id);
+        if (!t) return;
+
+        document.getElementById("segTrabajoId").value = id;
+        document.getElementById("lblCliNombre").innerText = t.cliente;
+        document.getElementById("lblCliDetalles").innerText = `Reparado: ${t.fecha} | Técnico: ${Array.isArray(t.tecnicos) ? t.tecnicos.join(", ") : t.tecnicos}`;
+
+        document.getElementById("segCalidad").value = t.segCalidad || "Sin Contactar";
+        document.getElementById("segFechaLlamada").value = t.segFechaLlamada || "";
+        document.getElementById("segHoraLlamada").value = t.segHoraLlamada || "";
+        document.getElementById("segNotas").value = t.segNotas || "";
+
+        window.toggleAgendarLlamada();
+
+        document.getElementById("encP1").value = t.encP1 || "";
+        document.getElementById("encP2").value = t.encP2 || "";
+        document.getElementById("encP3").value = t.encP3 || "";
+        document.getElementById("encP5").value = t.encP5 || "";
+
+        let lblOrigen = document.getElementById("lblEncuestaOrigen");
+        if (t.encuestaPorCliente) {
+            lblOrigen.innerHTML = "✅ <b style='color: var(--success);'>El cliente llenó esta encuesta vía web.</b>";
+        } else {
+            lblOrigen.innerHTML = "Llénala tú si estás en llamada, o envíale el link al cliente.";
+        }
+
+        // GENERADOR DE LINK DE WHATSAPP
+        let btnWsp = document.getElementById("btnEnviarWspEncuesta");
+        let telNum = t.tel ? t.tel.replace(/\D/g, '') : "";
+        if (telNum.length > 5) {
+            btnWsp.style.display = "inline-flex";
+            let rutaActual = window.location.pathname;
+            let rutaBase = rutaActual.substring(0, rutaActual.lastIndexOf('/'));
+            let zonaUrl = localStorage.getItem("ten_zona_activa") || "norte";
+            let linkEncuesta = `${window.location.origin}${rutaBase}/encuesta.html?id=${id}&z=${zonaUrl}`;
+            let nombreCli = t.cliente.split(" ")[0];
+            
+            let mensajeWsp = `¡Hola ${nombreCli}! 🌟 Hace poco nuestros técnicos repararon tu avería.\n\nAyúdanos a asegurar que tu servicio quedó perfecto calificando la visita en este breve enlace:\n\n🔗 ${linkEncuesta}\n\n¡Tu opinión es muy importante!`;
+            let urlWsp = `https://wa.me/51${telNum}?text=${encodeURIComponent(mensajeWsp)}`;
+            btnWsp.onclick = () => window.open(urlWsp, '_blank');
+        } else {
+            btnWsp.style.display = "none";
+        }
+
+        document.getElementById("modalGestion").style.display = "flex";
+    };
+
+    window.cerrarModal = () => {
+        document.getElementById("modalGestion").style.display = "none";
+    };
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === "Escape" && document.getElementById("modalGestion").style.display === "flex") {
+            window.cerrarModal();
+        }
+    });
+
+    // ==========================================
+    // GUARDADO INTELIGENTE E INYECCIÓN DE USUARIO
+    // ==========================================
+    window.guardarSeguimiento = async (finalizar) => {
+        let id = document.getElementById("segTrabajoId").value;
+        let calidad = document.getElementById("segCalidad").value;
+        let notas = document.getElementById("segNotas").value.trim();
+        let fechaLlamada = document.getElementById("segFechaLlamada").value;
+        let horaLlamada = document.getElementById("segHoraLlamada").value;
+
+        if (finalizar && (calidad === "Sin Contactar" || calidad === "Volver a llamar")) {
+            mostrarToast("⚠️ No puedes archivar el caso si está pendiente o requiere volver a llamar.");
+            return;
+        }
+
+        if (calidad === "Volver a llamar" && !fechaLlamada) {
+            mostrarToast("⚠️ Debes indicar la Fecha para programar la llamada.");
+            return;
+        }
+
+        let t = dbSeguimientos.find(x => x.id === id);
+        if (!t) { mostrarToast("❌ Trabajo no encontrado."); return; }
+
+        mostrarToast("⏳ Guardando...");
+
+        try {
+            let usuarioAccion = window.nombreUsuarioGlobal || "Gestor";
+            let msgFinal = finalizar ? "✅ Seguimiento Archivado Exitosamente." : "✅ Progreso Guardado.";
+            
+            // ==========================================
+            // 🔥 LA MAGIA DE LA REINCIDENCIA (Desaparecer para volver a aparecer)
+            // ==========================================
+            if (calidad === "Reincidencia" || calidad === "Queja") {
+                
+                // 1. Mandamos el ticket de auxilio al NOC (Solo una vez)
+                if (!t.tareaNocGenerada) {
+                    // Preparamos los datos base del nuevo ticket
+                    let nuevoTrabajoData = {
+                        tipoTarea: "averia",
+                        cliente: t.cliente || "Cliente",
+                        dni: t.dni || "",
+                        tel: t.tel || "",
+                        dir: t.dir || "",
+                        zona: t.zona || "Norte",
+                        fecha: new Date().toISOString().split("T")[0],
+                        estado: "pendiente",
+                        tecnicos: ["Sin Asignar"],
+                        detalle: calidad === "Reincidencia" ? "REINCIDENCIA (Servicio sigue fallando)" : "Queja por atención de avería",
+                        notas: `[URGENTE POST-VENTA] El cliente indica que el problema persiste. Nota del gestor: ${notas}`,
+                        // 🔥 FIX 2: Asignamos el nombre del usuario real como Vendedor/Gestor
+                        vendedor: usuarioAccion,
+                        creadoPor: usuarioAccion,
+                        fechaCreacionExacta: new Date().toLocaleDateString("es-PE") + " " + new Date().toLocaleTimeString("es-PE")
+                    };
+
+                    // 🔥 FIX 1: Lógica de Transacción para inyectar el Número de Ticket real
+                    let zonaTicket = localStorage.getItem("ten_zona_activa") || "norte";
+                    let nombreDocContador = zonaTicket === "lurin" ? "contadores_tickets_lurin" : "contadores_tickets";
+                    const counterRef = doc(db, "artifacts", appId, "public", "data", "sistema", nombreDocContador);
+                    const nuevoDocRef = doc(coleccionTrabajos); 
+
+                    const { runTransaction } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+                    
+                    await runTransaction(db, async (transaction) => {
+                        const counterDoc = await transaction.get(counterRef);
+                        let actual = 0;
+                        if (counterDoc.exists() && counterDoc.data()["AVE"]) {
+                            actual = counterDoc.data()["AVE"];
+                        }
+                        
+                        let nuevoNumero = actual + 1;
+                        let numeroStr = String(nuevoNumero).padStart(4, '0');
+                        let prefijoZona = zonaTicket === "lurin" ? "L-" : "";
+                        
+                        nuevoTrabajoData.ticket = `${prefijoZona}AVE-${numeroStr}`;
+                        nuevoTrabajoData.numeroTicket = nuevoNumero;
+                        
+                        transaction.set(counterRef, { ["AVE"]: nuevoNumero }, { merge: true });
+                        transaction.set(nuevoDocRef, nuevoTrabajoData);
+                    });
+                }
+
+                // 2. Modificamos el ticket original para DEVOLVERLO al NOC
+                const refDoc = doc(db, "artifacts", appId, "public", "data", "trabajos_v4", id);
+                await updateDoc(refDoc, {
+                    estado: "pendiente", // Lo regresamos a pendiente (sale de la bandeja de seguimiento y vuelve al radar técnico)
+                    tsFin: null,         // Le borramos la hora de fin para que el reloj reinicie
+                    tareaNocGenerada: true,
+                    
+                    // Borramos la revisión de calidad para que esté virgen la próxima vez que vuelva
+                    segCalidad: null,
+                    segNotas: null,
+                    seguimientoFinalizado: false,
+                    segUsuario: null
+                });
+                
+                msgFinal = "⚠️ Reincidencia detectada. Ticket devuelto a los técnicos. Desaparecerá de tu bandeja hasta que lo vuelvan a reparar.";
+
+            } else {
+                // ==========================================
+                // FLUJO NORMAL (Todo OK, Volver a Llamar, No Contesta)
+                // ==========================================
+                let updateData = {
+                    segCalidad: calidad,
+                    segNotas: notas,
+                    segFechaLlamada: fechaLlamada,
+                    segHoraLlamada: horaLlamada,
+                    seguimientoFinalizado: finalizar,
+                    encP1: document.getElementById("encP1").value,
+                    encP2: document.getElementById("encP2").value,
+                    encP3: document.getElementById("encP3").value,
+                    encP5: document.getElementById("encP5").value,
+                    segUsuario: usuarioAccion,
+                    tsUltimaGestion: Date.now(),
+                    fechaUltimaGestion: new Date().toISOString().split("T")[0],
+                    tareaNocGenerada: false
+                };
+
+                const refDoc = doc(db, "artifacts", appId, "public", "data", "trabajos_v4", id);
+                await updateDoc(refDoc, updateData);
+
+                if (calidad === "Volver a llamar") msgFinal = "📅 Llamada agendada correctamente.";
+            }
+
+            window.cerrarModal();
+            mostrarToast(msgFinal);
+
+        } catch(e) {
+            console.error(e);
+            mostrarToast("❌ Error al guardar.");
+        }
+    };
+// ==========================================
+// REGISTRO DE ACTIVIDAD (AUDITORÍA AVERÍAS)
+// ==========================================
+window.abrirModalHistorial = () => {
+    let hoy = new Date().toISOString().split("T")[0];
+    document.getElementById("filtroHistorialDesde").value = hoy;
+    document.getElementById("filtroHistorialHasta").value = hoy;
+    document.getElementById("filtroHistorialMes").value = "todos";
+    
+    // 1. OBTENER GESTORES DINÁMICAMENTE DE LA BASE DE DATOS
+    let gestoresUnicos = new Set();
+    dbSeguimientos.forEach(t => {
+        if (t.segUsuario) {
+            gestoresUnicos.add(t.segUsuario.toUpperCase());
+        }
+    });
+    
+    let selG = document.getElementById("filtroGestorHistorial");
+    let htmlGestores = '<option value="todos">Todos los Gestores</option>';
+    [...gestoresUnicos].sort().forEach(g => {
+        htmlGestores += `<option value="${g}">${g}</option>`;
+    });
+
+    // 2. REGLA DE PERMISOS ESTRICTA (Solución al Bug de Cobranzas)
+    // window.esAdminModulo solo es "true" para los Admins puros.
+    let esCoordinadorOAdmin = window.esAdminModulo || localStorage.getItem('ten_rol') === 'ventas';
+    
+    if (!esCoordinadorOAdmin) {
+        // Usuario Normal (Cobranzas, Asesores): Bloqueado en su propio nombre
+        let miNombre = window.nombreUsuarioGlobal ? window.nombreUsuarioGlobal.toUpperCase() : "GESTOR";
+        
+        // Vaciamos toda la lista y dejamos solo su nombre para que no pueda ni mirar a los demás
+        selG.innerHTML = `<option value="${miNombre}">${miNombre}</option>`;
+        
+        selG.value = miNombre;
+        selG.disabled = true;
+        selG.style.opacity = "0.6";
+        selG.style.cursor = "not-allowed";
+        selG.title = "Solo puedes ver tu propio historial de llamadas";
+    } else {
+        // Admin o Coordinador de Ventas: Tienen el poder absoluto
+        selG.innerHTML = htmlGestores;
+        selG.value = "todos";
+        selG.disabled = false;
+        selG.style.opacity = "1";
+        selG.style.cursor = "pointer";
+        selG.title = "";
+    }
+    
+    window.renderizarHistorial();
+    document.getElementById("modalHistorial").style.display = "flex";
+};
+
+window.cerrarModalHistorial = () => { document.getElementById("modalHistorial").style.display = "none"; };
+
+window.renderizarHistorial = () => {
+    let filtroDesde = document.getElementById("filtroHistorialDesde").value;
+    let filtroHasta = document.getElementById("filtroHistorialHasta").value;
+    let filtroMes = document.getElementById("filtroHistorialMes").value;
+    let gestorFiltro = document.getElementById("filtroGestorHistorial").value;
+    let tbody = document.getElementById("tablaHistorial");
+    
+    // REGLA ESTRICTA EN EL MOTOR DE BÚSQUEDA
+    let esCoordinadorOAdmin = window.esAdminModulo || localStorage.getItem('ten_rol') === 'ventas';
+
+    // Si alguien intenta hackear el filtro desde la consola web, lo forzamos de nuevo a su nombre
+    if (!esCoordinadorOAdmin) {
+        gestorFiltro = window.nombreUsuarioGlobal ? window.nombreUsuarioGlobal.toUpperCase() : "GESTOR";
+    }
+
+    let resueltas = 0, conProblemas = 0, totalGestiones = 0;
+
+    let historial = dbSeguimientos.filter(t => {
+        let fechaGestion = t.fechaUltimaGestion || t.fecha;
+        if (!fechaGestion) return false;
+        if (filtroDesde && fechaGestion < filtroDesde) return false;
+        if (filtroHasta && fechaGestion > filtroHasta) return false;
+        if (filtroMes !== "todos") {
+            let mesGestion = fechaGestion.split("-")[1];
+            if (mesGestion !== filtroMes) return false;
+        }
+        let gestorRegistro = (t.segUsuario || "").toUpperCase();
+        if (gestorFiltro !== "todos" && gestorRegistro !== gestorFiltro) return false;
+        if (!t.tsUltimaGestion) return false;
+        return true;
+    });
+
+    historial.sort((a,b) => (b.tsUltimaGestion || 0) - (a.tsUltimaGestion || 0));
+
+    tbody.innerHTML = "";
+    historial.forEach(t => {
+        totalGestiones++;
+        let calidad = t.segCalidad || "Sin Contactar";
+        let estadoAccion = "";
+        
+        if (calidad === "No contesta") {
+            resueltas++; 
+            estadoAccion = `<span style="background: rgba(100, 116, 139, 0.1); color: var(--text-muted); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;"><i class="fa-solid fa-phone-slash"></i> NO CONTESTA (ARCHIVADO)</span>`;
+        } else if (t.seguimientoFinalizado || calidad === "Todo OK") {
+            resueltas++;
+            estadoAccion = `<span style="background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;"><i class="fa-solid fa-check"></i> RESUELTA OK</span>`;
+        } else if (calidad === "Reincidencia" || calidad === "Queja") {
+            conProblemas++;
+            estadoAccion = `<span style="background: rgba(239, 68, 68, 0.1); color: var(--danger); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;"><i class="fa-solid fa-triangle-exclamation"></i> ${calidad.toUpperCase()}</span>`;
+        } else {
+            estadoAccion = `<span style="background: rgba(0, 229, 255, 0.1); color: var(--accent); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold;"><i class="fa-solid fa-phone"></i> ${calidad.toUpperCase()}</span>`;
+        }
+
+        let horaReal = t.tsUltimaGestion ? new Date(t.tsUltimaGestion).toLocaleTimeString("es-PE", {hour: '2-digit', minute:'2-digit'}) : "Sin hora";
+        let fechaReal = t.fechaUltimaGestion || t.fecha || "";
+
+        tbody.innerHTML += `
+            <tr style="border-bottom: 1px solid var(--border);">
+                <td style="font-weight: bold; color: var(--text-muted); font-size: 11px;">${fechaReal}<br><b style="color: var(--text-main); font-size: 13px;">${horaReal}</b></td>
+                <td style="font-weight: bold; color: var(--text-main);">${(t.segUsuario || "N/A").toUpperCase()}</td>
+                <td><b style="font-size: 12px; display: block; color: var(--text-main);">${t.cliente}</b><span style="font-size: 10px; color: var(--text-muted);"><i class="fa-solid fa-id-card"></i> ${t.dni}</span></td>
+                <td>${estadoAccion}<div style="font-size: 10px; color: var(--text-muted); margin-top: 4px; font-style: italic;">${t.segNotas ? '"' + t.segNotas + '"' : 'Sin notas'}</div></td>
+            </tr>
+        `;
+    });
+
+    if (historial.length === 0) tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-muted"><i class="fa-solid fa-mug-hot text-2xl mb-2 block"></i><br>No hay actividad registrada con estos filtros.</td></tr>`;
+
+    document.getElementById("kpiHistLlamadas").innerText = totalGestiones;
+    document.getElementById("kpiHistAtendidos").innerText = resueltas;
+    document.getElementById("kpiHistFallidos").innerText = conProblemas;
+};
+
+    function mostrarToast(msg) {
+        const t = document.getElementById("toast");
+        t.innerHTML = msg; t.className = "show";
+        setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+    }
+</script>
+</body>
+</html>

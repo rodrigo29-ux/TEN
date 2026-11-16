@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEN - Control de Asistencia y Horas</title>
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    
+    <script>
+        const savedTheme = localStorage.getItem("temaTen") || "dark";
+        document.documentElement.setAttribute("data-theme", savedTheme);
+    </script>
+
+    <style>
+        :root {
+            --info: #0ea5e9;
+        }
+        [data-theme="dark"] {
+            --info: #38bdf8;
+        }
+
+        .timeline-box { background: rgba(0,0,0,0.02); border: 1px solid var(--border); padding: 10px; border-radius: 8px; font-size: 11px; margin-bottom: 8px; position: relative; }
+        .hora-badge { font-weight: 900; padding: 3px 8px; border-radius: 6px; color: #fff; letter-spacing: 0.5px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .bg-in { background: #3b82f6; } 
+        .bg-out { background: #ef4444; } 
+        .bg-food { background: #f59e0b; color: #000; } 
+        .bg-purple { background: #8b5cf6; } 
+        
+        .foto-evidencia { width: 35px; height: 35px; object-fit: cover; border-radius: 6px; border: 2px solid var(--border); transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .foto-evidencia:hover { transform: scale(1.1); border-color: var(--accent); }
+        
+        .btn-trash { background: transparent; color: var(--danger); border: 1px solid transparent; border-radius: 4px; padding: 4px 8px; cursor: pointer; transition: 0.2s; opacity: 0.5; }
+        .btn-trash:hover { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); opacity: 1; }
+        
+        .hx-panel { background: rgba(139, 92, 246, 0.05); border: 1px dashed #8b5cf6; padding: 10px; border-radius: 8px; margin-top: 10px; }
+        .hx-aprobada { background: rgba(16, 185, 129, 0.1); border-left: 3px solid #10b981; padding: 6px 10px; border-radius: 4px; color: #10b981; font-weight: bold; font-size: 11px; margin-top: 8px; position: relative;}
+        .hx-rechazada { background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; padding: 6px 10px; border-radius: 4px; color: #ef4444; font-size: 11px; margin-top: 8px; position: relative;}
+
+        .badge-tardanza { background: var(--danger); color: white; font-size: 9px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 900; letter-spacing: 0.3px; }
+        .badge-duplicado { background: var(--warning); color: #000; font-size: 9px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; font-weight: 900; }
+        
+        .btn-reabrir { position: absolute; right: 8px; top: 8px; font-size: 10px; background: transparent; border: none; cursor: pointer; text-decoration: underline; font-weight: bold; opacity: 0.8; transition: 0.2s;}
+        .btn-reabrir:hover { opacity: 1; }
+        .btn-reabrir.success { color: var(--text-muted); }
+        .btn-reabrir.danger { color: var(--danger); }
+
+        .app-content { padding-top: 0 !important; }
+        .sticky-tabs-container {
+            position: sticky; top: 0; z-index: 40; background: var(--bg-app); 
+            padding: 20px 30px 15px 30px; margin: 0 -30px 20px -30px; 
+            border-bottom: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        }
+
+        .modal-tabs { display: flex; gap: 10px; margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+        .tab-btn { flex: 1; padding: 12px; background: transparent; border: 2px solid transparent; border-radius: 8px; color: var(--text-muted); font-weight: 900; cursor: pointer; transition: 0.3s; font-size: 0.95rem; }
+        .tab-btn:hover { background: rgba(0,0,0,0.02); }
+        .tab-btn.active-app { border-color: #f59e0b; color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
+        .tab-btn.active-bio { border-color: #8b5cf6; color: #8b5cf6; background: rgba(139, 92, 246, 0.05); }
+
+        .cruce-ok { color: var(--success); font-weight: bold; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+        .cruce-error { color: var(--danger); font-weight: bold; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+        .cruce-warning { color: var(--warning); font-weight: bold; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+
+        .pantalla-bloqueo-rrhh {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; text-align: center; padding: 30px;
+            background: var(--bg-app); color: var(--text-main);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            position: fixed; top: 0; left: 0; width: 100vw; z-index: 999999;
+        }
+        .pantalla-bloqueo-rrhh i { font-size: 6rem; color: var(--danger); margin-bottom: 25px; animation: pulse-shield 1.5s infinite; }
+        .pantalla-bloqueo-rrhh h1 { color: var(--danger); font-size: 2rem; font-weight: 900; margin-bottom: 15px; letter-spacing: 1px; }
+        .pantalla-bloqueo-rrhh p { color: var(--text-muted); margin-bottom: 8px; font-size: 1rem; }
+        @keyframes pulse-shield { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+    </style>
+</head>
+<body>
+
+<script>
+    (function() {
+        const rolAcceso = localStorage.getItem("ten_rol");
+        if (rolAcceso !== "admin") {
+            window.__ACCESO_RRHH_DENEGADO__ = true;
+            const montarBloqueo = () => {
+                const overlay = document.createElement('div');
+                overlay.className = 'pantalla-bloqueo-rrhh';
+                overlay.innerHTML = `
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <h1>ACCESO RESTRINGIDO</h1>
+                    <p>Este módulo es de uso exclusivo para el personal de <b>Administración RRHH</b>.</p>
+                    <p style="font-size: 0.85rem; opacity: 0.7;">Serás redirigido al NOC principal en unos segundos...</p>
+                `;
+                document.body.appendChild(overlay);
+            };
+            if (document.readyState === 'loading') document.addEventListener("DOMContentLoaded", montarBloqueo);
+            else montarBloqueo();
+            setTimeout(() => window.location.href = "index.html", 2500);
+        } else {
+            window.__ACCESO_RRHH_DENEGADO__ = false;
+        }
+    })();
+</script>
+
+<div class="app-layout">
+    <div class="sidebar-overlay" onclick="window.location.href='index.html'"></div>
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <img src="logo.png" alt="TEN Logo" class="sidebar-logo" onerror="this.style.display='none'">
+            <span class="sidebar-brand">TEN <b>RRHH</b></span>
+        </div>
+        
+        <div class="sidebar-user">
+            <div class="avatar" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                <i class="fa-solid fa-user-tie"></i>
+            </div>
+            <div class="user-details">
+                <span class="user-role" id="lblUsuarioActivo">Cargando...</span>
+                <span class="user-status"><i class="fa-solid fa-circle text-success"></i> Administración RRHH</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <p class="nav-section">RECURSOS HUMANOS</p>
+            <button type="button" class="nav-btn active" style="background: #f59e0b; color: white;">
+                <i class="fa-solid fa-user-clock"></i> Asistencias y Horas
+            </button>
+            <button type="button" class="nav-btn" onclick="window.exportarAsistenciasExcel()" style="color: #10b981;" id="btnExportarGeneral">
+                <i class="fa-solid fa-file-excel"></i> Exportar a Excel
+            </button>
+            <button type="button" class="nav-btn" onclick="window.abrirModalSubirBoleta()" style="color: #8b5cf6;">
+                <i class="fa-solid fa-file-invoice-dollar"></i> Subir Boleta (PDF)
+            </button>
+            <button type="button" class="nav-btn" onclick="window.abrirModalHistorialBoletas()" style="color: #ec4899;">
+                <i class="fa-solid fa-folder-tree"></i> Gestionar Archivos
+            </button>
+
+            <p class="nav-section">NAVEGACIÓN</p>
+            <button type="button" class="nav-btn" onclick="window.location.href='index.html'">
+                <i class="fa-solid fa-arrow-left"></i> Volver al NOC
+            </button>
+        </nav>
+    </aside>
+
+    <main class="app-main">
+        <header class="app-topbar">
+            <div class="topbar-left">
+                <h2 style="font-size: 1.2rem; font-weight: 900; color: var(--text-main); margin-left: 10px;">
+                    <i class="fa-solid fa-clipboard-user" style="color: #f59e0b;"></i> Control de Asistencia y Planilla
+                </h2>
+            </div>
+            <div class="topbar-right">
+                <button type="button" class="topbar-btn" onclick="window.toggleTema()" title="Cambiar Tema"><i class="fa-solid fa-moon"></i></button>
+            </div>
+        </header>
+
+        <div class="app-content">
+            
+            <div class="sticky-tabs-container">
+                <div class="modal-tabs">
+                    <button type="button" class="tab-btn active-app" id="btnTabApp" onclick="window.cambiarPestanaAsistencia('app')">
+                        <i class="fa-solid fa-mobile-screen"></i> 1. Asistencia en Campo (App)
+                    </button>
+                    <button type="button" class="tab-btn" id="btnTabBio" onclick="window.cambiarPestanaAsistencia('bio')">
+                        <i class="fa-solid fa-fingerprint"></i> 2. Auditoría Biométrico (Oficina)
+                    </button>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- PESTAÑA 1: ASISTENCIA EN CAMPO             -->
+            <!-- ========================================== -->
+            <div id="seccionApp" style="display: block;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--info);">
+                        <h3 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">HORAS TRABAJADAS (NETO)</h3>
+                        <div style="font-size: 1.8rem; font-weight: 900; color: var(--info);" id="kpiHorasNetas">0h 0m</div>
+                    </div>
+                    <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--danger);">
+                        <h3 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">HORAS EXTRAS APROBADAS</h3>
+                        <div style="font-size: 1.8rem; font-weight: 900; color: var(--danger);" id="kpiHorasExtras">0h 0m</div>
+                    </div>
+                    <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--warning);">
+                        <h3 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">TIEMPO EN ALMUERZOS</h3>
+                        <div style="font-size: 1.8rem; font-weight: 900; color: var(--warning);" id="kpiHorasAlmuerzo">0h 0m</div>
+                    </div>
+                    <div class="stat-card" style="padding: 15px; border-left: 4px solid var(--purple);">
+                        <h3 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">TARDANZAS / RETRASOS</h3>
+                        <div style="font-size: 1.8rem; font-weight: 900; color: var(--purple);" id="kpiTardanzas">0</div>
+                    </div>
+                    <div class="stat-card" style="padding: 15px; border-left: 4px solid #8b5cf6; background: rgba(139, 92, 246, 0.05);">
+                        <h3 style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px;">⏳ HX PENDIENTES APROBAR</h3>
+                        <div style="font-size: 1.8rem; font-weight: 900; color: #8b5cf6;" id="kpiHxPendientes">0</div>
+                    </div>
+                </div>
+
+                <div class="control-panel">
+                    <div class="filtros-grupo" style="display: flex; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="filtro-item">
+                            <label><i class="fa-solid fa-calendar-day"></i> FECHA DESDE:</label>
+                            <input type="date" id="filtroDesde" class="form-control highlight-border-accent" onchange="window.recargarDatosApp()">
+                        </div>
+                        <div class="filtro-item">
+                            <label><i class="fa-solid fa-calendar-day"></i> FECHA HASTA:</label>
+                            <input type="date" id="filtroHasta" class="form-control highlight-border-accent" onchange="window.recargarDatosApp()">
+                        </div>
+                        <div class="filtro-item flex-2">
+                            <label><i class="fa-solid fa-helmet-safety"></i> TÉCNICO / EMPLEADO:</label>
+                            <select id="filtroTecnico" class="form-control" onchange="window.procesarAsistencias()">
+                                <option value="todos">Todos los Técnicos</option>
+                            </select>
+                        </div>
+                        <div class="filtro-item" style="min-width: 180px;">
+                            <label><i class="fa-solid fa-filter"></i> ESTADO HX:</label>
+                            <select id="filtroHx" class="form-control" onchange="window.procesarAsistencias()">
+                                <option value="todos">Todas las Jornadas</option>
+                                <option value="con_hx">💜 Con Horas Extras</option>
+                                <option value="hx_pendiente">⏳ Solo HX Pendientes</option>
+                                <option value="hx_aprobada">✅ Solo HX Aprobadas</option>
+                                <option value="hx_rechazada">🚫 Solo HX Rechazadas</option>
+                                <option value="con_tardanza">⚠️ Con Tardanzas</option>
+                            </select>
+                        </div>
+                        <button id="btnAprobarTodas" onclick="window.abrirModalAprobarTodas()" style="background: var(--success); color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; display: none; margin-bottom: 2px; transition: 0.2s;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">
+                            <i class="fa-solid fa-check-double"></i> Aprobar Todas las HX
+                        </button>
+                        <button onclick="window.abrirModalLimpiarApp()" style="background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 2px; transition: 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='transparent'" title="Elimina todos los registros históricos de Asistencia">
+                            <i class="fa-solid fa-trash-can"></i> Limpiar BD App
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper" style="margin-top: 20px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">Fecha</th>
+                                <th style="width: 15%;">Técnico</th>
+                                <th style="width: 40%;">Línea de Tiempo del Día</th>
+                                <th style="width: 30%; text-align: center;">Cálculo de Jornada y Aprobaciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaAsistencia">
+                            <tr><td colspan="4" class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Cargando registros de RRHH...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- PESTAÑA 2: AUDITORÍA BIOMÉTRICO            -->
+            <!-- ========================================== -->
+            <div id="seccionBio" style="display: none;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h3 style="color: var(--purple); font-weight: 900; margin-bottom: 5px;"><i class="fa-solid fa-fingerprint"></i> Registros del Reloj Biométrico</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Sube el Excel del ZKTeco para cruzar la hora oficial de la oficina con la marcada en el celular.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <input type="file" id="fileBiometrico" accept=".xlsx, .xls, .csv" style="display: none;" onchange="window.procesarExcelBiometrico(event)">
+                        <button class="btn-guardar" style="background: var(--purple); color: white;" onclick="document.getElementById('fileBiometrico').click()"><i class="fa-solid fa-file-import"></i> Importar Excel</button>
+                        <button class="btn-outline" style="border: 1px solid var(--info); color: var(--info); background: transparent; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold;" onclick="window.abrirModalBioManual()"><i class="fa-solid fa-plus"></i> Manual</button>
+                        <button class="btn-guardar" style="background: var(--success); color: white;" onclick="window.exportarCruceBiometrico()"><i class="fa-solid fa-file-export"></i> Exportar Cruce</button>
+                        <button class="btn-outline" style="border: 1px solid var(--danger); color: var(--danger); background: transparent; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold;" onclick="window.abrirModalLimpiarBio()"><i class="fa-solid fa-trash-can"></i> Limpiar Todo</button>
+                    </div>
+                </div>
+
+                <div class="control-panel">
+                    <div class="filtros-grupo" style="display: flex; align-items: flex-end; flex-wrap: wrap;">
+                        <!-- 🔥 NUEVO: FILTROS DESDE/HASTA EN BIOMÉTRICO -->
+                        <div class="filtro-item">
+                            <label><i class="fa-solid fa-calendar-day"></i> FECHA DESDE:</label>
+                            <input type="date" id="filtroBioDesde" class="form-control highlight-border-purple" onchange="window.recargarDatosBio()">
+                        </div>
+                        <div class="filtro-item">
+                            <label><i class="fa-solid fa-calendar-day"></i> FECHA HASTA:</label>
+                            <input type="date" id="filtroBioHasta" class="form-control highlight-border-purple" onchange="window.recargarDatosBio()">
+                        </div>
+                        
+                        <div class="filtro-item flex-2">
+                            <label><i class="fa-solid fa-magnifying-glass"></i> BUSCAR TÉCNICO:</label>
+                            <input type="text" id="buscadorBio" class="form-control" placeholder="Escribe el nombre..." onkeyup="window.renderizarAuditoriaBio(true)">
+                        </div>
+                        <div class="filtro-item" style="min-width: 220px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; font-weight:bold; color: var(--warning);">
+                                <input type="checkbox" id="chkSoloDiscrepancias" onchange="window.renderizarAuditoriaBio(true)" style="width:18px; height:18px; accent-color: var(--warning); cursor:pointer;">
+                                ⚠️ Solo Discrepancias
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="resumenAuditoria" style="margin-top: 15px; padding: 12px; background: rgba(139, 92, 246, 0.05); border: 1px dashed var(--purple); border-radius: 8px; display: none;">
+                    <span id="txtResumenAuditoria" style="font-weight: 900; color: var(--purple); font-size: 1rem;"></span>
+                </div>
+
+                <div class="table-wrapper" style="margin-top: 20px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 10%; padding: 15px 10px;">Fecha</th>
+                                <th style="width: 20%; padding: 15px 10px;">Técnico / Empleado</th>
+                                <th style="width: 20%; text-align: center; padding: 15px 10px;"><i class="fa-regular fa-clock"></i> Marcación (Oficina)</th>
+                                <th style="width: 12%; text-align: center; padding: 15px 10px;"><i class="fa-solid fa-stopwatch"></i> Puntualidad</th>
+                                <th style="width: 28%; border-left: 2px dashed var(--purple); padding: 15px 10px; text-align: center;"><i class="fa-solid fa-mobile-screen"></i> Cruce App (Campo)</th>
+                                <th style="width: 10%; text-align: center; padding: 15px 10px;"><i class="fa-solid fa-bolt"></i> Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaBio">
+                            <tr><td colspan="6" class="text-center text-muted py-8"><i class="fa-solid fa-fingerprint text-3xl mb-2 opacity-50"></i><br>Sube un Excel o usa los filtros.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="display: flex; gap: 15px; margin-top: 20px; justify-content: flex-end;">
+                    <div style="background: rgba(239, 68, 68, 0.05); border: 1px dashed var(--danger); padding: 10px 20px; border-radius: 8px; text-align: right;">
+                        <span style="font-size: 0.8rem; color: var(--danger); font-weight: bold; display: block;">Total Descuentos (Mes):</span>
+                        <span style="font-size: 1.5rem; font-weight: 900; color: var(--danger);" id="lblTotalDescuentos">S/ 0.00</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ================= MODALES ================= -->
+
+<div class="modal-overlay" id="modalLimpiarRegistros">
+    <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalLimpiarRegistros').style.display='none'">×</button>
+        <h3 class="mb-4" style="color: var(--danger);"><i class="fa-solid fa-triangle-exclamation text-4xl block mb-2"></i> ¡Peligro! Limpieza Masiva</h3>
+        <p class="text-sm mb-4" style="color: var(--text-muted); line-height: 1.5;" id="txtLimpiarRegistros">¿Estás seguro de eliminar TODOS los registros?</p>
+        <input type="hidden" id="tipoLimpiezaOculto">
+        <div class="modal-buttons" style="justify-content: center; margin-top: 15px;">
+            <button type="button" class="btn-cancelar" onclick="document.getElementById('modalLimpiarRegistros').style.display='none'">Cancelar</button>
+            <button type="button" class="btn-guardar" style="background: var(--danger); color: white;" onclick="window.ejecutarLimpiezaMasiva()">Sí, Eliminar Todo</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalEliminarRegistro">
+    <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalEliminarRegistro').style.display='none'">×</button>
+        <h3 class="mb-4" style="color: var(--danger);"><i class="fa-solid fa-trash-can text-3xl block mb-2"></i> Eliminar Registro</h3>
+        <p class="text-sm mb-4" style="color: var(--text-muted);">¿Estás seguro de eliminar este registro?</p>
+        <input type="hidden" id="eliminarRegistroId">
+        <div class="modal-buttons" style="justify-content: center; margin-top: 15px;">
+            <button type="button" class="btn-cancelar" onclick="document.getElementById('modalEliminarRegistro').style.display='none'">Cancelar</button>
+            <button type="button" class="btn-guardar" style="background: var(--danger); color: white;" onclick="window.confirmarEliminacionRegistro()">Sí, Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalRechazoHx">
+    <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalRechazoHx').style.display='none'">×</button>
+        <h3 class="mb-4" style="color: var(--danger);"><i class="fa-solid fa-ban text-3xl block mb-2"></i> Rechazar Horas Extras</h3>
+        <p class="text-sm mb-4" style="color: var(--text-muted);">Escribe el motivo del rechazo para que quede en el historial del técnico.</p>
+        <input type="hidden" id="rechazoHxId">
+        <textarea id="txtMotivoHx" class="form-control highlight-border-danger" rows="3" placeholder="Ej: Las horas extras no fueron solicitadas..."></textarea>
+        <div class="modal-buttons" style="justify-content: center; margin-top: 15px;">
+            <button type="button" class="btn-cancelar" onclick="document.getElementById('modalRechazoHx').style.display='none'">Cancelar</button>
+            <button type="button" class="btn-guardar" style="background: var(--danger); color: white;" onclick="window.confirmarRechazoHx()">Confirmar Rechazo</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalAprobarTodas">
+    <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalAprobarTodas').style.display='none'">×</button>
+        <h3 class="mb-4" style="color: var(--success);"><i class="fa-solid fa-check-double text-3xl block mb-2"></i> Aprobar Todo</h3>
+        <p class="text-sm mb-4" style="color: var(--text-muted);" id="txtAprobarTodas">¿Estás seguro de APROBAR masivamente?</p>
+        <div class="modal-buttons" style="justify-content: center; margin-top: 15px;">
+            <button type="button" class="btn-cancelar" onclick="document.getElementById('modalAprobarTodas').style.display='none'">Cancelar</button>
+            <button type="button" class="btn-guardar" style="background: var(--success); color: white;" onclick="window.ejecutarAprobarTodasHx()">Sí, Aprobar Todas</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalReabrirHx">
+    <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalReabrirHx').style.display='none'">×</button>
+        <h3 class="mb-4" style="color: var(--warning);"><i class="fa-solid fa-arrow-rotate-left text-3xl block mb-2"></i> Reabrir Solicitud</h3>
+        <p class="text-sm mb-4" style="color: var(--text-muted);">¿Deseas reabrir esta solicitud y devolverla a estado PENDIENTE?</p>
+        <input type="hidden" id="reabrirHxId">
+        <div class="modal-buttons" style="justify-content: center; margin-top: 15px;">
+            <button type="button" class="btn-cancelar" onclick="document.getElementById('modalReabrirHx').style.display='none'">Cancelar</button>
+            <button type="button" class="btn-guardar" style="background: var(--warning); color: black;" onclick="window.ejecutarReabrirHx()">Sí, Reabrir</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalBioManual">
+    <div class="modal-content modal-v2" style="max-width: 500px;" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalBioManual').style.display='none'">×</button>
+        <h3 class="modal-title mb-4" style="color: var(--purple);"><i class="fa-solid fa-fingerprint"></i> Registro Biométrico Manual</h3>
+        
+        <input type="hidden" id="bioManualId">
+        
+        <div class="form-group">
+            <label>Apellidos y Nombres (Técnico):</label>
+            <input type="text" id="bioNombre" class="form-control" placeholder="Ej: Rondon Samane Renzo">
+        </div>
+        
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label>Fecha Exacta:</label>
+                <input type="date" id="bioFecha" class="form-control">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Tipo de Asistencia:</label>
+                <select id="bioTipo" class="form-control highlight-border-purple">
+                    <option value="A">Asistencia (A)</option>
+                    <option value="F">Falta (F)</option>
+                    <option value="V">Vacaciones (V)</option>
+                    <option value="D">Descanso (D)</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label>Ingreso (Oficina):</label>
+                <input type="time" step="1" id="bioIngreso" class="form-control">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Salida (Oficina):</label>
+                <input type="time" step="1" id="bioSalida" class="form-control">
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label style="color: var(--warning);">Tardanza (En Minutos):</label>
+                <input type="number" id="bioTardanza" class="form-control highlight-border-warning" placeholder="Ej: 15">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label style="color: var(--danger);">Descuento (S/):</label>
+                <input type="number" step="0.01" id="bioDescuento" class="form-control highlight-border-danger" placeholder="Ej: 2.50">
+            </div>
+        </div>
+
+        <div class="modal-buttons mt-4">
+            <button type="button" class="btn-cancelar" onclick="document.getElementById('modalBioManual').style.display='none'">Cancelar</button>
+            <button type="button" class="btn-guardar" style="background: var(--purple); color: white;" onclick="window.guardarBioManual()">Guardar Registro</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast">Mensaje</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFirestore, collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+// ============================================================
+// 🛡️ ESCUDO - Si el rol no es admin, NO ejecutamos NADA
+// ============================================================
+if (window.__ACCESO_RRHH_DENEGADO__) {
+    console.warn("🛡️ [RRHH] Módulo bloqueado por seguridad. No se inicializa Firestore ni listeners.");
+} else {
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+    authDomain: "ten-soporte.firebaseapp.com",
+    projectId: "ten-soporte",
+    storageBucket: "ten-soporte.firebasestorage.app"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== "undefined" ? __app_id : "ten-noc-app";
+
+const coleccionTrabajos = collection(db, "artifacts", appId, "public", "data", "trabajos_v4"); 
+
+const EVENTOS_RRHH = ["Hora de Almuerzo", "Inicio de Turno", "Fin de Turno", "Incidente Vehicular", "Retraso por Clima", "Permiso Personal"];
+
+let dbEventosGlobal = [];
+let dbBiometricoGlobal = [];
+window.datosTablaGlobal = [];       
+window.datosCompletosGlobal = [];   
+window.hxPendientesActuales = []; 
+window.paginaActualBio = 1; 
+
+// ============================================================
+// HELPERS DE PARSEO
+// ============================================================
+function parseHoraExcel(valor) {
+    if (valor === null || valor === undefined || valor === "") return "--";
+    if (valor instanceof Date) {
+        let h = String(valor.getHours()).padStart(2, '0'); let m = String(valor.getMinutes()).padStart(2, '0'); let s = String(valor.getSeconds()).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    }
+    if (typeof valor === "number") {
+        let totalSegundos = Math.round(valor * 24 * 60 * 60); let h = Math.floor(totalSegundos / 3600); let m = Math.floor((totalSegundos % 3600) / 60); let s = totalSegundos % 60;
+        return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+    return String(valor).trim();
+}
+
+function parseTardanzaExcel(valor) {
+    if (!valor) return 0;
+    let min = 0;
+    if (valor instanceof Date) min = valor.getHours() * 60 + valor.getMinutes();
+    else if (typeof valor === "number") { if (valor < 1) min = Math.round(valor * 24 * 60); else min = Math.round(valor); }
+    else if (typeof valor === "string" && valor.includes(":")) { let p = valor.split(":"); min = parseInt(p[0]||0) * 60 + parseInt(p[1]||0); }
+    else min = parseInt(valor) || 0;
+    if (min > 720) return 0; 
+    return min;
+}
+
+function parseFechaExcel(valor, rowLimpia) {
+    if (valor instanceof Date) {
+        let y = valor.getFullYear(); let m = String(valor.getMonth() + 1).padStart(2, '0'); let d = String(valor.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    if (typeof valor === "number") {
+        let fechaBase = new Date(1899, 11, 30); fechaBase.setDate(fechaBase.getDate() + valor);
+        let y = fechaBase.getFullYear(); let m = String(fechaBase.getMonth() + 1).padStart(2, '0'); let d = String(fechaBase.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    let str = String(valor || "").trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.substring(0, 10);
+    if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}/.test(str)) { let sep = str.includes("/") ? "/" : "-"; let partes = str.split(sep); return `${partes[2].substring(0,4)}-${partes[1]}-${partes[0]}`; }
+    if (rowLimpia) {
+        let mStr = String(rowLimpia["mes"] || rowLimpia["month"] || "").toLowerCase().trim();
+        let yStr = String(rowLimpia["ano"] || rowLimpia["año"] || rowLimpia["anio"] || "").trim();
+        const mapaMeses = {"enero":"01", "febrero":"02", "marzo":"03", "abril":"04", "mayo":"05", "junio":"06", "julio":"07", "agosto":"08", "septiembre":"09", "setiembre":"09", "octubre":"10", "noviembre":"11", "diciembre":"12"};
+        let mNum = mapaMeses[mStr];
+        let diaNum = "01"; let matchDia = str.match(/\d{1,2}/);
+        if (matchDia) diaNum = String(matchDia[0]).padStart(2, '0');
+        if (mNum && yStr) return `${yStr}-${mNum}-${diaNum}`;
+    }
+    return str;
+}
+
+const MAPA_NOMBRES_HUELLERO = {
+    "RODRIGO": "RPACOTAIPE", "MARCELINO": "MPACOTAIPE", "DIEGO": "DPACOTAIPE", "CAROLYN": "CPACOTAIPE",
+    "PALOMINO": "JPALOMINO", "JAVIER": "JPALOMINO", "WILTON": "WHERRERA", "HERRERA": "WHERRERA",
+    "RONDON": "RRONDON", "RENZO": "RRONDON", "ALARCON": "CALARCON", "CLEVER": "CALARCON",
+    "PATRICIO": "JPATRICIO", "CORDOVA": "JCORDOVA", "LEON": "RLEON", "RICARDO": "RLEON",
+    "LOLI": "JLOLI", "JOSUE": "JLOLI", "FERNANDEZ": "JFERNANDEZ", "JESUS": "JFERNANDEZ",
+    "BILLS": "BILLS", "CIELO": "CIELO", "CABRERA": "JCABRERA", "ARYAN": "ASANCHEZ", "SANCHEZ": "ASANCHEZ"
+};
+
+function buscarNombreEnApp(nombreHuellero) {
+    if (!nombreHuellero) return null;
+    let nombreUpper = nombreHuellero.toUpperCase().trim();
+    for (let key in MAPA_NOMBRES_HUELLERO) { if (nombreUpper.includes(key)) return MAPA_NOMBRES_HUELLERO[key]; }
+    return null;
+}
+
+window.mostrarToast = (msg) => {
+    let t = document.getElementById("toast"); 
+    if (!t) return;
+    t.innerHTML = msg; t.className = "show";
+    setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+};
+
+window.cambiarPestanaAsistencia = (pestana) => {
+    const btnApp = document.getElementById("btnTabApp"); const btnBio = document.getElementById("btnTabBio");
+    const secApp = document.getElementById("seccionApp"); const secBio = document.getElementById("seccionBio");
+
+    if (pestana === 'app') {
+        btnApp.classList.add("active-app"); btnBio.classList.remove("active-bio");
+        secApp.style.display = "block"; secBio.style.display = "none";
+        window.procesarAsistencias(); 
+    } else {
+        btnBio.classList.add("active-bio"); btnApp.classList.remove("active-app");
+        secBio.style.display = "block"; secApp.style.display = "none";
+        window.renderizarAuditoriaBio(true); 
+    }
+};
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        document.getElementById("lblUsuarioActivo").innerText = user.email.split("@")[0].toUpperCase();
+        
+        const hoy = new Date();
+        const hoyStr = hoy.toLocaleDateString('en-CA'); 
+        let primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toLocaleDateString('en-CA');
+        
+        document.getElementById("filtroDesde").value = primerDia; 
+        document.getElementById("filtroHasta").value = hoyStr;
+        
+        document.getElementById("filtroBioDesde").value = primerDia;
+        document.getElementById("filtroBioHasta").value = hoyStr;
+
+        iniciarEscuchasGlobales(); 
+    } else { 
+        window.location.href = "index.html"; 
+    }
+});
+
+// ============================================================
+// 🔥 MOTOR ANTI-LAG: CONSULTAS DINÁMICAS A FIREBASE
+// ============================================================
+let unsubscribeAsistencia = null;
+let unsubscribeBiometrico = null;
+
+window.recargarDatosApp = () => {
+    let fDesde = document.getElementById("filtroDesde").value;
+    let fHasta = document.getElementById("filtroHasta").value;
+    if (!fDesde || !fHasta) return;
+    
+    document.getElementById("tablaAsistencia").innerHTML = `<tr><td colspan="4" class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Descargando datos del servidor...</td></tr>`;
+
+    if (unsubscribeAsistencia) unsubscribeAsistencia();
+
+    const qApp = query(coleccionTrabajos, where("tipoTarea", "in", ["biometrico", "otros"]), where("fecha", ">=", fDesde), where("fecha", "<=", fHasta));
+
+    unsubscribeAsistencia = onSnapshot(qApp, (snapshot) => {
+        dbEventosGlobal = [];
+        let tecnicosSet = new Set();
+        let zonaActiva = localStorage.getItem("ten_zona_activa") || "norte"; // 👈 CAPTURAMOS ZONA
+        
+        snapshot.forEach((doc) => { 
+            let d = doc.data();
+            // 🔥 ESCUDO: Ignorar registros de otra sede
+            if ((d.zona || "norte").toLowerCase() !== zonaActiva.toLowerCase()) return;
+
+            if (EVENTOS_RRHH.includes(d.detalle)) {
+                dbEventosGlobal.push({ id: doc.id, ...d }); 
+                if (d.tecnicos && d.tecnicos.length > 0) tecnicosSet.add(d.tecnicos[0]);
+            }
+        });
+
+        let selTecnico = document.getElementById("filtroTecnico");
+        let valActual = selTecnico.value;
+        selTecnico.innerHTML = '<option value="todos">Todos los Técnicos</option>';
+        Array.from(tecnicosSet).sort().forEach(t => { selTecnico.innerHTML += `<option value="${t}">${t}</option>`; });
+        if(Array.from(tecnicosSet).includes(valActual)) selTecnico.value = valActual;
+
+        prepararCruceGlobal();
+        if(document.getElementById("seccionApp").style.display !== "none") window.procesarAsistencias();
+        if(document.getElementById("seccionBio").style.display === "block") window.renderizarAuditoriaBio(false);
+    }, (error) => {
+        console.error("Error App:", error);
+        window.mostrarToast("❌ Error de carga. Falta crear Índice en Firebase (Ver F12)");
+    });
+};
+
+window.recargarDatosBio = () => {
+    let fDesde = document.getElementById("filtroBioDesde") ? document.getElementById("filtroBioDesde").value : "";
+    let fHasta = document.getElementById("filtroBioHasta") ? document.getElementById("filtroBioHasta").value : "";
+    if (!fDesde || !fHasta) return;
+
+    document.getElementById("tablaBio").innerHTML = `<tr><td colspan="6" class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-3xl mb-2 opacity-50"></i><br>Sincronizando reloj biométrico...</td></tr>`;
+
+    if (unsubscribeBiometrico) unsubscribeBiometrico();
+
+    const qBio = query(coleccionTrabajos, where("tipoTarea", "==", "biometrico"), where("fecha", ">=", fDesde), where("fecha", "<=", fHasta));
+
+    unsubscribeBiometrico = onSnapshot(qBio, (snapshot) => {
+        dbBiometricoGlobal = [];
+        let zonaActiva = localStorage.getItem("ten_zona_activa") || "norte"; // 👈 CAPTURAMOS ZONA
+        
+        snapshot.forEach((doc) => {
+            let data = doc.data();
+            // 🔥 ESCUDO: Ignorar biométrico de otra sede
+            if ((data.zona || "norte").toLowerCase() !== zonaActiva.toLowerCase()) return;
+            
+            if (data.nombreTecnico) {
+                dbBiometricoGlobal.push({ id: doc.id, ...data });
+            }
+        });
+        if(document.getElementById("seccionBio").style.display === "block") window.renderizarAuditoriaBio(false);
+    }, (error) => {
+        console.error("Error Bio:", error);
+        window.mostrarToast("❌ Error de carga. Falta crear Índice en Firebase (Ver F12)");
+    });
+}; // <--- ¡Esta es la llave mágica que faltaba!
+
+function iniciarEscuchasGlobales() {
+    window.recargarDatosApp();
+    window.recargarDatosBio();
+}
+
+function prepararCruceGlobal() {
+    window.datosCompletosGlobal = []; 
+    let agrupadoCompleto = {};
+    
+    dbEventosGlobal.forEach(ev => {
+        let tec = ev.tecnicos ? ev.tecnicos[0] : "Desconocido"; let fecha = ev.fecha;
+        if (!agrupadoCompleto[fecha]) agrupadoCompleto[fecha] = {};
+        if (!agrupadoCompleto[fecha][tec]) agrupadoCompleto[fecha][tec] = { inicioTs: null, finTs: null };
+        
+        let tsReal = ev.tsFin || ev.tsInicio || ev.tsLlegada || Date.now();
+        if (ev.detalle === "Inicio de Turno" && !agrupadoCompleto[fecha][tec].inicioTs) agrupadoCompleto[fecha][tec].inicioTs = tsReal;
+        if (ev.detalle === "Fin de Turno" && !agrupadoCompleto[fecha][tec].finTs) agrupadoCompleto[fecha][tec].finTs = tsReal;
+    });
+
+    Object.keys(agrupadoCompleto).forEach(fecha => {
+        Object.keys(agrupadoCompleto[fecha]).forEach(tec => {
+            let d = agrupadoCompleto[fecha][tec];
+            window.datosCompletosGlobal.push({
+                fecha: fecha, tecnico: tec, entradaTs: d.inicioTs, salidaTs: d.finTs,
+                entrada: d.inicioTs ? new Date(d.inicioTs).toLocaleTimeString("es-PE", {hour:'2-digit', minute:'2-digit'}) : "-",
+                salida: d.finTs ? new Date(d.finTs).toLocaleTimeString("es-PE", {hour:'2-digit', minute:'2-digit'}) : "-"
+            });
+        });
+    });
+}
+
+window.abrirModalLimpiarApp = () => {
+    document.getElementById("tipoLimpiezaOculto").value = "app";
+    document.getElementById("txtLimpiarRegistros").innerHTML = "¿Estás totalmente seguro de <b>ELIMINAR TODOS</b> los registros de asistencia generados desde la App?<br><br><span style='color:var(--danger);'>¡Esta acción vaciará la base de datos histórica de asistencias y no se puede deshacer!</span>";
+    document.getElementById("modalLimpiarRegistros").style.display = "flex";
+};
+
+window.abrirModalLimpiarBio = () => {
+    document.getElementById("tipoLimpiezaOculto").value = "bio";
+    document.getElementById("txtLimpiarRegistros").innerHTML = "¿Estás totalmente seguro de <b>ELIMINAR TODOS</b> los registros del reloj biométrico?<br><br><span style='color:var(--danger);'>¡Esta acción vaciará la base de datos importada del huellero y no se puede deshacer!</span>";
+    document.getElementById("modalLimpiarRegistros").style.display = "flex";
+};
+
+window.ejecutarLimpiezaMasiva = async () => {
+    let tipo = document.getElementById("tipoLimpiezaOculto").value;
+    let btn = document.querySelector("#modalLimpiarRegistros .btn-guardar");
+    btn.disabled = true;
+    btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Eliminando...";
+
+    try {
+        let q;
+        if (tipo === "app") {
+            // 🔥 FIX: Buscar en ambas etiquetas para limpiar el historial de la App
+            q = query(coleccionTrabajos, where("tipoTarea", "in", ["biometrico", "otros"]));
+        } else {
+            q = query(coleccionTrabajos, where("tipoTarea", "==", "biometrico"));
+        }
+
+        const snapshot = await getDocs(q);
+        
+        let batch = writeBatch(db);
+        let count = 0;
+        let totalBorrados = 0;
+        let batches = [];
+
+        snapshot.forEach((docSnap) => {
+            let data = docSnap.data();
+            let borrar = false;
+
+            if (tipo === "app" && EVENTOS_RRHH.includes(data.detalle)) {
+                borrar = true;
+            } else if (tipo === "bio" && data.nombreTecnico) { 
+                // 🔥 FIX: Solo borramos si tiene nombreTecnico (es del reloj físico)
+                borrar = true;
+            }
+
+            if (borrar) {
+                batch.delete(docSnap.ref);
+                count++;
+                totalBorrados++;
+                if (count === 400) {
+                    batches.push(batch.commit());
+                    batch = writeBatch(db);
+                    count = 0;
+                }
+            }
+        });
+
+        if (count > 0) batches.push(batch.commit());
+
+        if (totalBorrados === 0) {
+            window.mostrarToast("⚠️ No hay registros para eliminar en esta categoría.");
+        } else {
+            await Promise.all(batches);
+            window.mostrarToast(`✅ Limpieza exitosa. Se eliminaron ${totalBorrados} registros.`);
+        }
+
+    } catch (error) {
+        console.error(error);
+        window.mostrarToast("❌ Error al limpiar la base de datos.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Sí, Eliminar Todo";
+        document.getElementById("modalLimpiarRegistros").style.display = "none";
+    }
+};
+
+window.procesarAsistencias = () => {
+    let fDesde = document.getElementById("filtroDesde").value;
+    let fHasta = document.getElementById("filtroHasta").value;
+    let fTecnico = document.getElementById("filtroTecnico").value;
+    let fHx = document.getElementById("filtroHx").value;
+    let tbody = document.getElementById("tablaAsistencia");
+
+    let agrupado = {};
+    window.hxPendientesActuales = []; 
+    window.datosTablaGlobal = []; 
+    
+    dbEventosGlobal.forEach(ev => {
+        let tec = ev.tecnicos ? ev.tecnicos[0] : "Desconocido"; let fecha = ev.fecha;
+        
+        if (fDesde && fecha < fDesde) return;
+        if (fHasta && fecha > fHasta) return;
+        if (fTecnico !== "todos" && tec !== fTecnico) return;
+
+        if (!agrupado[fecha]) agrupado[fecha] = {};
+        if (!agrupado[fecha][tec]) agrupado[fecha][tec] = { eventos: [], inicioTs: null, finTs: null, almuerzoIniTs: null, almuerzoFinTs: null, incidencias: 0, tardanzaMins: 0, idFinTurno: null, hxEstado: null, hxMotivo: null, cantidadInicios: 0, cantidadFines: 0 };
+        let diaTecnico = agrupado[fecha][tec];
+        let tsReal = ev.tsFin || ev.tsInicio || ev.tsLlegada || Date.now();
+        let horaDisplay = new Date(tsReal).toLocaleTimeString("en-US", {hour: '2-digit', minute:'2-digit', hour12: true});
+        let fotoEvi = (ev.evidencias && ev.evidencias.length > 0) ? ev.evidencias[0] : (ev.fotoLlegada || "");
+
+        if (ev.detalle === "Hora de Almuerzo") {
+            if (ev.tsInicio) {
+                let hDispIni = new Date(ev.tsInicio).toLocaleTimeString("en-US", {hour: '2-digit', minute:'2-digit', hour12: true});
+                if (diaTecnico.almuerzoIniTs && !diaTecnico.almuerzoFinTs) diaTecnico.eventos.push({ id: ev.id, ts: ev.tsInicio, hora: hDispIni, evento: "Hora de Almuerzo", accion: "Salida (DUPLICADO)", color: "bg-food", badgeDuplicado: true });
+                else { diaTecnico.almuerzoIniTs = ev.tsInicio; diaTecnico.eventos.push({ id: ev.id, ts: ev.tsInicio, hora: hDispIni, evento: "Hora de Almuerzo", accion: "Salida", color: "bg-food" }); }
+            }
+            if (ev.tsFin) { diaTecnico.almuerzoFinTs = ev.tsFin; diaTecnico.eventos.push({ id: ev.id, ts: ev.tsFin, hora: horaDisplay, evento: "Hora de Almuerzo", accion: "Retorno", color: "bg-food", foto: fotoEvi, notas: ev.notaCierre }); }
+        } else if (ev.detalle === "Inicio de Turno" || ev.detalle === "Fin de Turno") {
+            let colorSt = ev.detalle === "Inicio de Turno" ? "bg-in" : "bg-out";
+            let badgeTardanzaHtml = "";
+            if (ev.detalle === "Inicio de Turno") {
+                diaTecnico.cantidadInicios++;
+                if (!diaTecnico.inicioTs) {
+                    diaTecnico.inicioTs = tsReal; let dIni = new Date(tsReal); let limite8 = new Date(dIni); limite8.setHours(8, 0, 0, 0); 
+                    if (dIni > limite8) { diaTecnico.tardanzaMins = Math.floor((dIni - limite8) / 60000); badgeTardanzaHtml = `<span class="badge-tardanza">⚠️ +${diaTecnico.tardanzaMins} min tarde</span>`; }
+                }
+            }
+            if (ev.detalle === "Fin de Turno") {
+                diaTecnico.cantidadFines++;
+                if (!diaTecnico.finTs) { diaTecnico.finTs = tsReal; diaTecnico.idFinTurno = ev.id; diaTecnico.hxEstado = ev.horasExtrasEstado || 'pendiente'; diaTecnico.hxMotivo = ev.horasExtrasMotivo || ''; }
+            }
+            diaTecnico.eventos.push({ id: ev.id, ts: tsReal, hora: horaDisplay, evento: ev.detalle, color: colorSt, foto: fotoEvi, notas: ev.notaCierre, badgeTardanza: badgeTardanzaHtml });
+        } else {
+            diaTecnico.incidencias++; diaTecnico.eventos.push({ id: ev.id, ts: tsReal, hora: horaDisplay, evento: ev.detalle, color: "bg-purple", foto: fotoEvi, notas: ev.notaCierre });
+        }
+    });
+
+    let htmlFinal = "";
+    let totNetas = 0, totExtras = 0, totAlmuerzo = 0, totTardanzas = 0, totHxPendientes = 0;
+    let fechasOrdenadas = Object.keys(agrupado).sort((a,b) => b.localeCompare(a)); 
+
+    fechasOrdenadas.forEach(fecha => {
+        let tecnicos = Object.keys(agrupado[fecha]).sort();
+        tecnicos.forEach(tec => {
+            let data = agrupado[fecha][tec];
+            let timelineHtml = ""; data.eventos.sort((a,b) => a.ts - b.ts);
+            
+            data.eventos.forEach(e => {
+                let imgHtml = e.foto ? `<a href="${e.foto}" target="_blank" title="Clic para ampliar"><img src="${e.foto}" class="foto-evidencia" loading="lazy"></a>` : "";
+                let badgeDupHtml = e.badgeDuplicado ? `<span class="badge-duplicado">⚠️ DUPLICADO</span>` : "";
+                let badgeTardHtml = e.badgeTardanza || "";
+                timelineHtml += `
+                    <div class="timeline-box">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>
+                                <button onclick="window.eliminarEvento('${e.id}', 'app')" class="btn-trash" title="Eliminar"><i class="fa-solid fa-trash"></i></button>
+                                <span class="hora-badge ${e.color}">${e.hora}</span> <b style="color:var(--text-main);">${e.evento}</b> <span style="color:var(--text-muted);">${e.accion ? `(${e.accion})` : ""}</span>
+                                ${badgeTardHtml}${badgeDupHtml}
+                            </span>
+                            ${imgHtml}
+                        </div>
+                        ${e.notas ? `<span style="color:var(--text-muted); font-style:italic; display:block; margin-top:5px; padding-left: 35px;">"${e.notas}"</span>` : ""}
+                    </div>`;
+            });
+
+            let minsBrutos = 0, minsAlmuerzo = 0, minsNetos = 0, hxMins = 0;
+            let calcHtml = "";
+            let datosValidos = false;
+
+            if (data.inicioTs && data.finTs) {
+                datosValidos = true;
+                minsBrutos = Math.floor((data.finTs - data.inicioTs) / 60000);
+                if (!data.almuerzoIniTs && data.almuerzoFinTs) { calcHtml += `<div style="color:var(--danger); font-size:10px; margin-bottom:5px;">⚠️ Marcó retorno de almuerzo pero no salida.</div>`; minsAlmuerzo = 0; }
+                else if (data.almuerzoIniTs && data.almuerzoFinTs) minsAlmuerzo = Math.floor((data.almuerzoFinTs - data.almuerzoIniTs) / 60000);
+                else if (data.almuerzoIniTs && !data.almuerzoFinTs) { calcHtml += `<div style="color:var(--danger); font-size:10px; margin-bottom:5px;">⚠️ Olvidó marcar retorno de almuerzo. -1h por defecto.</div>`; minsAlmuerzo = 60; }
+
+                minsNetos = minsBrutos - minsAlmuerzo;
+                let dFin = new Date(data.finTs); let limite17 = new Date(dFin); limite17.setHours(17, 0, 0, 0); 
+                if (dFin > limite17) hxMins = Math.floor((dFin - limite17) / 60000);
+
+                calcHtml += `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:12px; color:var(--text-main);"><span>Jornada Bruta:</span> <b>${formatoHoras(minsBrutos)}</b></div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:12px; color:var(--warning);"><span>Almuerzo:</span> <b>- ${formatoHoras(minsAlmuerzo)}</b></div>
+                    <hr style="border-color:var(--border); margin:5px 0;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size:13px; color:var(--info);"><span><b>TOTAL NETO:</b></span> <b>${formatoHoras(minsNetos)}</b></div>
+                `;
+
+                if (hxMins > 0) {
+                    if (data.hxEstado === 'aprobada') { calcHtml += `<div class="hx-aprobada"><i class="fa-solid fa-check-circle"></i> +${formatoHoras(hxMins)} HX Aprobadas <button onclick="window.abrirModalReabrirHx('${data.idFinTurno}')" class="btn-reabrir success">↩ Reabrir</button></div>`; }
+                    else if (data.hxEstado === 'rechazada') { calcHtml += `<div class="hx-rechazada"><b><i class="fa-solid fa-ban"></i> HX Rechazadas</b> <button onclick="window.abrirModalReabrirHx('${data.idFinTurno}')" class="btn-reabrir danger">↩ Reabrir</button><br>Motivo: ${data.hxMotivo}</div>`; }
+                    else {
+                        calcHtml += `
+                            <div class="hx-panel">
+                                <b style="color:#8b5cf6; font-size:11px; display:block; margin-bottom:5px;">Solicitud HX: +${formatoHoras(hxMins)}</b>
+                                <div style="display:flex; gap:5px;">
+                                    <button onclick="window.aprobarHx('${data.idFinTurno}', this)" style="flex:1; background:#10b981; color:white; border:none; border-radius:4px; padding:6px; cursor:pointer; font-weight:bold; font-size:10px;"><i class="fa-solid fa-check"></i> Aprobar</button>
+                                    <button onclick="window.abrirModalRechazoHx('${data.idFinTurno}')" style="flex:1; background:transparent; color:#ef4444; border:1px solid #ef4444; border-radius:4px; padding:6px; cursor:pointer; font-weight:bold; font-size:10px;"><i class="fa-solid fa-xmark"></i> Rechazar</button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+            } else {
+                calcHtml = `<div style="text-align:center; color:var(--danger); font-size:11px; font-weight:bold; padding: 10px;"><i class="fa-solid fa-triangle-exclamation"></i> Faltan marcas.</div>`;
+            }
+
+            if (fHx !== "todos") {
+                if (fHx === "con_hx" && hxMins <= 0) return;
+                if (fHx === "hx_pendiente" && !(hxMins > 0 && data.hxEstado === 'pendiente')) return;
+                if (fHx === "hx_aprobada" && !(hxMins > 0 && data.hxEstado === 'aprobada')) return;
+                if (fHx === "hx_rechazada" && !(hxMins > 0 && data.hxEstado === 'rechazada')) return;
+                if (fHx === "con_tardanza" && data.tardanzaMins <= 0) return;
+            }
+
+            if (datosValidos) {
+                totNetas += minsNetos;
+                totAlmuerzo += minsAlmuerzo;
+                if (data.tardanzaMins > 0) totTardanzas++;
+
+                if (hxMins > 0) {
+                    if (data.hxEstado === 'aprobada') {
+                        totExtras += hxMins;
+                    } else if (data.hxEstado === 'pendiente' || !data.hxEstado) {
+                        totHxPendientes++;
+                        window.hxPendientesActuales.push(data.idFinTurno);
+                    }
+                }
+            }
+
+            window.datosTablaGlobal.push({
+                fecha, tecnico: tec,
+                entrada: data.inicioTs ? new Date(data.inicioTs).toLocaleTimeString("es-PE", {hour:'2-digit', minute:'2-digit'}) : "-",
+                salida: data.finTs ? new Date(data.finTs).toLocaleTimeString("es-PE", {hour:'2-digit', minute:'2-digit'}) : "-",
+                entradaTs: data.inicioTs, jornadaBruta: formatoHoras(minsBrutos), almuerzo: formatoHoras(minsAlmuerzo),
+                totalNeto: formatoHoras(minsNetos), tardanzaMin: data.tardanzaMins,
+                horasExtras: formatoHoras(hxMins), estadoHx: data.hxEstado || "-", motivoHx: data.hxMotivo || "-"
+            });
+
+            let fechaDate = new Date(fecha + "T00:00:00");
+            let fechaStr = fechaDate.toLocaleDateString('es-PE', {weekday: 'short', day: '2-digit', month: 'short'});
+
+            htmlFinal += `
+                <tr>
+                    <td style="font-weight:bold; color:var(--accent); text-transform: capitalize;"><i class="fa-regular fa-calendar"></i> ${fechaStr}</td>
+                    <td><b style="color:var(--text-main); font-size:13px;">${tec}</b></td>
+                    <td>${timelineHtml}</td>
+                    <td style="background: rgba(0,0,0,0.02); border-radius: 8px; padding: 10px;">${calcHtml}</td>
+                </tr>
+            `;
+        });
+    });
+
+    if (htmlFinal === "") {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-muted"><i class="fa-solid fa-mug-hot text-2xl mb-2 block"></i><br>No hay registros de asistencia con estos filtros.</td></tr>`;
+    } else {
+        tbody.innerHTML = htmlFinal;
+    }
+
+    document.getElementById("kpiHorasNetas").innerText = formatoHoras(totNetas);
+    document.getElementById("kpiHorasExtras").innerText = formatoHoras(totExtras);
+    document.getElementById("kpiHorasAlmuerzo").innerText = formatoHoras(totAlmuerzo);
+    document.getElementById("kpiTardanzas").innerText = totTardanzas;
+    document.getElementById("kpiHxPendientes").innerText = totHxPendientes;
+    
+    const btnAprobarTodas = document.getElementById("btnAprobarTodas");
+    if (btnAprobarTodas) btnAprobarTodas.style.display = window.hxPendientesActuales.length > 0 ? "inline-block" : "none";
+};
+
+window.renderizarAuditoriaBio = (resetPage = true) => {
+    if (resetPage) window.paginaActualBio = 1;
+
+    let fDesde = document.getElementById("filtroBioDesde").value;
+    let fHasta = document.getElementById("filtroBioHasta").value;
+    let txtBuscar = document.getElementById("buscadorBio").value.toLowerCase();
+    let soloDiscrepancias = document.getElementById("chkSoloDiscrepancias")?.checked || false;
+    let tbody = document.getElementById("tablaBio");
+
+    let bioFiltrado = dbBiometricoGlobal.filter(b => {
+        if (!b.fecha) return false;
+        if (fDesde && b.fecha < fDesde) return false;
+        if (fHasta && b.fecha > fHasta) return false;
+        if (txtBuscar && !(b.nombreTecnico || "").toLowerCase().includes(txtBuscar)) return false;
+        return true;
+    });
+
+    bioFiltrado.sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+    let totalDescuentosMes = 0;
+    let contValidados = 0, contDiscrepancias = 0, contSinMarcacion = 0, contJustificados = 0;
+    let listaFinal = [];
+    
+    bioFiltrado.forEach(b => {
+        let fechaDate = new Date(b.fecha + "T00:00:00");
+        let fechaStr = fechaDate.toLocaleDateString('es-PE', {weekday: 'short', day: '2-digit', month: 'short'});
+
+        let badgeTipo = "";
+        if (b.tipoAsistencia === "A") badgeTipo = `<span style="background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid var(--success); padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; letter-spacing: 0.5px; display: inline-block; margin-top: 4px;">ASISTENCIA</span>`;
+        else if (b.tipoAsistencia === "F") badgeTipo = `<span style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; letter-spacing: 0.5px; display: inline-block; margin-top: 4px;">FALTA</span>`;
+        else if (b.tipoAsistencia === "V") badgeTipo = `<span style="background: rgba(14, 165, 233, 0.1); color: var(--info); border: 1px solid var(--info); padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; letter-spacing: 0.5px; display: inline-block; margin-top: 4px;">VACACIONES</span>`;
+        else if (b.tipoAsistencia === "D") badgeTipo = `<span style="background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid var(--warning); padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; letter-spacing: 0.5px; display: inline-block; margin-top: 4px;">DESCANSO</span>`;
+
+        let bgFila = b.tardanzaMin > 0 ? 'background: rgba(245, 158, 11, 0.02);' : '';
+        if (b.tipoAsistencia === "F") bgFila = 'background: rgba(239, 68, 68, 0.04);';
+
+        let detalleOficina = `
+            <div style="display: flex; justify-content: center; gap: 8px;">
+                <div style="background: var(--bg-app); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; text-align: center; flex: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <span style="font-size: 9px; color: var(--text-muted); font-weight: 900; display: block; letter-spacing: 0.5px;">INGRESO</span>
+                    <b style="font-size: 13px; color: var(--text-main);">${b.horaIngreso || "--:--"}</b>
+                </div>
+                <div style="background: var(--bg-app); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; text-align: center; flex: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <span style="font-size: 9px; color: var(--text-muted); font-weight: 900; display: block; letter-spacing: 0.5px;">SALIDA</span>
+                    <b style="font-size: 13px; color: var(--text-main);">${b.horaSalida || "--:--"}</b>
+                </div>
+            </div>
+        `;
+
+        let detalleTardanza = "";
+        if (b.tipoAsistencia === "F") {
+            detalleTardanza = `<div style="text-align: center;"><span style="background: var(--danger); color: white; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 900;"><i class="fa-solid fa-xmark"></i> INASISTENCIA</span><br><span style="font-size: 10px; color: var(--danger); font-weight: bold; margin-top: 4px; display: block;">S/ ${(b.descuento || 0).toFixed(2)}</span></div>`;
+        } else if (b.tardanzaMin > 0) {
+            detalleTardanza = `
+                <div style="text-align: center;">
+                    <span style="background: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid var(--warning); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 900; display: inline-block; margin-bottom: 4px;"><i class="fa-solid fa-clock"></i> +${b.tardanzaMin} min</span><br>
+                    <span style="font-size: 11px; color: var(--danger); font-weight: 900;">- S/ ${(b.descuento || 0).toFixed(2)}</span>
+                </div>
+            `;
+        } else if (b.tipoAsistencia === "A") {
+            detalleTardanza = `<div style="text-align: center;"><span style="color: var(--success); font-size: 12px; font-weight: 900;"><i class="fa-solid fa-check-double"></i> PUNTUAL</span><br><span style="font-size: 10px; color: var(--text-muted); font-weight: bold; margin-top: 4px; display: block;">S/ 0.00</span></div>`;
+        } else {
+            detalleTardanza = `<div style="text-align: center;"><span style="color: var(--text-muted); font-size: 11px; font-weight: bold;">Justificado</span></div>`;
+        }
+
+        let cruceHtml = `<div style="color: var(--text-muted); font-size: 11px; text-align:center; padding-top:10px;">Sin datos en App</div>`;
+        let estadoCruce = "justificado";
+        
+        if (b.tipoAsistencia === "A") {
+            let nombreApp = buscarNombreEnApp(b.nombreTecnico);
+            let matchApp = (window.datosCompletosGlobal || []).find(app => {
+                if (app.fecha !== b.fecha) return false;
+                if (nombreApp && app.tecnico === nombreApp) return true;
+                let aN = app.tecnico.toUpperCase(); let bN = (b.nombreTecnico || "").toUpperCase();
+                return aN.includes(bN.split(" ")[0]) || bN.includes(aN);
+            });
+
+            if (matchApp) {
+                let diffMins = 0; let textoAlerta = "";
+                
+                if (b.horaIngreso && b.horaIngreso !== "--" && matchApp.entradaTs) {
+                    let dBio = new Date(b.fecha + "T" + b.horaIngreso); let dApp = new Date(matchApp.entradaTs);
+                    
+                    if (!isNaN(dBio.getTime()) && !isNaN(dApp.getTime())) {
+                        diffMins = Math.round((dApp - dBio) / 60000);
+                        if (Math.abs(diffMins) > 15) { textoAlerta = `<div class="cruce-warning"><i class="fa-solid fa-triangle-exclamation"></i> App difiere en ${Math.abs(diffMins)} min</div>`; estadoCruce = "discrepancia"; } 
+                        else { textoAlerta = `<div class="cruce-ok"><i class="fa-solid fa-check"></i> Cruce Validado</div>`; estadoCruce = "validado"; }
+                    } else { textoAlerta = `<div class="cruce-error"><i class="fa-solid fa-xmark"></i> Hora ilegible</div>`; estadoCruce = "discrepancia"; }
+                } else { textoAlerta = `<div class="cruce-error"><i class="fa-solid fa-xmark"></i> App sin marcas claras</div>`; estadoCruce = "discrepancia"; }
+
+                cruceHtml = `
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(0,0,0,0.02); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 11px; color: var(--text-muted);"><i class="fa-solid fa-arrow-right-to-bracket" style="color: var(--success);"></i> In: <b style="color: var(--text-main); font-size: 12px;">${matchApp.entrada}</b></span>
+                            <span style="font-size: 11px; color: var(--text-muted);"><i class="fa-solid fa-arrow-right-from-bracket" style="color: var(--danger);"></i> Out: <b style="color: var(--text-main); font-size: 12px;">${matchApp.salida || "--:--"}</b></span>
+                        </div>
+                        <div>${textoAlerta}</div>
+                    </div>
+                `;
+            } else { 
+                cruceHtml = `<div style="display: flex; align-items: center; justify-content: center; background: rgba(239, 68, 68, 0.05); padding: 12px; border-radius: 8px; border: 1px dashed var(--danger);"><span style="color: var(--danger); font-weight: bold; font-size: 11px;"><i class="fa-solid fa-ghost"></i> No registró en App</span></div>`; 
+                estadoCruce = "sin_marcacion"; 
+            }
+        } else { estadoCruce = "justificado"; }
+
+        if (estadoCruce === "validado") contValidados++; else if (estadoCruce === "discrepancia") contDiscrepancias++; else if (estadoCruce === "sin_marcacion") contSinMarcacion++; else contJustificados++;
+        if (soloDiscrepancias && (estadoCruce === "validado" || estadoCruce === "justificado")) return;
+
+        totalDescuentosMes += (b.descuento || 0);
+
+        listaFinal.push(`
+            <tr style="border-bottom: 1px dashed var(--border); ${bgFila}">
+                <td style="font-weight:bold; color:var(--text-main); text-transform: capitalize; padding: 15px 10px;"><i class="fa-regular fa-calendar" style="color: var(--purple);"></i> ${fechaStr}</td>
+                <td style="padding: 15px 10px;"><b style="color:var(--text-main); font-size:13px; display:block; margin-bottom: 4px;">${b.nombreTecnico}</b>${badgeTipo}</td>
+                <td style="padding: 15px 10px;">${detalleOficina}</td>
+                <td style="padding: 15px 10px;">${detalleTardanza}</td>
+                <td style="border-left: 2px dashed var(--purple); padding: 15px 10px;">${cruceHtml}</td>
+                <td style="text-align: center; padding: 15px 10px;">
+                    <div style="display: flex; gap: 5px; justify-content: center;">
+                        <button onclick="window.editarBioManual('${b.id}')" style="background: rgba(0, 229, 255, 0.1); color: var(--accent); border: 1px solid var(--accent); cursor: pointer; padding: 6px 10px; border-radius: 6px; transition: 0.2s;" onmouseover="this.style.background='var(--accent)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(0, 229, 255, 0.1)'; this.style.color='var(--accent)';"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="window.eliminarEvento('${b.id}', 'bio')" style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); cursor: pointer; padding: 6px 10px; border-radius: 6px; transition: 0.2s;" onmouseover="this.style.background='var(--danger)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.color='var(--danger)';"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `);
+    });
+
+    let limite = 50;
+    let htmlPaginado = listaFinal.slice(0, window.paginaActualBio * limite);
+    if (listaFinal.length > window.paginaActualBio * limite) htmlPaginado.push(`<tr><td colspan="6" style="text-align: center; padding: 25px;"><button class="btn-guardar" style="background: var(--purple); color: white;" onclick="window.cargarMasBio()"><i class="fa-solid fa-angles-down"></i> Cargar más registros...</button></td></tr>`);
+
+    if (listaFinal.length === 0) tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-muted"><i class="fa-solid fa-fingerprint text-3xl mb-2 opacity-50"></i><br>No hay registros biométricos${soloDiscrepancias ? ' con discrepancias' : ''}.</td></tr>`;
+    else tbody.innerHTML = htmlPaginado.join("");
+
+    document.getElementById("lblTotalDescuentos").innerText = `S/ ${totalDescuentosMes.toFixed(2)}`;
+    
+    let boxResumen = document.getElementById("resumenAuditoria"); let txtResumen = document.getElementById("txtResumenAuditoria");
+    if (boxResumen && txtResumen) {
+        boxResumen.style.display = "block";
+        txtResumen.innerHTML = `📊 Resumen: <b>${bioFiltrado.length}</b> registros · <span style="color: var(--success);">✅ ${contValidados} validados</span> · <span style="color: var(--warning);">⚠️ ${contDiscrepancias} con discrepancia</span> · <span style="color: var(--danger);">👻 ${contSinMarcacion} sin marcación en App</span> · <span style="color: var(--text-muted);">📋 ${contJustificados} justificados</span>`;
+    }
+};
+
+window.procesarExcelBiometrico = async (event) => {
+    let file = event.target.files[0];
+    if (!file) return;
+    window.mostrarToast("⏳ Analizando Excel... (Puede tardar unos segundos)");
+    
+    let reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            let data = new Uint8Array(e.target.result);
+            let workbook = XLSX.read(data, {type: 'array', cellDates: false});
+            let filas = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+            
+            let batches = []; let batch = writeBatch(db); let count = 0; let agregados = 0;
+
+            for (let row of filas) {
+                let rLimpia = {};
+                for(let key in row) {
+                    let kStr = String(key).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "").trim();
+                    rLimpia[kStr] = row[key];
+                }
+
+                let nombre = rLimpia["apellidosynombres"] || rLimpia["nombre"] || rLimpia["nombres"] || rLimpia["trabajador"];
+                if (!nombre) continue;
+
+                let fechaFormateada = parseFechaExcel(rLimpia["fecha"] || row["Fecha"], rLimpia);
+                if (!fechaFormateada) continue;
+
+                let tipoAsistencia = String(rLimpia["tipodeasistencia"] || rLimpia["tipo"] || "A").trim().toUpperCase();
+                let hIngreso = parseHoraExcel(rLimpia["ingresohi"] || rLimpia["ingreso"] || rLimpia["entrada"]);
+                let hSalida = parseHoraExcel(rLimpia["salidahs"] || rLimpia["salida"] || rLimpia["hsalida"]);
+                let tardanzaMinutos = parseTardanzaExcel(rLimpia["tardanzat"] || rLimpia["tardanza"] || row["Tardanza (T)"]);
+                
+                let descuentoRaw = rLimpia["descuentototal"] || rLimpia["descuento"] || 0;
+                let descuento = parseFloat(descuentoRaw);
+                if (isNaN(descuento)) descuento = 0;
+
+                let zonaActiva = localStorage.getItem("ten_zona_activa") || "norte"; // 👈 CAPTURAMOS ZONA
+                let docRef = doc(coleccionTrabajos); 
+                batch.set(docRef, {
+                    tipoTarea: "biometrico", nombreTecnico: String(nombre).trim(),
+                    fecha: fechaFormateada, tipoAsistencia: tipoAsistencia,
+                    horaIngreso: hIngreso, horaSalida: hSalida,
+                    tardanzaMin: tardanzaMinutos, descuento: descuento,
+                    zona: zonaActiva // 👈 SE GUARDA LA ZONA
+                });
+
+                count++; agregados++;
+                if (count === 400) { batches.push(batch.commit()); batch = writeBatch(db); count = 0; }
+            }
+            
+            if (count > 0) batches.push(batch.commit());
+            if (agregados === 0) { window.mostrarToast("⚠️ El Excel no tiene datos válidos."); return; }
+
+            window.mostrarToast(`⏳ Subiendo ${agregados} registros a la Nube...`);
+            await Promise.all(batches);
+            window.mostrarToast(`✅ ¡Éxito! Se cruzaron ${agregados} registros biométricos.`);
+            
+        } catch(error) { console.error(error); window.mostrarToast("❌ Error al procesar el Excel."); } 
+        finally { event.target.value = ''; }
+    };
+    reader.readAsArrayBuffer(file);
+};
+
+window.cargarMasBio = () => { window.paginaActualBio++; window.renderizarAuditoriaBio(false); };
+
+window.abrirModalBioManual = () => { document.getElementById("bioManualId").value = ""; document.getElementById("bioNombre").value = ""; document.getElementById("bioFecha").value = new Date().toISOString().split("T")[0]; document.getElementById("bioTipo").value = "A"; document.getElementById("bioIngreso").value = ""; document.getElementById("bioSalida").value = ""; document.getElementById("bioTardanza").value = "0"; document.getElementById("bioDescuento").value = "0.00"; document.getElementById("modalBioManual").style.display = "flex"; };
+window.editarBioManual = (id) => { let b = dbBiometricoGlobal.find(x => x.id === id); if (!b) return; document.getElementById("bioManualId").value = b.id; document.getElementById("bioNombre").value = b.nombreTecnico; document.getElementById("bioFecha").value = b.fecha; document.getElementById("bioTipo").value = b.tipoAsistencia || "A"; document.getElementById("bioIngreso").value = b.horaIngreso || ""; document.getElementById("bioSalida").value = b.horaSalida || ""; document.getElementById("bioTardanza").value = b.tardanzaMin || 0; document.getElementById("bioDescuento").value = (b.descuento || 0).toFixed(2); document.getElementById("modalBioManual").style.display = "flex"; };
+window.guardarBioManual = async () => {
+    let id = document.getElementById("bioManualId").value; let nombre = document.getElementById("bioNombre").value.trim(); let fecha = document.getElementById("bioFecha").value; let tipo = document.getElementById("bioTipo").value; let hIn = document.getElementById("bioIngreso").value; let hOut = document.getElementById("bioSalida").value; let tardanza = parseInt(document.getElementById("bioTardanza").value || 0); let desc = parseFloat(document.getElementById("bioDescuento").value || 0);
+    if (!nombre || !fecha) { window.mostrarToast("⚠️ Nombre y Fecha obligatorios."); return; }
+    let dataToSave = { tipoTarea: "biometrico", nombreTecnico: nombre, fecha: fecha, tipoAsistencia: tipo, horaIngreso: hIn, horaSalida: hOut, tardanzaMin: tardanza, descuento: desc };
+    try { if (id) { await updateDoc(doc(coleccionTrabajos, id), dataToSave); window.mostrarToast("✅ Registro actualizado."); } else { await addDoc(coleccionTrabajos, dataToSave); window.mostrarToast("✅ Registro creado."); } document.getElementById("modalBioManual").style.display = "none"; } catch(e) { window.mostrarToast("❌ Error al guardar."); }
+};
+
+window.aprobarHx = async (idFinTurno, btnElement = null) => { 
+    let btn = btnElement || (window.event ? window.event.target.closest('button') : null);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+    try { 
+        await updateDoc(doc(coleccionTrabajos, idFinTurno), { horasExtrasEstado: 'aprobada' }); 
+        window.mostrarToast("✅ Horas Extras Aprobadas y sumadas a su planilla."); 
+    } catch(e) { 
+        window.mostrarToast("❌ Error de conexión."); 
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-check"></i> Aprobar'; }
+    } 
+};
+
+window.abrirModalAprobarTodas = () => { if (!window.hxPendientesActuales || window.hxPendientesActuales.length === 0) { window.mostrarToast("⚠️ No hay HX pendientes en pantalla."); return; } document.getElementById("txtAprobarTodas").innerText = `¿Estás seguro de APROBAR masivamente las ${window.hxPendientesActuales.length} solicitudes mostradas?`; document.getElementById("modalAprobarTodas").style.display = "flex"; };
+window.ejecutarAprobarTodasHx = async () => { 
+    let btn = document.querySelector("#modalAprobarTodas .btn-guardar");
+    btn.disabled = true;
+    btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Aprobando...";
+    try { 
+        let promesas = window.hxPendientesActuales.map(id => updateDoc(doc(coleccionTrabajos, id), { horasExtrasEstado: 'aprobada' })); 
+        await Promise.all(promesas); 
+        window.mostrarToast(`✅ ${window.hxPendientesActuales.length} Horas Extras Aprobadas exitosamente.`); 
+    } catch(e) { 
+        window.mostrarToast("❌ Error al aprobar masivamente."); 
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Sí, Aprobar Todas";
+        document.getElementById("modalAprobarTodas").style.display = "none"; 
+    }
+};
+
+window.abrirModalRechazoHx = (idFinTurno) => { 
+    if (!idFinTurno || idFinTurno === "undefined" || idFinTurno === "null") {
+        window.mostrarToast("⚠️ No se pudo identificar la solicitud. Actualiza la página.");
+        return;
+    }
+    document.getElementById("rechazoHxId").value = idFinTurno; 
+    document.getElementById("txtMotivoHx").value = ""; 
+    document.getElementById("modalRechazoHx").style.display = "flex"; 
+    document.getElementById("txtMotivoHx").focus(); 
+};
+window.confirmarRechazoHx = async () => { 
+    let id = document.getElementById("rechazoHxId").value; 
+    let motivo = document.getElementById("txtMotivoHx").value.trim(); 
+    if (!motivo) { window.mostrarToast("⚠️ El motivo es obligatorio para rechazar."); return; } 
+    let btn = document.querySelector("#modalRechazoHx .btn-guardar"); 
+    btn.disabled = true;
+    btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Rechazando...";
+    try { 
+        await updateDoc(doc(coleccionTrabajos, id), { horasExtrasEstado: 'rechazada', horasExtrasMotivo: motivo }); 
+        document.getElementById("modalRechazoHx").style.display = "none"; 
+        window.mostrarToast("🚫 Horas Extras Rechazadas."); 
+    } catch(e) { 
+        window.mostrarToast("❌ Error de conexión."); 
+    } finally { 
+        btn.disabled = false; 
+        btn.innerText = "Confirmar Rechazo";
+    } 
+};
+window.abrirModalReabrirHx = (idFinTurno) => { 
+    if (!idFinTurno || idFinTurno === "undefined" || idFinTurno === "null") {
+        window.mostrarToast("⚠️ No se pudo identificar la solicitud. Actualiza la página.");
+        return;
+    }
+    document.getElementById("reabrirHxId").value = idFinTurno; 
+    document.getElementById("modalReabrirHx").style.display = "flex"; 
+};
+window.ejecutarReabrirHx = async () => { 
+    let idFinTurno = document.getElementById("reabrirHxId").value; 
+    let btn = document.querySelector("#modalReabrirHx .btn-guardar");
+    btn.disabled = true;
+    btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i>";
+    try { 
+        await updateDoc(doc(coleccionTrabajos, idFinTurno), { horasExtrasEstado: 'pendiente', horasExtrasMotivo: null }); 
+        window.mostrarToast("🔄 Solicitud reabierta a estado Pendiente."); 
+    } catch(e) { 
+        window.mostrarToast("❌ Error de conexión."); 
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Sí, Reabrir";
+        document.getElementById("modalReabrirHx").style.display = "none"; 
+    }
+};
+
+window.eliminarEvento = (id, origen) => { document.getElementById("eliminarRegistroId").value = id; document.getElementById("modalEliminarRegistro").style.display = "flex"; };
+window.confirmarEliminacionRegistro = async () => { 
+    let id = document.getElementById("eliminarRegistroId").value; 
+    let btn = document.querySelector("#modalEliminarRegistro .btn-guardar"); 
+    btn.disabled = true; 
+    btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Eliminando..."; 
+    try { 
+        await deleteDoc(doc(coleccionTrabajos, id)); 
+        window.mostrarToast("🗑️ Eliminado correctamente."); 
+        document.getElementById("modalEliminarRegistro").style.display = "none"; 
+        document.getElementById("eliminarRegistroId").value = "";
+    } catch(e) { 
+        window.mostrarToast("❌ Error al eliminar."); 
+    } finally { 
+        btn.disabled = false; 
+        btn.innerText = "Sí, Eliminar"; 
+    } 
+};
+
+window.exportarAsistenciasExcel = () => { 
+    if (!window.datosTablaGlobal || window.datosTablaGlobal.length === 0) { window.mostrarToast("⚠️ No hay datos para exportar."); return; } 
+    let dataExport = window.datosTablaGlobal.map(d => ({ "FECHA": d.fecha, "TÉCNICO": d.tecnico, "HORA ENTRADA": d.entrada, "HORA SALIDA": d.salida, "JORNADA BRUTA": d.jornadaBruta, "ALMUERZO": d.almuerzo, "TOTAL NETO": d.totalNeto, "TARDANZA (min)": d.tardanzaMin, "HORAS EXTRAS": d.horasExtras, "ESTADO HX": (d.estadoHx || "").toUpperCase(), "MOTIVO RECHAZO": d.motivoHx })); 
+    const ws = XLSX.utils.json_to_sheet(dataExport); 
+    const wb = XLSX.utils.book_new(); 
+    XLSX.utils.book_append_sheet(wb, ws, "Asistencias_App"); 
+    let hoy = new Date().toLocaleDateString('es-PE').replace(/\//g, '-'); 
+    XLSX.writeFile(wb, `Asistencias_TEN_${hoy}.xlsx`); 
+    window.mostrarToast("✅ Excel descargado correctamente."); 
+};
+
+window.exportarCruceBiometrico = () => {
+    let fDesde = document.getElementById("filtroBioDesde").value; 
+    let fHasta = document.getElementById("filtroBioHasta").value; 
+    let txtBuscar = document.getElementById("buscadorBio").value.toLowerCase();
+    
+    let bioFiltrado = dbBiometricoGlobal.filter(b => { 
+        if (!b.fecha) return false; 
+        if (fDesde && b.fecha < fDesde) return false;
+        if (fHasta && b.fecha > fHasta) return false;
+        if (txtBuscar && !(b.nombreTecnico || "").toLowerCase().includes(txtBuscar)) return false; 
+        return true; 
+    });
+    
+    if (bioFiltrado.length === 0) { window.mostrarToast("⚠️ No hay datos para exportar."); return; }
+    
+    let dataExport = bioFiltrado.map(b => {
+        let nombreApp = buscarNombreEnApp(b.nombreTecnico);
+        let matchApp = (window.datosCompletosGlobal || []).find(app => { 
+            if (app.fecha !== b.fecha) return false; 
+            if (nombreApp && app.tecnico === nombreApp) return true; 
+            let aN = app.tecnico.toUpperCase(); 
+            let bN = (b.nombreTecnico || "").toUpperCase(); 
+            return aN.includes(bN.split(" ")[0]) || bN.includes(aN); 
+        });
+        
+        let ingresoApp = matchApp ? matchApp.entrada : "NO MARCÓ"; 
+        let salidaApp = matchApp ? (matchApp.salida || "--") : "NO MARCÓ"; 
+        let diferencia = "—"; 
+        let estadoCruce = "⚠️ Sin marcación en App";
+        
+        if (b.tipoAsistencia !== "A") { 
+            estadoCruce = "📋 Justificado"; 
+        } else if (matchApp && b.horaIngreso && b.horaIngreso !== "--" && matchApp.entradaTs) {
+            let dBio = new Date(b.fecha + "T" + b.horaIngreso); 
+            let dApp = new Date(matchApp.entradaTs);
+            if (!isNaN(dBio.getTime()) && !isNaN(dApp.getTime())) { 
+                let diff = Math.round((dApp - dBio) / 60000); 
+                diferencia = `${diff > 0 ? '+' : ''}${diff} min`; 
+                estadoCruce = Math.abs(diff) <= 15 ? "✅ Validado" : "⚠️ Discrepancia"; 
+            }
+        }
+        
+        return { 
+            "FECHA": b.fecha, "NOMBRE HUELLERO": b.nombreTecnico, "NOMBRE APP (MAPEADO)": nombreApp || "No mapeado", 
+            "TIPO": b.tipoAsistencia, "INGRESO HUELLERO": b.horaIngreso || "--", "SALIDA HUELLERO": b.horaSalida || "--", 
+            "TARDANZA (min)": b.tardanzaMin || 0, "DESCUENTO S/": b.descuento || 0, 
+            "INGRESO APP": ingresoApp, "SALIDA APP": salidaApp, "DIFERENCIA": diferencia, "ESTADO CRUCE": estadoCruce 
+        };
+    });
+    
+    const ws = XLSX.utils.json_to_sheet(dataExport); 
+    const wb = XLSX.utils.book_new(); 
+    XLSX.utils.book_append_sheet(wb, ws, "Auditoria_Cruce");
+    let hoy = new Date().toLocaleDateString('es-PE').replace(/\//g, '-'); 
+    XLSX.writeFile(wb, `Auditoria_Huellero_App_${hoy}.xlsx`); 
+    window.mostrarToast("✅ Cruce exportado correctamente.");
+};
+
+window.cerrarModalGeneral = (id) => { let m = document.getElementById(id); if(m) m.style.display = "none"; };
+document.addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) e.target.style.display = 'none'; });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }});
+function formatoHoras(minutos) { if (!minutos || minutos <= 0) return "0h 0m"; let h = Math.floor(minutos / 60); let m = minutos % 60; return `${h}h ${m}m`; }
+window.toggleTema = () => { const newTheme = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light"; document.documentElement.setAttribute("data-theme", newTheme); localStorage.setItem("temaTen", newTheme); };
+// ============================================================
+// 📁 MÓDULO DE BOLETAS DE PAGO Y REPORTES (ADMIN) - SUBIDA MASIVA
+// ============================================================
+const zonaSede = localStorage.getItem("ten_zona_activa") || "norte";
+const pathBoletas = zonaSede === "lurin" ? "boletas_pago_lurin" : "boletas_pago";
+const coleccionBoletas = collection(db, "artifacts", appId, "public", "data", pathBoletas);
+
+// Diccionario para traducir el número del archivo al nombre del mes
+const mapaMesesNumero = {
+    "1": "01", "2": "02", "3": "03", "4": "04", "5": "05", "6": "06",
+    "7": "07", "8": "08", "9": "09", "10": "10", "11": "11", "12": "12",
+    "01": "01", "02": "02", "03": "03", "04": "04", "05": "05", "06": "06",
+    "07": "07", "08": "08", "09": "09"
+};
+
+const nombresMesesDicc = {
+    "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril", "05": "Mayo", "06": "Junio",
+    "07": "Julio", "08": "Agosto", "09": "Septiembre", "10": "Octubre", "11": "Noviembre", "12": "Diciembre"
+};
+
+// 1. Inyectar el HTML de las ventanas (Scroll Nativo Infalible)
+document.body.insertAdjacentHTML('beforeend', `
+<!-- Modal Historial de Boletas (Admin) -->
+<div class="modal-overlay" id="modalHistorialBoletas" style="z-index: 9999;">
+    <!-- 🔥 FIX: Quitamos el "overflow: hidden" y el "height: 85vh" para que el modal use su scroll automático original -->
+    <div class="modal-content modal-v2" style="max-width: 850px; width: 95%; padding: 25px;" onclick="event.stopPropagation()">
+        
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalHistorialBoletas').style.display='none'">×</button>
+        <h3 class="mb-3" style="color: #ec4899; font-weight: 900; font-size: 1.5rem;"><i class="fa-solid fa-folder-tree text-3xl block mb-2"></i> Gestor de Archivos Históricos</h3>
+        <p class="text-sm text-muted mb-4">Revisa las carpetas de todos los trabajadores o elimina documentos subidos por error.</p>
+        
+        <div class="form-group mb-3" style="background: rgba(236, 72, 153, 0.05); padding: 15px; border: 1px dashed #ec4899; border-radius: 8px;">
+            <label style="color: #ec4899; font-weight: bold;"><i class="fa-solid fa-filter"></i> Filtrar por Trabajador:</label>
+            <select id="filtroBoletaTecnico" class="form-control mt-2" onchange="window.renderizarHistorialBoletas()">
+                <option value="todos">Mostrar Todas las Carpetas</option>
+            </select>
+        </div>
+        
+        <!-- Contenedor libre que crece y permite a la ventana bajar naturalmente -->
+        <div id="contenedorHistorialBoletas" style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+            <!-- JS inyecta las carpetas aquí -->
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal Confirmar Eliminar Boleta -->
+<div class="modal-overlay" id="modalEliminarBoletaAdmin" style="z-index: 99999;">
+    <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalEliminarBoletaAdmin').style.display='none'">×</button>
+        <h3 class="text-danger mb-4" style="color: var(--danger);"><i class="fa-solid fa-trash-can text-3xl block mb-2"></i> Eliminar Documento</h3>
+        <p class="text-muted text-sm mb-6" style="color: var(--text-muted);">¿Estás seguro de eliminar este archivo? Desaparecerá inmediatamente de la bóveda del trabajador.</p>
+        <input type="hidden" id="idBoletaEliminarOculto">
+        <div class="modal-buttons" style="justify-content: center;">
+            <button type="button" class="btn-cancelar" onclick="document.getElementById('modalEliminarBoletaAdmin').style.display='none'">Cancelar</button>
+            <button type="button" class="btn-guardar" id="btnConfirmarEliminarBoleta" style="background: var(--danger); color: white; border: none;" onclick="window.ejecutarEliminacionBoletaAdmin()"><i class="fa-solid fa-trash"></i> Sí, Eliminar</button>
+        </div>
+    </div>
+</div>
+`);
+
+window.abrirModalSubirBoleta = () => {
+    let sel = document.getElementById("boletaTecnico");
+    let tecnicosUnicos = [...new Set(Object.values(MAPA_NOMBRES_HUELLERO))].sort();
+    sel.innerHTML = '<option value="">-- Seleccionar Trabajador --</option>';
+    tecnicosUnicos.forEach(t => sel.innerHTML += `<option value="${t}">${t}</option>`);
+    
+    document.getElementById("boletaArchivo").value = "";
+    document.getElementById("modalSubirBoleta").style.display = "flex";
+};
+
+window.ejecutarSubidaMasiva = async () => {
+    let tecnico = document.getElementById("boletaTecnico").value;
+    let anio = document.getElementById("boletaAnio").value;
+    let fileInput = document.getElementById("boletaArchivo");
+    let archivos = fileInput.files;
+
+    if (!tecnico || !anio) { window.mostrarToast("⚠️ Completa los datos del trabajador y el año."); return; }
+    if (archivos.length === 0) { window.mostrarToast("⚠️ Debes seleccionar al menos un archivo."); return; }
+
+    let btn = document.getElementById("btnConfirmarSubirBoleta");
+    btn.disabled = true;
+    btn.innerHTML = `<i class='fa-solid fa-spinner fa-spin'></i> Subiendo ${archivos.length} archivos...`;
+
+    try {
+        const { getStorage, ref, uploadBytes, getDownloadURL } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js");
+        const storage = getStorage();
+        let subidasExitosas = 0;
+        let errores = 0;
+
+        // Bucle para procesar cada archivo seleccionado
+        for (let i = 0; i < archivos.length; i++) {
+            let file = archivos[i];
+            
+            // 🧠 LÓGICA INTELIGENTE: Extraer el número del nombre del archivo ("8.pdf" -> "8")
+            // Separamos por el punto y agarramos la primera parte
+            let nombreSinExtension = file.name.split('.')[0]; 
+            
+            // Verificamos si ese nombre coincide con nuestro diccionario de meses
+            let mesNumerico = mapaMesesNumero[nombreSinExtension];
+
+            // Si no detecta un número válido del 1 al 12, usamos "01" por defecto (para que no se rompa) y avisamos
+            if (!mesNumerico) {
+                console.warn(`Archivo ${file.name} no tiene un formato de mes reconocido. Se asignará a Enero por defecto.`);
+                mesNumerico = "01";
+            }
+
+            let nombreMes = nombresMesesDicc[mesNumerico];
+            let nombreLimpio = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
+            
+            // Estructura segura en la bóveda de Storage
+            let storageRef = ref(storage, `boletas_pago/${anio}/${mesNumerico}/${tecnico}_${Date.now()}_${nombreLimpio}`);
+            
+            try {
+                await uploadBytes(storageRef, file);
+                let urlPdf = await getDownloadURL(storageRef);
+
+                await addDoc(coleccionBoletas, {
+                    tecnico: tecnico,
+                    anio: anio,
+                    mes: mesNumerico,
+                    nombreMes: nombreMes,
+                    url: urlPdf,
+                    nombreArchivo: file.name,
+                    fechaSubidaTs: Date.now()
+                });
+                subidasExitosas++;
+            } catch (err) {
+                console.error(`Error subiendo ${file.name}:`, err);
+                errores++;
+            }
+        }
+
+        if (errores > 0) {
+            window.mostrarToast(`⚠️ Subida finalizada: ${subidasExitosas} exitosos, ${errores} errores.`);
+        } else {
+            window.mostrarToast(`✅ ¡Éxito! ${subidasExitosas} boletas guardadas en la cuenta de ${tecnico}.`);
+        }
+        
+        document.getElementById("modalSubirBoleta").style.display = "none";
+    } catch(e) {
+        console.error(e);
+        window.mostrarToast("❌ Error general al subir archivos. Revisa tu internet.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = "<i class='fa-solid fa-cloud-arrow-up'></i> Guardar y Enviar";
+    }
+};
+// ============================================================
+// 📁 VISOR Y GESTOR DE BOLETAS SUBIDAS (VISTA ADMIN)
+// ============================================================
+
+// 1. Inyectar el HTML de las ventanas (Subida y Gestor con Scroll Nativo)
+document.body.insertAdjacentHTML('beforeend', `
+<!-- Modal Subida Masiva de Boletas -->
+<div class="modal-overlay" id="modalSubirBoleta" style="z-index: 9999;">
+    <div class="modal-content modal-v2 max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalSubirBoleta').style.display='none'">×</button>
+        <h3 class="mb-4" style="color: var(--purple); font-weight: 900; font-size: 1.3rem;"><i class="fa-solid fa-file-invoice-dollar text-3xl block mb-2"></i> Subida Masiva de Boletas</h3>
+        <p class="text-sm text-muted mb-4">Selecciona múltiples PDFs. El sistema asignará el mes automáticamente si el archivo se llama "1.pdf", "2.pdf", etc.</p>
+        
+        <div class="form-group">
+            <label>Trabajador Destinatario:</label>
+            <select id="boletaTecnico" class="form-control highlight-border-purple"></select>
+        </div>
+        
+        <div class="form-group">
+            <label>Año (Carpeta Principal):</label>
+            <select id="boletaAnio" class="form-control">
+                <option value="2024">2024</option>
+                <option value="2025" selected>2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+            </select>
+        </div>
+        
+        <div class="form-group mt-2" style="background: rgba(139, 92, 246, 0.05); padding: 15px; border: 1px dashed var(--purple); border-radius: 8px;">
+            <label style="color: var(--purple); font-weight: bold;"><i class="fa-solid fa-upload"></i> Seleccionar Archivos (PDFs):</label>
+            <input type="file" id="boletaArchivo" accept=".pdf" multiple class="form-control mt-2" style="font-size: 12px; padding: 8px; background: white;">
+            <span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 5px;">* Puedes seleccionar varios archivos a la vez.</span>
+        </div>
+
+        <div class="modal-buttons" style="justify-content: center; margin-top: 15px;">
+            <button type="button" class="btn-cancelar" onclick="document.getElementById('modalSubirBoleta').style.display='none'">Cancelar</button>
+            <button type="button" class="btn-guardar" id="btnConfirmarSubirBoleta" style="background: var(--purple); color: white; border: none; font-weight: bold;" onclick="window.ejecutarSubidaMasiva()"><i class="fa-solid fa-cloud-arrow-up"></i> Guardar y Enviar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Historial de Boletas (Admin) -->
+<div class="modal-overlay" id="modalHistorialBoletas" style="z-index: 9999;">
+    <div class="modal-content modal-v2" style="max-width: 850px; width: 95%; padding: 25px;" onclick="event.stopPropagation()">
+        
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalHistorialBoletas').style.display='none'">×</button>
+        <h3 class="mb-3" style="color: #ec4899; font-weight: 900; font-size: 1.5rem;"><i class="fa-solid fa-folder-tree text-3xl block mb-2"></i> Gestor de Archivos Históricos</h3>
+        <p class="text-sm text-muted mb-4">Revisa las carpetas de todos los trabajadores o elimina documentos subidos por error.</p>
+        
+        <div class="form-group mb-3" style="background: rgba(236, 72, 153, 0.05); padding: 15px; border: 1px dashed #ec4899; border-radius: 8px;">
+            <label style="color: #ec4899; font-weight: bold;"><i class="fa-solid fa-filter"></i> Filtrar por Trabajador:</label>
+            <select id="filtroBoletaTecnico" class="form-control mt-2" onchange="window.renderizarHistorialBoletas()">
+                <option value="todos">Mostrar Todas las Carpetas</option>
+            </select>
+        </div>
+        
+        <div id="contenedorHistorialBoletas" style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+            <!-- JS inyecta las carpetas aquí -->
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal Confirmar Eliminar Boleta -->
+<div class="modal-overlay" id="modalEliminarBoletaAdmin" style="z-index: 99999;">
+    <div class="modal-content modal-v2 text-center max-w-sm" onclick="event.stopPropagation()">
+        <button type="button" class="btn-close-x" onclick="document.getElementById('modalEliminarBoletaAdmin').style.display='none'">×</button>
+        <h3 class="text-danger mb-4" style="color: var(--danger);"><i class="fa-solid fa-trash-can text-3xl block mb-2"></i> Eliminar Documento</h3>
+        <p class="text-muted text-sm mb-6" style="color: var(--text-muted);">¿Estás seguro de eliminar este archivo? Desaparecerá inmediatamente de la bóveda del trabajador.</p>
+        <input type="hidden" id="idBoletaEliminarOculto">
+        <div class="modal-buttons" style="justify-content: center;">
+            <button type="button" class="btn-cancelar" onclick="document.getElementById('modalEliminarBoletaAdmin').style.display='none'">Cancelar</button>
+            <button type="button" class="btn-guardar" id="btnConfirmarEliminarBoleta" style="background: var(--danger); color: white; border: none;" onclick="window.ejecutarEliminacionBoletaAdmin()"><i class="fa-solid fa-trash"></i> Sí, Eliminar</button>
+        </div>
+    </div>
+</div>
+`);
+
+window.boletasSubidasGlobal = [];
+
+window.abrirModalHistorialBoletas = async () => {
+    let contenedor = document.getElementById("contenedorHistorialBoletas");
+    contenedor.innerHTML = `<div class="text-center text-muted py-8"><i class="fa-solid fa-spinner fa-spin text-3xl opacity-50 mb-2 block"></i><br>Cargando el archivo general...</div>`;
+    document.getElementById("modalHistorialBoletas").style.display = "flex";
+
+    let sel = document.getElementById("filtroBoletaTecnico");
+    let tecnicosUnicos = [...new Set(Object.values(MAPA_NOMBRES_HUELLERO))].sort();
+    sel.innerHTML = '<option value="todos">Mostrar Todas las Carpetas</option>';
+    tecnicosUnicos.forEach(t => sel.innerHTML += `<option value="${t}">${t}</option>`);
+
+    try {
+        const { getDocs, query, orderBy } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        let snap = await getDocs(coleccionBoletas);
+        window.boletasSubidasGlobal = [];
+        snap.forEach(doc => {
+            window.boletasSubidasGlobal.push({ id: doc.id, ...doc.data() });
+        });
+        
+        window.renderizarHistorialBoletas();
+    } catch(e) {
+        console.error(e);
+        contenedor.innerHTML = `<div class="text-center text-danger py-8"><i class="fa-solid fa-triangle-exclamation text-3xl mb-2 block"></i> Error de conexión segura.</div>`;
+    }
+};
+
+window.renderizarHistorialBoletas = () => {
+    let filtroTec = document.getElementById("filtroBoletaTecnico").value;
+    let contenedor = document.getElementById("contenedorHistorialBoletas");
+    contenedor.innerHTML = "";
+
+    let boletasFiltradas = window.boletasSubidasGlobal.filter(b => {
+        if (filtroTec !== "todos" && b.tecnico !== filtroTec) return false;
+        return true;
+    });
+
+    if (boletasFiltradas.length === 0) {
+        contenedor.innerHTML = `<div class="text-center text-muted py-8"><i class="fa-solid fa-folder-minus text-4xl mb-2 opacity-30 block"></i><br>No hay documentos subidos en esta vista.</div>`;
+        return;
+    }
+
+    // 🧠 Agrupar inteligentemente: Técnico -> Año -> Archivos
+    let agrupado = {};
+    boletasFiltradas.forEach(b => {
+        if (!agrupado[b.tecnico]) agrupado[b.tecnico] = {};
+        if (!agrupado[b.tecnico][b.anio]) agrupado[b.tecnico][b.anio] = [];
+        agrupado[b.tecnico][b.anio].push(b);
+    });
+
+    let tecnicos = Object.keys(agrupado).sort();
+
+    tecnicos.forEach(tec => {
+        let htmlAnios = "";
+        let anios = Object.keys(agrupado[tec]).sort((a,b) => b - a);
+        
+        anios.forEach(anio => {
+            let htmlMeses = "";
+            agrupado[tec][anio].sort((a,b) => b.mes.localeCompare(a.mes));
+            
+            agrupado[tec][anio].forEach(bol => {
+                let iconStr = bol.nombreArchivo.toLowerCase().includes('.pdf') ? '<i class="fa-solid fa-file-pdf" style="color: #ef4444; font-size: 1.2rem;"></i>' : '<i class="fa-solid fa-file-excel" style="color: #10b981; font-size: 1.2rem;"></i>';
+                
+                htmlMeses += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border); background: var(--bg-app); margin-left: 20px; border-radius: 8px; margin-bottom: 5px;">
+                        <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+                            ${iconStr}
+                            <div style="overflow: hidden;">
+                                <b style="color: var(--text-main); font-size: 12px; text-transform: uppercase;">${bol.nombreMes} ${anio}</b><br>
+                                <span style="font-size: 10px; color: var(--text-muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">${bol.nombreArchivo}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 5px;">
+                            <button style="background: rgba(139, 92, 246, 0.1); color: var(--purple); border: 1px solid var(--purple); padding: 6px 10px; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 11px; transition: 0.2s;" onmouseover="this.style.background='var(--purple)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(139, 92, 246, 0.1)'; this.style.color='var(--purple)';" onclick="window.open('${bol.url}', '_blank')" title="Ver PDF">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                            <button style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); padding: 6px 10px; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 11px; transition: 0.2s;" onmouseover="this.style.background='var(--danger)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.color='var(--danger)';" onclick="window.prepararEliminarBoleta('${bol.id}')" title="Eliminar Archivo">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            htmlAnios += `
+                <div style="margin-top: 10px; border-left: 2px solid var(--border); padding-left: 10px;">
+                    <b style="color: var(--text-muted); font-size: 13px;"><i class="fa-solid fa-folder-open" style="color: #f59e0b;"></i> Año ${anio}</b>
+                    <div style="margin-top: 5px;">${htmlMeses}</div>
+                </div>
+            `;
+        });
+
+        contenedor.innerHTML += `
+            <div style="background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 10px;">
+                <div style="padding: 15px; background: rgba(0,0,0,0.02); border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                    <b style="color: var(--text-main); font-size: 15px;"><i class="fa-solid fa-user-tie" style="color: #ec4899; margin-right: 8px;"></i> ${tec}</b>
+                    <i class="fa-solid fa-chevron-down" style="color: var(--text-muted);"></i>
+                </div>
+                <div style="padding: 10px 15px; display: none;">
+                    ${htmlAnios}
+                </div>
+            </div>
+        `;
+    });
+};
+
+window.prepararEliminarBoleta = (id) => {
+    document.getElementById("idBoletaEliminarOculto").value = id;
+    document.getElementById("modalEliminarBoletaAdmin").style.display = "flex";
+};
+
+window.ejecutarEliminacionBoletaAdmin = async () => {
+    let id = document.getElementById("idBoletaEliminarOculto").value;
+    if (!id) return;
+
+    let btn = document.getElementById("btnConfirmarEliminarBoleta");
+    btn.disabled = true;
+    btn.innerHTML = "<i class='fa-solid fa-spinner fa-spin'></i> Eliminando...";
+
+    try {
+        const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        await deleteDoc(doc(coleccionBoletas, id));
+        window.mostrarToast("🗑️ Documento eliminado correctamente.");
+        
+        // Actualizamos la memoria y la pantalla en vivo
+        window.boletasSubidasGlobal = window.boletasSubidasGlobal.filter(b => b.id !== id);
+        window.renderizarHistorialBoletas();
+        
+        document.getElementById("modalEliminarBoletaAdmin").style.display = "none";
+    } catch(e) {
+        console.error(e);
+        window.mostrarToast("❌ Error al eliminar.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = "<i class='fa-solid fa-trash'></i> Sí, Eliminar";
+    }
+};
+} // 🔚 Cierre del bloque "else" del escudo de seguridad
+</script>
+</body>
+</html>

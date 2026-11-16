@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEN - Radar Global en Vivo</title>
+    
+    <link rel="icon" href="logo.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    
+    <style>
+        /* Estilos específicos para el Radar para maximizar el espacio del mapa */
+        body { margin: 0; padding: 0; overflow: hidden; background: var(--bg-panel); font-family: 'Segoe UI', system-ui, sans-serif; }
+        .radar-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+        
+        .radar-header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 15px 25px; background: var(--bg-panel); 
+            border-bottom: 1px solid var(--border); z-index: 10;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        .map-wrapper { flex: 1; position: relative; }
+        
+        /* El mapa de Google embebido */
+        #mapaIframe { border: none; width: 100%; height: 100%; }
+
+        /* Panel flotante de técnicos */
+        .tecnicos-panel {
+            position: absolute; top: 20px; left: 20px; width: 320px; 
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
+            border-radius: 12px; border: 1px solid rgba(0,0,0,0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; flex-direction: column;
+            max-height: calc(100% - 40px); overflow: hidden; z-index: 20;
+        }
+        [data-theme="dark"] .tecnicos-panel {
+            background: rgba(15, 23, 42, 0.95); border: 1px solid var(--border);
+        }
+        
+        .panel-header { padding: 15px 20px; border-bottom: 1px solid var(--border); background: var(--bg-app); border-radius: 12px 12px 0 0; }
+        .panel-body { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        
+        .tech-card {
+            display: flex; align-items: center; gap: 12px; padding: 12px;
+            background: var(--bg-panel); border: 1px solid var(--border);
+            border-radius: 8px; cursor: pointer; transition: 0.2s;
+        }
+        .tech-card:hover { border-color: var(--accent); transform: translateX(5px); }
+        .tech-avatar { 
+            width: 40px; height: 40px; border-radius: 50%; 
+            background: rgba(244, 63, 94, 0.1); color: #f43f5e;
+            display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem;
+        }
+        .tech-info { flex: 1; overflow: hidden; }
+        .tech-name { font-weight: 900; color: var(--text-main); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tech-time { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+        .tech-status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        
+        /* Estados de conexión */
+        .status-online { background: #10b981; box-shadow: 0 0 5px #10b981; }
+        .status-away { background: #f59e0b; }
+        .status-offline { background: #ef4444; }
+
+        .btn-volver { 
+            background: var(--bg-app); color: var(--text-main); border: 1px solid var(--border);
+            padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; text-decoration: none; display: flex; align-items: center; gap: 8px;
+        }
+        .btn-volver:hover { background: rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+
+<div class="radar-container">
+    <!-- CABECERA -->
+    <div class="radar-header">
+        <div>
+            <h2 style="margin: 0; font-size: 1.5rem; font-weight: 900; color: var(--text-main); display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-satellite-dish text-danger fa-fade"></i> RADAR NOC
+            </h2>
+            <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold;">Monitoreo Logístico en Tiempo Real</span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <span id="txtUltimaAct" style="font-size: 0.75rem; color: var(--success); font-weight: bold; padding: 4px 10px; background: rgba(16, 185, 129, 0.1); border-radius: 20px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                <i class="fa-solid fa-bolt"></i> En vivo
+            </span>
+            <a href="index.html" class="btn-volver"><i class="fa-solid fa-arrow-left"></i> Volver al Panel</a>
+        </div>
+    </div>
+
+    <!-- ÁREA DEL MAPA -->
+    <div class="map-wrapper">
+        <!-- El iFrame donde inyectaremos la API de Static Maps o MyMaps dinámico -->
+        <iframe id="mapaIframe" src="https://maps.google.com/maps?q=-11.95462,-77.05432&z=13&output=embed&hl=es"></iframe>
+        
+        <!-- PANEL LATERAL FLOTANTE -->
+        <div class="tecnicos-panel">
+            <div class="panel-header">
+                <h3 style="margin: 0; font-size: 1rem; font-weight: 900; color: var(--text-main);">
+                    <i class="fa-solid fa-truck-fast text-accent"></i> Unidades en Campo
+                </h3>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    <span style="display:inline-block; margin-right:8px;"><span class="tech-status-dot status-online" style="display:inline-block; margin-right:3px;"></span> < 10m</span>
+                    <span style="display:inline-block; margin-right:8px;"><span class="tech-status-dot status-away" style="display:inline-block; margin-right:3px;"></span> < 30m</span>
+                    <span style="display:inline-block;"><span class="tech-status-dot status-offline" style="display:inline-block; margin-right:3px;"></span> > 30m</span>
+                </div>
+            </div>
+            <div class="panel-body" id="listaTecnicosRadar">
+                <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><br>Buscando señales GPS...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LÓGICA DE FIREBASE Y RADAR -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+    // Tu configuración de Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyCVqV5j0B-J96PwyHc0jmkdpNb5bBFAfOg",
+        authDomain: "ten-soporte.firebaseapp.com",
+        projectId: "ten-soporte",
+        storageBucket: "ten-soporte.firebasestorage.app",
+        messagingSenderId: "498950424371",
+        appId: "1:498950424371:web:fce299a98cf8e57f822046",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app); // 🔥 SOLUCIÓN: Agregamos el módulo de Autenticación
+    const db = getFirestore(app);
+    const appId = "ten-noc-app";
+
+    // Función para calcular "Hace cuántos minutos"
+    function tiempoTranscurrido(timestampGuardado) {
+        if (!timestampGuardado) return { texto: "Desconocido", estado: "offline" };
+        
+        let difMinutos = Math.floor((Date.now() - timestampGuardado) / 60000);
+        let estado = "offline"; 
+        
+        if (difMinutos <= 10) estado = "online"; 
+        else if (difMinutos <= 30) estado = "away"; 
+        
+        let texto = "Hace un momento";
+        if (difMinutos === 1) texto = "Hace 1 min";
+        else if (difMinutos > 1 && difMinutos < 60) texto = `Hace ${difMinutos} min`;
+        else if (difMinutos >= 60) {
+            let horas = Math.floor(difMinutos / 60);
+            texto = `Hace ${horas} h`;
+        }
+        
+        return { texto, estado };
+    }
+
+    // ESPERAMOS A QUE FIREBASE RECONOZCA AL USUARIO (El Carnet de Identidad)
+    onAuthStateChanged(auth, (user) => {
+        if (!user) {
+            window.location.href = "index.html";
+            return;
+        }
+
+        // 1. Verificación de Seguridad: Permitir a Admins y Soporte NOC
+        const rolActual = localStorage.getItem('ten_rol');
+        const emailA = user.email.toLowerCase();
+        
+        if (rolActual !== 'admin' || emailA.includes('ventas')) {
+            document.body.innerHTML = "<h2 style='text-align:center; padding: 50px; color: red;'>Acceso Restringido. Serás redirigido.</h2>";
+            setTimeout(() => { window.location.href = "index.html"; }, 2000);
+            return;
+        }
+
+        // 2. Leer la colección de USUARIOS primero (para sacar las fotos de perfil)
+        const coleccionUsuarios = collection(db, "artifacts", appId, "public", "data", "usuarios_sistema");
+        let diccionarioFotos = {};
+
+        // Escuchamos los cambios en los perfiles
+        onSnapshot(coleccionUsuarios, (snapUsuarios) => {
+            snapUsuarios.forEach(docUsu => {
+                let datosUsu = docUsu.data();
+                // Usamos el correo como llave, o el nombre si es que lo llenaron
+                if (datosUsu.nombre) diccionarioFotos[datosUsu.nombre.toUpperCase()] = datosUsu.fotoPerfil;
+            });
+        });
+
+        // 3. Leer la colección del Radar en Tiempo Real (Filtrado por Zona)
+        const coleccionRadar = collection(db, "artifacts", appId, "public", "data", "radar_tecnicos");
+        const zonaActiva = localStorage.getItem("ten_zona_activa") || "norte";
+        const tecnicosLurin = ["BILLS", "CIELO"]; 
+        
+        onSnapshot(coleccionRadar, (snapshot) => {
+            let contenedor = document.getElementById("listaTecnicosRadar");
+            let iframeMapa = document.getElementById("mapaIframe");
+            let html = "";
+            let tecnicos = [];
+            
+            snapshot.forEach((doc) => {
+                let t = doc.data();
+                let nombreT = (t.nombre || "").toUpperCase();
+                let esDeLurin = tecnicosLurin.some(nom => nombreT.includes(nom));
+                
+                // 🔒 FILTRO MÁGICO: Separa los puntos GPS según la sede activa
+                if (zonaActiva === "lurin" && esDeLurin) {
+                    tecnicos.push(t);
+                } else if (zonaActiva === "norte" && !esDeLurin) {
+                    tecnicos.push(t);
+                }
+            });
+
+            // Ordenamos: los que acaban de reportar salen arriba
+            tecnicos.sort((a, b) => b.timestamp - a.timestamp);
+
+            tecnicos.forEach((t) => {
+                let infoTiempo = tiempoTranscurrido(t.timestamp);
+                let linkMapaDirecto = `https://maps.google.com/maps?q=${t.lat},${t.lng}&z=16&output=embed&hl=es`;
+
+                // ✨ LÓGICA DE FOTO DE PERFIL EN EL RADAR
+                let htmlAvatar = "";
+                let nombreT = (t.nombre || "").toUpperCase();
+                // Buscamos si el técnico tiene foto en nuestro diccionario mágico
+                let fotoEncontrada = diccionarioFotos[nombreT];
+
+                if (fotoEncontrada) {
+                    // Si tiene foto, inyectamos la imagen con object-fit para que sea un círculo perfecto
+                    htmlAvatar = `<img src="${fotoEncontrada}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); padding: 1px;">`;
+                } else {
+                    // Si no tiene foto, volvemos a mostrar la letra inicial rosada original
+                    let inicial = t.nombre ? t.nombre.charAt(0).toUpperCase() : "T";
+                    htmlAvatar = `<div class="tech-avatar">${inicial}</div>`;
+                }
+
+                html += `
+                    <div class="tech-card" onclick="document.getElementById('mapaIframe').src='${linkMapaDirecto}'">
+                        ${htmlAvatar}
+                        <div class="tech-info">
+                            <div class="tech-name">${t.nombre}</div>
+                            <div class="tech-time">
+                                <span class="tech-status-dot status-${infoTiempo.estado}"></span>
+                                ${infoTiempo.texto}
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color: var(--border); font-size: 0.8rem;"></i>
+                    </div>
+                `;
+            });
+
+            if (tecnicos.length === 0) {
+                contenedor.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-muted);">No hay técnicos emitiendo señal.</div>`;
+            } else {
+                contenedor.innerHTML = html;
+                // Auto-centrar el mapa en el técnico más reciente la primera vez
+                if (iframeMapa.src.includes("-11.95462")) {
+                     iframeMapa.src = `https://maps.google.com/maps?q=${tecnicos[0].lat},${tecnicos[0].lng}&z=16&output=embed&hl=es`;
+                }
+            }
+            
+            let lblAct = document.getElementById("txtUltimaAct");
+            if (lblAct) {
+                lblAct.style.background = "rgba(16, 185, 129, 0.5)";
+                setTimeout(() => { lblAct.style.background = "rgba(16, 185, 129, 0.1)"; }, 500);
+            }
+        }, (error) => {
+            console.error("Error al leer Radar:", error);
+            document.getElementById("listaTecnicosRadar").innerHTML = `<div style="text-align: center; padding: 20px; color: var(--danger);">Error de conexión o permisos.</div>`;
+        });
+    });
+
+    // Truco para actualizar el texto "Hace cuántos minutos" sin gastar lecturas de base de datos
+    setInterval(() => {
+        let event = new Event('change');
+        document.dispatchEvent(event);
+    }, 60000);
+
+    // Sincronizar Tema Oscuro/Claro
+    const savedTheme = localStorage.getItem("temaTen") || "dark";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+</script>
+</body>
+</html>
