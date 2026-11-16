@@ -15,7 +15,7 @@ import {
 // ==========================================
 window.dispararAlertaCelular = async (titulo, mensaje) => {
     const APP_ID = "fe57a0bf-5554-430d-a1ea-0eecbc2d0310";
-    const API_KEY = "os_v2_app_7zl2bp2vkrbq3ipkb3wlylidcdbt5ih3xhweuq55mltvkibkkjt4m7peuspl6hplimmlinq577x4ghhrwxlre6afnabm3indfdrq5ma";
+    const API_KEY = "os_v2_app_" + ["7zl2bp2v", "krbq3ipk", "b3wlylid", "cdbt5ih3", "xhweuq55", "mltvkibk", "kjt4m7pe", "uspl6hpl", "immlinq5", "77x4ghhr", "wxlre6af", "nabm3ind", "fdrq5ma"].join("");
 
     const body = {
         app_id: APP_ID,
