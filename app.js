@@ -10813,9 +10813,9 @@ setTimeout(() => {
     }
 }, 1500);
 
-
 // ============================================================ //
 // 🎮 SALA DE ARCADE SECRETA (CLOUD LEADERBOARD - FIREBASE)     //
+// ✅ v5 - Controles arreglados + Poderes + Trampas (Sin Asteroids)
 // ============================================================ //
 
 let globalAudioCtx = null;
@@ -10836,21 +10836,46 @@ const playSonido = (frecuencia, tipo, duracion, volumen = 0.1) => {
 };
 
 window.playSonidoLogro = () => {
-    playSonido(523.25, 'square', 0.1, 0.15); setTimeout(() => playSonido(659.25, 'square', 0.1, 0.15), 100); 
-    setTimeout(() => playSonido(783.99, 'square', 0.2, 0.15), 200); setTimeout(() => playSonido(1046.50, 'square', 0.3, 0.15), 300); 
+    playSonido(523.25, 'square', 0.1, 0.15); setTimeout(() => playSonido(659.25, 'square', 0.1, 0.15), 100);
+    setTimeout(() => playSonido(783.99, 'square', 0.2, 0.15), 200); setTimeout(() => playSonido(1046.50, 'square', 0.3, 0.15), 300);
 };
 window.playSonidoRecord = () => {
     playSonido(1046.50, 'square', 0.1, 0.2); setTimeout(() => playSonido(1318.51, 'square', 0.3, 0.2), 100);
 };
+window.playSonidoPowerup = () => {
+    playSonido(880, 'sine', 0.08, 0.18); setTimeout(() => playSonido(1108, 'sine', 0.08, 0.18), 80); setTimeout(() => playSonido(1318, 'sine', 0.18, 0.18), 160);
+};
+window.playSonidoTrampa = () => {
+    playSonido(220, 'sawtooth', 0.12, 0.18); setTimeout(() => playSonido(130, 'sawtooth', 0.25, 0.2), 110);
+};
 
-window.loopArcade = null; window.musicaArcade = null; window.accionArcadeActual = null; 
+// 🛡️ HELPERS DE SEGURIDAD (anti-XSS)
+const FOTO_FALLBACK = 'https://api.dicebear.com/7.x/avataaars/svg?seed=anon';
+const escaparHtml = (str) => String(str == null ? '' : str).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+}[c]));
+const urlFotoSegura = (url) => {
+    if (typeof url !== 'string') return FOTO_FALLBACK;
+    if (url.startsWith('https://') || url.startsWith('data:image/')) return url;
+    return FOTO_FALLBACK;
+};
+const sanitizarId = (str) => {
+    let s = String(str == null ? '' : str).trim();
+    s = s.replace(/[\/\\]/g, '_');
+    s = s.replace(/[\u0000-\u001F\u007F]/g, '');
+    return s || 'anon';
+};
+
+window.loopArcade = null; window.musicaArcade = null; window.accionArcadeActual = null;
 
 window.playMusicaJuego = (tipo) => {
     clearInterval(window.musicaArcade);
     let melodia = []; let velocidad = 250;
     if (tipo === 'snake') { melodia = [261.63, 329.63, 392.00, 523.25]; velocidad = 250; }
-    else if (tipo === 'flappy') { melodia = [392.00, 0, 329.63, 0, 261.63, 0]; velocidad = 180; } 
-    else if (tipo === 'dino') { melodia = [130.81, 130.81, 0, 164.81, 0]; velocidad = 200; } 
+    else if (tipo === 'flappy') { melodia = [392.00, 0, 329.63, 0, 261.63, 0]; velocidad = 180; }
+    else if (tipo === 'dino') { melodia = [130.81, 130.81, 0, 164.81, 0]; velocidad = 200; }
+    else if (tipo === 'breakout') { melodia = [392.00, 523.25, 659.25, 523.25]; velocidad = 220; }
+    else if (tipo === 'invaders') { melodia = [130.81, 0, 164.81, 0, 196.00, 0]; velocidad = 200; }
     if (melodia.length > 0) {
         let nota = 0;
         window.musicaArcade = setInterval(() => {
@@ -10863,61 +10888,54 @@ window.playMusicaJuego = (tipo) => {
 window.limpiarEventosArcade = () => {
     if(window.accionArcadeActual) {
         document.removeEventListener("keydown", window.accionArcadeActual);
+        document.removeEventListener("keyup", window.accionArcadeActual);
         let cvs = document.getElementById("canvasArcade");
-        if(cvs) { cvs.removeEventListener("touchstart", window.accionArcadeActual); cvs.removeEventListener("touchend", window.accionArcadeActual); cvs.removeEventListener("mousedown", window.accionArcadeActual); }
+        if(cvs) {
+            cvs.removeEventListener("touchstart", window.accionArcadeActual);
+            cvs.removeEventListener("touchend", window.accionArcadeActual);
+            cvs.removeEventListener("touchmove", window.accionArcadeActual);
+            cvs.removeEventListener("mousedown", window.accionArcadeActual);
+            cvs.removeEventListener("mouseup", window.accionArcadeActual);
+            cvs.removeEventListener("mousemove", window.accionArcadeActual);
+        }
     }
 };
 
 // 🔥 VARIABLES GLOBALES DEL ARCADE (NUBE)
-window.arcadeScoresGlobal = { snake: [], flappy: [], dino: [] };
+window.arcadeScoresGlobal = { snake: [], flappy: [], dino: [], breakout: [], invaders: [] };
 window.arcadeListener = null;
 window.juegoArcadeActivo = null;
 
 // 🔥 1. ESCUCHADOR EN TIEMPO REAL (FIREBASE)
 window.iniciarEscuchaArcade = async () => {
-    if (window.arcadeListener) return; // Ya está escuchando
+    if (window.arcadeListener) return;
     try {
         const { collection, onSnapshot, query } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        // Usamos las variables 'db' y 'appId' que ya tienes configuradas al inicio de app.js
         const colArcade = collection(db, "artifacts", appId, "public", "data", "arcade_scores");
-        
+
         window.arcadeListener = onSnapshot(query(colArcade), (snapshot) => {
-            let scores = { snake: [], flappy: [], dino: [] };
-            
+            let scores = { snake: [], flappy: [], dino: [], breakout: [], invaders: [] };
             snapshot.forEach(docSnap => {
                 let d = docSnap.data();
-                // Bloqueo de seguridad por si hay algún dato fantasma antiguo
-                if (d.nombre !== "Técnico" && d.nombre !== "Invitado" && scores[d.juego]) {
-                    scores[d.juego].push(d);
-                }
+                if (d.nombre !== "Técnico" && d.nombre !== "Invitado" && scores[d.juego]) scores[d.juego].push(d);
             });
-            
-            // Ordenar de mayor a menor puntaje
             for (let k in scores) scores[k].sort((a, b) => b.score - a.score);
-            
             window.arcadeScoresGlobal = scores;
-            
-            // Si hay un juego abierto, refrescamos el Top 3 en vivo
+
             if (window.juegoArcadeActivo) {
                 window.renderizarMiniLeaderboard(window.juegoArcadeActivo);
-                
-                // Actualizar BEST SCORE del jugador en vivo si alguien más jugó en otro dispositivo
                 let jugador = window.obtenerJugadorActual();
-                let miRecordDoc = scores[window.juegoArcadeActivo].find(u => u.nombre === jugador.nombre);
+                let miRecordDoc = scores[window.juegoArcadeActivo]?.find(u => u.nombre === jugador.nombre);
                 if (miRecordDoc) {
                     let spanBest = document.getElementById("arcadeBest");
                     if (spanBest) {
                         let currentBestOnScreen = parseInt(spanBest.innerText) || 0;
-                        if (miRecordDoc.score > currentBestOnScreen) {
-                            spanBest.innerText = miRecordDoc.score;
-                        }
+                        if (miRecordDoc.score > currentBestOnScreen) spanBest.innerText = miRecordDoc.score;
                     }
                 }
             }
         });
-    } catch(e) {
-        console.error("Error conectando Arcade a Firebase:", e);
-    }
+    } catch(e) { console.error("Error conectando Arcade a Firebase:", e); }
 };
 
 window.cerrarArcade = () => {
@@ -10930,7 +10948,6 @@ window.cerrarArcade = () => {
 window.obtenerJugadorActual = () => {
     let nombre = window.nombreUsuarioGlobal || window.nombreTecnicoLogueado || localStorage.getItem('ten_email') || "Usuario Desconocido";
     if (nombre.includes("@")) nombre = nombre.split("@")[0].toUpperCase();
-
     let foto = window.fotoTecnicoLogueado;
     if (!foto) {
         let elFoto = document.getElementById('imgFotoPerfilTEN');
@@ -10940,44 +10957,54 @@ window.obtenerJugadorActual = () => {
     return { nombre, foto };
 };
 
-// 🔥 2. GUARDAR RÉCORD EN LA NUBE (FIREBASE)
+// 🔥 2. GUARDAR RÉCORD EN LA NUBE (FIREBASE) — transacción atómica
+const guardarDocFirebaseArcade = async (docRef, jugador, puntos, tipoJuego) => {
+    const { runTransaction } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+    await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(docRef);
+        if (snap.exists()) {
+            const data = snap.data();
+            if (typeof data.score === 'number' && data.score >= puntos) return;
+        }
+        transaction.set(docRef, {
+            nombre: jugador.nombre,
+            foto: jugador.foto,
+            score: puntos,
+            juego: tipoJuego,
+            tsActualizacion: Date.now()
+        }, { merge: true });
+    });
+};
+
 window.guardarEnRankingGlobal = async (tipoJuego, puntos) => {
-    if (puntos === 0) return; 
+    if (puntos === 0) return;
     let jugador = window.obtenerJugadorActual();
-    
     let rankingActual = window.arcadeScoresGlobal[tipoJuego] || [];
     let miRecordAnterior = rankingActual.find(u => u.nombre === jugador.nombre);
-    
-    // Evitamos enviar peticiones a Firebase si no ha superado su propio récord en la nube
+
     if (miRecordAnterior && puntos <= miRecordAnterior.score) return;
-    
-    // 1. Actualización visual instantánea (para que no haya lag en pantalla)
+
     if (miRecordAnterior) {
-        miRecordAnterior.score = puntos;
-        miRecordAnterior.foto = jugador.foto;
+        miRecordAnterior.score = puntos; miRecordAnterior.foto = jugador.foto;
     } else {
         rankingActual.push({ nombre: jugador.nombre, foto: jugador.foto, score: puntos, juego: tipoJuego });
     }
     rankingActual.sort((a, b) => b.score - a.score);
     window.arcadeScoresGlobal[tipoJuego] = rankingActual;
     window.renderizarMiniLeaderboard(tipoJuego);
-    
-    // 2. Disparo asíncrono a Firebase
+
     try {
-        const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
-        // Usamos un ID de documento único combinando nombre y juego (ej: RPACOTAIPE_snake)
-        const docId = `${jugador.nombre}_${tipoJuego}`;
+        const { doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const docId = `${sanitizarId(jugador.nombre)}_${tipoJuego}`;
         const docRef = doc(db, "artifacts", appId, "public", "data", "arcade_scores", docId);
-        
-        await setDoc(docRef, {
-            nombre: jugador.nombre,
-            foto: jugador.foto,
-            score: puntos,
-            juego: tipoJuego,
-            tsActualizacion: Date.now()
-        });
+        await guardarDocFirebaseArcade(docRef, jugador, puntos, tipoJuego);
     } catch (e) {
-        console.error("Error al guardar récord en la nube:", e);
+        try {
+            await new Promise(r => setTimeout(r, 1500));
+            const { doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            const docRef = doc(db, "artifacts", appId, "public", "data", "arcade_scores", `${sanitizarId(jugador.nombre)}_${tipoJuego}`);
+            await guardarDocFirebaseArcade(docRef, jugador, puntos, tipoJuego);
+        } catch (e2) {}
     }
 };
 
@@ -10987,68 +11014,75 @@ window.renderizarMiniLeaderboard = (tipoJuego) => {
                     <h3 style="color:var(--accent); font-size:1rem; margin:0; text-transform:uppercase; text-shadow:0 0 5px var(--accent);">🏆 TOP 3 GLOBAL</h3>
                     <i class="fa-solid fa-cloud" style="color:var(--success); font-size:12px; opacity:0.8;" title="Conectado a la Nube"></i>
                 </div>`;
-    
+
     if (ranking.length === 0) {
         html += `<p style="color:#94a3b8; font-size:0.85rem; font-style:italic;">Nadie ha jugado aún. ¡Sé el primero en dejar tu marca!</p>`;
     } else {
         for (let i = 0; i < 3 && i < ranking.length; i++) {
             let medalla = i === 0 ? "🥇" : (i === 1 ? "🥈" : "🥉");
             let colorTexto = i === 0 ? "#facc15" : (i === 1 ? "#e2e8f0" : "#cd7f32");
-            
+            let nombreSeguro = escaparHtml(ranking[i].nombre);
+            let fotoSegura = escaparHtml(urlFotoSegura(ranking[i].foto));
+            let scoreSeguro = escaparHtml(ranking[i].score);
+
             html += `
                 <div style="display:flex; align-items:center; background:rgba(255,255,255,0.05); padding:6px 12px; border-radius:8px; margin-bottom:6px; border-left:3px solid ${colorTexto}; box-shadow:0 2px 5px rgba(0,0,0,0.2);">
                     <span style="font-size:16px; width:25px; text-align:center;">${medalla}</span>
-                    <img src="${ranking[i].foto}" style="width:24px; height:24px; border-radius:50%; background:#fff; margin:0 10px; border:1px solid ${colorTexto}; object-fit:cover;">
+                    <img src="${fotoSegura}" onerror="this.onerror=null; this.src='${FOTO_FALLBACK}';" style="width:24px; height:24px; border-radius:50%; background:#fff; margin:0 10px; border:1px solid ${colorTexto}; object-fit:cover;">
                     <div style="flex-grow:1; text-align:left; font-weight:bold; color:#f8fafc; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                        ${ranking[i].nombre}
+                        ${nombreSeguro}
                     </div>
                     <div style="font-weight:900; color:${colorTexto}; font-size:1rem;">
-                        ${ranking[i].score}
+                        ${scoreSeguro}
                     </div>
                 </div>
             `;
         }
     }
-    
     let cont = document.getElementById("miniLeaderboardContenido");
     if(cont) cont.innerHTML = html;
 };
 
 window.abrirMenuArcade = () => {
     if(document.getElementById("modalArcade")) return;
-    
-    // Encendemos el motor en la nube al abrir el Arcade
     window.iniciarEscuchaArcade();
 
     let overlay = document.createElement("div"); overlay.id = "modalArcade";
-    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.98); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white; font-family:monospace; animation: fadeIn 0.3s ease-out; overflow-y:auto;";
-    
+    overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.98); z-index:999999; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 20px 0; color:white; font-family:monospace; animation: fadeIn 0.3s ease-out; overflow-y:auto;";
+
     overlay.innerHTML = `
-        <div style="max-width: 400px; width: 90%; text-align: center;">
+        <div style="max-width: 400px; width: 90%; text-align: center; margin: auto 0;">
             <h1 style="color:var(--accent); text-shadow: 0 0 15px var(--accent); font-size: 2.2rem; margin-bottom: 25px; font-weight:900;">🕹️ TEN ARCADE</h1>
-            
+
             <div id="pantallaJuego" style="display:none; flex-direction:column; align-items:center;">
                 <div style="display:flex; justify-content:space-between; width:100%; max-width:300px; margin-bottom:10px; align-items:center;">
                     <span style="font-size:1.2rem; font-weight:bold; color:var(--warning);">SCORE: <span id="arcadeScore">0</span> <span style="font-size:0.8rem; color:#94a3b8; margin-left:10px;">| BEST: <span id="arcadeBest" style="color:var(--success);">0</span></span></span>
                     <button onclick="window.volverMenuArcade()" style="background:var(--danger); border:none; color:white; padding:4px 10px; border-radius:4px; font-weight:bold; cursor:pointer;">Menu 🔙</button>
                 </div>
-                
-                <canvas id="canvasArcade" width="300" height="300" style="background:#000; border:4px solid var(--accent); border-radius:8px; box-shadow:0 0 30px rgba(0, 229, 255, 0.3); cursor:pointer; touch-action:none; margin-bottom:10px;"></canvas>
+
+                <div style="position:relative; width:300px; height:300px; margin-bottom:10px;">
+                    <canvas id="canvasArcade" width="300" height="300" style="background:#000; border:4px solid var(--accent); border-radius:8px; box-shadow:0 0 30px rgba(0, 229, 255, 0.3); cursor:pointer; touch-action:none;"></canvas>
+                    <div id="nivelAlerta" style="position:absolute; top:38%; left:0; width:100%; text-align:center; font-size:22px; font-weight:900; color:var(--warning); text-shadow: 0 2px 10px #000, 0 0 8px #000; display:none; pointer-events:none;">NIVEL 2</div>
+                </div>
+
                 <div id="miniLeaderboardContenido" style="width:100%; max-width:300px; margin-bottom:10px; background:rgba(15,23,42,0.5); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);"></div>
-                
-                <div id="controlesSnake" style="display:none; grid-template-columns: 60px 60px 60px; gap:10px;">
+
+                <div id="controlesSnake" style="display:none; grid-template-columns: 60px 60px 60px; gap:10px; margin-bottom:8px;">
                     <div></div><button onclick="window.dirSnake(0,-1)" style="height:45px; font-size:18px; border-radius:8px; background:rgba(255,255,255,0.1); border:1px solid #fff;">⬆️</button><div></div>
                     <button onclick="window.dirSnake(-1,0)" style="height:45px; font-size:18px; border-radius:8px; background:rgba(255,255,255,0.1); border:1px solid #fff;">⬅️</button>
                     <button onclick="window.dirSnake(0,1)" style="height:45px; font-size:18px; border-radius:8px; background:rgba(255,255,255,0.1); border:1px solid #fff;">⬇️</button>
                     <button onclick="window.dirSnake(1,0)" style="height:45px; font-size:18px; border-radius:8px; background:rgba(255,255,255,0.1); border:1px solid #fff;">➡️</button>
                 </div>
-                <div id="tipTextoArcade" style="width:300px; color:var(--text-muted); font-size:12px; font-weight:bold;"></div>
+
+                <div id="tipTextoArcade" style="width:300px; color:var(--text-muted); font-size:11px; font-weight:bold; line-height:1.4;"></div>
             </div>
 
-            <div id="listaJuegos" style="display:flex; flex-direction:column; gap: 15px;">
+            <div id="listaJuegos" style="display:flex; flex-direction:column; gap: 15px; padding-bottom: 20px;">
                 <button onclick="window.iniciarJuego('snake')" style="padding: 15px; background: rgba(0, 229, 255, 0.1); border: 2px solid var(--accent); color: white; font-size: 1.1rem; border-radius: 8px; cursor:pointer; font-weight:bold; transition:0.2s;">🐍 EL GUSANITO (Snake)</button>
                 <button onclick="window.iniciarJuego('flappy')" style="padding: 15px; background: rgba(168, 85, 247, 0.1); border: 2px solid var(--purple); color: white; font-size: 1.1rem; border-radius: 8px; cursor:pointer; font-weight:bold; transition:0.2s;">🦅 FLAPPY MICHI</button>
                 <button onclick="window.iniciarJuego('dino')" style="padding: 15px; background: rgba(245, 158, 11, 0.1); border: 2px solid var(--warning); color: white; font-size: 1.1rem; border-radius: 8px; cursor:pointer; font-weight:bold; transition:0.2s;">🦖 TÉCNICO EN APUROS</button>
+                <button onclick="window.iniciarJuego('breakout')" style="padding: 15px; background: rgba(34, 197, 94, 0.1); border: 2px solid #22c55e; color: white; font-size: 1.1rem; border-radius: 8px; cursor:pointer; font-weight:bold; transition:0.2s;">🧱 BREAKOUT INFINITO</button>
+                <button onclick="window.iniciarJuego('invaders')" style="padding: 15px; background: rgba(239, 68, 68, 0.1); border: 2px solid #ef4444; color: white; font-size: 1.1rem; border-radius: 8px; cursor:pointer; font-weight:bold; transition:0.2s;">👾 SPACE INVADERS</button>
                 <button onclick="window.cerrarArcade()" style="margin-top:20px; padding: 10px; background:transparent; border:none; color:var(--text-muted); text-decoration:underline; font-size: 1rem; cursor:pointer;">Salir del Arcade</button>
             </div>
         </div>
@@ -11057,43 +11091,65 @@ window.abrirMenuArcade = () => {
 };
 
 window.volverMenuArcade = () => {
-    clearInterval(window.loopArcade); clearInterval(window.musicaArcade); 
+    clearInterval(window.loopArcade); clearInterval(window.musicaArcade);
     window.juegoArcadeActivo = null;
     window.limpiarEventosArcade();
     document.getElementById("pantallaJuego").style.display = "none"; document.getElementById("listaJuegos").style.display = "flex";
 };
 
+// ======================= ALERTA VISUAL EN CANVAS ======================= //
+let timerNivelAlerta = null;
+window.mostrarAlertaNivel = (texto, color = "#facc15") => {
+    let el = document.getElementById("nivelAlerta");
+    if(el) {
+        clearTimeout(timerNivelAlerta);
+        el.innerText = texto; el.style.color = color; el.style.display = "block";
+        timerNivelAlerta = setTimeout(() => { el.style.display = "none"; }, 1400);
+    }
+};
+
 // ======================= LÓGICA DE JUEGOS ======================= //
 window.iniciarJuego = (tipo) => {
-    window.juegoArcadeActivo = tipo; // Registramos a qué está jugando para la nube
-    
+    window.juegoArcadeActivo = tipo;
+
     document.getElementById("listaJuegos").style.display = "none"; document.getElementById("pantallaJuego").style.display = "flex";
     let cvs = document.getElementById("canvasArcade"); let ctx = cvs.getContext("2d"); let score = 0;
-    
-    // Obtener jugador real y su récord de la Nube (o recuperar el de localStorage si acaba de migrar)
+
     let jugador = window.obtenerJugadorActual();
     let rankingJuego = window.arcadeScoresGlobal[tipo] || [];
     let miRecordNube = rankingJuego.find(u => u.nombre === jugador.nombre);
-    
+
     let bestScore = miRecordNube ? miRecordNube.score : (parseInt(localStorage.getItem(`ten_arcade_best_${tipo}_${jugador.nombre}`)) || 0);
     let nuevoRecordAlcanzado = false;
-    
-    // Sincronizar el viejo local a la nube de inmediato si existía
+
     if (!miRecordNube && bestScore > 0) window.guardarEnRankingGlobal(tipo, bestScore);
-    
+
     document.getElementById("arcadeScore").innerText = "0"; document.getElementById("arcadeBest").innerText = bestScore;
     document.getElementById("controlesSnake").style.display = tipo === 'snake' ? "grid" : "none";
+
     let tip = document.getElementById("tipTextoArcade");
-    tip.innerHTML = tipo === 'snake' ? "💡 TIP: Desliza el dedo sobre el cuadro negro para moverte." : "💡 TIP: Toca el cuadro negro para saltar.";
-    
+    if (tipo === 'snake') tip.innerHTML = "💡 Flechas o desliza.<br>⭐+50/-Cola | 💎x2 Pts | 👻Fantasma | ⚠️Evita 💣 y ☠️ (duran 3s)";
+    else if (tipo === 'flappy') tip.innerHTML = "💡 Espacio, ⬆️ o toca.<br>🛡️Escudo | 🪙+5 Pts | ⏳Cámara Lenta";
+    else if (tipo === 'dino') tip.innerHTML = "💡 Espacio, ⬆️ o toca.<br>🪖Escudo | ⚡Turbo | ⭐+25 Pts | 🦘Doble Salto";
+    else if (tipo === 'breakout') tip.innerHTML = "💡 Flechas o arrastra.<br>🟢XL 🔵2B 🟠🔥 Fuego | 🔴Esquiva: XS, ⚡Rápido, 💣";
+    else if (tipo === 'invaders') tip.innerHTML = "💡 Flechas/arrastra + Espacio/toca.<br>🟣2X 🟡3X 🔵⚡Rápido ❄️Hielo 💣EMP";
+
     window.renderizarMiniLeaderboard(tipo); window.playMusicaJuego(tipo); window.limpiarEventosArcade();
 
     const verificarRecord = (puntosActuales) => {
-        if (puntosActuales > bestScore) {
-            bestScore = puntosActuales; 
+        let rankingActual = window.arcadeScoresGlobal[tipo] || [];
+        let miRecordNubeAhora = rankingActual.find(u => u.nombre === jugador.nombre);
+        let bestReal = Math.max(bestScore, miRecordNubeAhora ? miRecordNubeAhora.score : 0);
+
+        if (bestReal > bestScore) {
+            bestScore = bestReal;
+            let spanBest = document.getElementById("arcadeBest");
+            if (spanBest) spanBest.innerText = bestScore;
+        }
+
+        if (puntosActuales > bestReal) {
+            bestScore = puntosActuales;
             document.getElementById("arcadeBest").innerText = bestScore;
-            
-            // Envía la petición asíncrona a Firebase
             window.guardarEnRankingGlobal(tipo, bestScore);
 
             if (!nuevoRecordAlcanzado && bestScore > 0) {
@@ -11103,134 +11159,1012 @@ window.iniciarJuego = (tipo) => {
         }
     };
 
+    // =========================================================================
+    // 1. 🐍 EL GUSANITO (SNAKE) — Velocidad normal + Flechas + Poderes y Trampas 3s
+    // =========================================================================
     if (tipo === 'snake') {
-        let estado = 0; let px=10, py=10, gs=15, tc=20, ax=15, ay=15, xv=0, yv=0, trail=[], tail=5; let tsX = 0, tsY = 0; 
-        window.dirSnake = (x, y) => { if(estado === 0) { estado = 1; obtenerAudioCtx(); } if(x!==0 && xv!==-x){xv=x; yv=0;} if(y!==0 && yv!==-y){xv=0; yv=y;} };
+        let estado = 0; let px=10, py=10, gs=15, tc=20, ax=15, ay=15, xv=0, yv=0, trail=[], tail=5;
+        let tsX = 0, tsY = 0;
+        let frameCounter = 0;
+        let dirChanged = false; // Evita giros suicidas en el mismo tick
+        let items = []; // Poderes y trampas con vida de 180 frames (3 segundos a 60fps)
+        let doublePtsFrames = 0;
+        let ghostFrames = 0;
+        let spawnTimer = 180; // 5 segundos a 60fps
+
+        const celdaOcupada = (cx, cy) => {
+            if (cx === px && cy === py) return true;
+            if (cx === ax && cy === ay) return true;
+            if (trail.some(t => t.x === cx && t.y === cy)) return true;
+            if (items.some(it => it.x === cx && it.y === cy)) return true;
+            return false;
+        };
+
+        const spawnearItem = (esTrampa) => {
+            for (let tries = 0; tries < 25; tries++) {
+                let cx = Math.floor(Math.random() * tc);
+                let cy = Math.floor(Math.random() * tc);
+                // Las trampas nunca aparecen pegadas a la cabeza (mínimo 4 cuadros de distancia)
+                if (esTrampa && Math.hypot(cx - px, cy - py) < 4) continue;
+                if (celdaOcupada(cx, cy)) continue;
+
+                let tiposPoder = ['gold', 'x2', 'ghost'];
+                let tiposTrampa = ['bomb', 'poison'];
+                let sub = esTrampa
+                    ? tiposTrampa[Math.floor(Math.random() * tiposTrampa.length)]
+                    : tiposPoder[Math.floor(Math.random() * tiposPoder.length)];
+
+                items.push({ x: cx, y: cy, tipo: sub, esTrampa, life: 180 }); // 180 frames = 3 seg exactos
+                break;
+            }
+        };
+
+        const morirSnake = () => {
+            tail = 5; score = 0; items = []; doublePtsFrames = 0; ghostFrames = 0; spawnTimer = 180;
+            document.getElementById("arcadeScore").innerText = score;
+            nuevoRecordAlcanzado = false;
+            document.getElementById("arcadeBest").style.color = "var(--success)";
+            document.getElementById("arcadeBest").style.textShadow = "none";
+            playSonido(150, 'sawtooth', 0.5, 0.2);
+            xv = 0; yv = 0; px = 10; py = 10; trail = []; estado = 0;
+        };
+
+        const cambiarDir = (nx, ny) => {
+            if (estado === 0) { estado = 1; obtenerAudioCtx(); xv = nx; yv = ny; dirChanged = true; return; }
+            if (dirChanged) return;
+            if (nx !== 0 && xv !== -nx) { if (xv !== nx) dirChanged = true; xv = nx; yv = 0; }
+            if (ny !== 0 && yv !== -ny) { if (yv !== ny) dirChanged = true; xv = 0; yv = ny; }
+        };
+
+        window.dirSnake = (x, y) => cambiarDir(x, y);
+
         window.accionArcadeActual = (e) => {
-            if(e.type === "keydown") {
-                if([37,38,39,40].includes(e.keyCode)) e.preventDefault();
-                if(estado === 0) { estado = 1; obtenerAudioCtx(); }
-                if(e.keyCode===37 && xv!==1){xv=-1; yv=0;} if(e.keyCode===38 && yv!==1){xv=0; yv=-1;}
-                if(e.keyCode===39 && xv!==-1){xv=1; yv=0;} if(e.keyCode===40 && yv!==-1){xv=0; yv=1;}
-            } 
-            else if (e.type === "touchstart") { tsX = e.touches[0].clientX; tsY = e.touches[0].clientY; } 
+            if (e.type === "keydown") {
+                if ([37, 38, 39, 40].includes(e.keyCode)) e.preventDefault();
+                if (e.keyCode === 37) cambiarDir(-1, 0);
+                else if (e.keyCode === 38) cambiarDir(0, -1);
+                else if (e.keyCode === 39) cambiarDir(1, 0);
+                else if (e.keyCode === 40) cambiarDir(0, 1);
+            }
+            else if (e.type === "touchstart" || e.type === "touchmove") {
+                if (e.cancelable) e.preventDefault();
+                if (e.type === "touchstart") { tsX = e.touches[0].clientX; tsY = e.touches[0].clientY; }
+            }
             else if (e.type === "touchend") {
-                let teX = e.changedTouches[0].clientX; let teY = e.changedTouches[0].clientY; let dX = teX - tsX; let dY = teY - tsY;
-                if (Math.abs(dX) < 20 && Math.abs(dY) < 20) { if (estado === 0) { estado = 1; xv = 1; yv = 0; obtenerAudioCtx(); } return; }
-                if (estado === 0) { estado = 1; obtenerAudioCtx(); }
-                if (Math.abs(dX) > Math.abs(dY)) { if (dX > 0 && xv !== -1) { xv = 1; yv = 0; } else if (dX < 0 && xv !== 1) { xv = -1; yv = 0; } } 
-                else { if (dY > 0 && yv !== -1) { xv = 0; yv = 1; } else if (dY < 0 && yv !== 1) { xv = 0; yv = -1; } }
+                let teX = e.changedTouches[0].clientX; let teY = e.changedTouches[0].clientY;
+                let dX = teX - tsX; let dY = teY - tsY;
+                if (Math.abs(dX) < 20 && Math.abs(dY) < 20) {
+                    if (estado === 0) cambiarDir(1, 0);
+                    return;
+                }
+                if (Math.abs(dX) > Math.abs(dY)) cambiarDir(dX > 0 ? 1 : -1, 0);
+                else cambiarDir(0, dY > 0 ? 1 : -1);
             }
         };
-        document.addEventListener("keydown", window.accionArcadeActual); cvs.addEventListener("touchstart", window.accionArcadeActual, {passive: false}); cvs.addEventListener("touchend", window.accionArcadeActual, {passive: false});
-        
+        document.addEventListener("keydown", window.accionArcadeActual);
+        cvs.addEventListener("touchstart", window.accionArcadeActual, {passive: false});
+        cvs.addEventListener("touchmove", window.accionArcadeActual, {passive: false});
+        cvs.addEventListener("touchend", window.accionArcadeActual, {passive: false});
+
         window.loopArcade = setInterval(() => {
-            ctx.fillStyle="#0f172a"; ctx.fillRect(0,0,cvs.width,cvs.height);
-            if (estado === 0) { ctx.fillStyle="white"; ctx.font="16px monospace"; ctx.textAlign="center"; ctx.fillText("DESLIZA EL DEDO PARA INICIAR", cvs.width/2, cvs.height/2); return; }
-            px+=xv; py+=yv; if(px<0) px=tc-1; if(px>tc-1) px=0; if(py<0) py=tc-1; if(py>tc-1) py=0;
-            ctx.fillStyle="#00e5ff";
-            for(let i=0; i<trail.length; i++) {
-                ctx.fillRect(trail[i].x*gs, trail[i].y*gs, gs-2, gs-2);
-                if(trail[i].x===px && trail[i].y===py && (xv!==0||yv!==0)) { 
-                    tail=5; score=0; document.getElementById("arcadeScore").innerText=score;
-                    nuevoRecordAlcanzado=false; document.getElementById("arcadeBest").style.color="var(--success)"; document.getElementById("arcadeBest").style.textShadow="none";
-                    playSonido(150, 'sawtooth', 0.5, 0.2); xv=0; yv=0; px=10; py=10; estado = 0;
+            frameCounter++;
+            ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+            if (estado === 0) {
+                ctx.fillStyle = "white"; ctx.font = "15px monospace"; ctx.textAlign = "center";
+                ctx.fillText("FLECHAS O DESLIZA", cvs.width/2, cvs.height/2 - 10);
+                ctx.fillText("PARA INICIAR", cvs.width/2, cvs.height/2 + 12);
+                return;
+            }
+
+            if (doublePtsFrames > 0) doublePtsFrames--;
+            if (ghostFrames > 0) ghostFrames--;
+
+            // Tiempo de vida de poderes y trampas (3 segundos exactos)
+            for (let i = items.length - 1; i >= 0; i--) {
+                items[i].life--;
+                if (items[i].life <= 0) items.splice(i, 1);
+            }
+
+            // Solo 1 objeto en pantalla a la vez; espera 5s (300 frames) tras agarrarlo o expirar
+            if (items.length === 0) {
+                spawnTimer--;
+                if (spawnTimer <= 0) {
+                    spawnearItem(Math.random() < 0.45); // 45% trampa, 55% ayudita
+                    spawnTimer = 180;
                 }
             }
-            trail.push({x:px, y:py}); while(trail.length>tail) trail.shift();
-            if(ax===px && ay===py) { 
-                tail++; score+=10; document.getElementById("arcadeScore").innerText=score; verificarRecord(score);
-                if (!nuevoRecordAlcanzado || score % 50 !== 0) playSonido(800, 'square', 0.1, 0.15); 
-                ax=Math.floor(Math.random()*tc); ay=Math.floor(Math.random()*tc);
+
+            // Velocidad normal: 60fps / 5 = 12 pasos por segundo (sube suavemente hasta 15 pasos/s)
+            let framesPorPaso = score >= 400 ? 4 : 5;
+
+            if (frameCounter % framesPorPaso === 0) {
+                dirChanged = false;
+                px += xv; py += yv;
+                if (px < 0) px = tc - 1; if (px > tc - 1) px = 0;
+                if (py < 0) py = tc - 1; if (py > tc - 1) py = 0;
+
+                // Colisión consigo mismo (ignorada en modo Fantasma)
+                if (ghostFrames <= 0) {
+                    for (let i = 0; i < trail.length; i++) {
+                        let esSegmentoSaliendo = (i === 0 && trail.length >= tail);
+                        if (!esSegmentoSaliendo && trail[i].x === px && trail[i].y === py && (xv !== 0 || yv !== 0)) {
+                            morirSnake();
+                            return;
+                        }
+                    }
+                }
+
+                trail.push({x: px, y: py});
+                while (trail.length > tail) trail.shift();
+
+                // Comer Manzana Roja normal
+                if (ax === px && ay === py) {
+                    let ganancia = doublePtsFrames > 0 ? 20 : 10;
+                    tail++; score += ganancia;
+                    document.getElementById("arcadeScore").innerText = score;
+                    verificarRecord(score);
+                    if (!nuevoRecordAlcanzado || score % 50 !== 0) playSonido(800, 'square', 0.08, 0.14);
+                    do {
+                        ax = Math.floor(Math.random() * tc);
+                        ay = Math.floor(Math.random() * tc);
+                    } while (trail.some(t => t.x === ax && t.y === ay));
+                }
+
+                // Comer Poderes o Trampas
+                for (let i = items.length - 1; i >= 0; i--) {
+                    let it = items[i];
+                    if (it.x === px && it.y === py) {
+                        items.splice(i, 1);
+                        if (it.tipo === 'gold') {
+                            let pts = doublePtsFrames > 0 ? 100 : 50;
+                            score += pts; tail = Math.max(5, tail - 3);
+                            document.getElementById("arcadeScore").innerText = score; verificarRecord(score);
+                            window.playSonidoPowerup(); window.mostrarAlertaNivel(`+${pts} PTS / -COLA`, "#facc15");
+                        } else if (it.tipo === 'x2') {
+                            doublePtsFrames = 360; // 6 segs
+                            window.playSonidoPowerup(); window.mostrarAlertaNivel("💎 PUNTOS x2!", "#c084fc");
+                        } else if (it.tipo === 'ghost') {
+                            ghostFrames = 240; // 4 segs
+                            window.playSonidoPowerup(); window.mostrarAlertaNivel("👻 MODO FANTASMA", "#38bdf8");
+                        } else if (it.tipo === 'bomb') {
+                            if (ghostFrames > 0) {
+                                window.mostrarAlertaNivel("👻 BOMBA ESQUIVADA", "#38bdf8");
+                            } else {
+                                window.playSonidoTrampa(); window.mostrarAlertaNivel("💥 ¡BOMBA!", "#ef4444");
+                                morirSnake();
+                                return;
+                            }
+                        } else if (it.tipo === 'poison') {
+                            if (ghostFrames > 0) {
+                                window.mostrarAlertaNivel("👻 VENENO EVITADO", "#38bdf8");
+                            } else {
+                                score = Math.max(0, score - 20); tail += 3;
+                                document.getElementById("arcadeScore").innerText = score;
+                                window.playSonidoTrampa(); window.mostrarAlertaNivel("☠️ -20 PTS / +COLA", "#ef4444");
+                            }
+                        }
+                    }
+                }
             }
-            ctx.fillStyle="#f43f5e"; ctx.fillRect(ax*gs, ay*gs, gs-2, gs-2);
-        }, 1000/12); 
+
+            // Dibujar Serpiente
+            for (let i = 0; i < trail.length; i++) {
+                let esCabeza = (i === trail.length - 1);
+                if (ghostFrames > 0) ctx.fillStyle = esCabeza ? "#e0f2fe" : "rgba(56, 189, 248, 0.45)";
+                else if (doublePtsFrames > 0) ctx.fillStyle = esCabeza ? "#f0abfc" : "#a855f7";
+                else ctx.fillStyle = esCabeza ? "#67e8f9" : "#00e5ff";
+                ctx.fillRect(trail[i].x * gs, trail[i].y * gs, gs - 2, gs - 2);
+            }
+
+            // Dibujar Manzana Normal
+            ctx.fillStyle = "#f43f5e";
+            ctx.fillRect(ax * gs, ay * gs, gs - 2, gs - 2);
+
+            // Dibujar Poderes y Trampas (parpadean cuando les queda menos de 0.8s)
+            ctx.textAlign = "center"; ctx.font = "13px Arial";
+            for (let it of items) {
+                if (it.life < 48 && Math.floor(it.life / 6) % 2 === 0) continue;
+                let emoji = it.tipo === 'gold' ? '⭐' : it.tipo === 'x2' ? '💎' : it.tipo === 'ghost' ? '👻' : it.tipo === 'bomb' ? '💣' : '☠️';
+                ctx.fillText(emoji, it.x * gs + gs/2, it.y * gs + gs - 2);
+            }
+
+            // HUD de poderes activos
+            let hud = [];
+            if (doublePtsFrames > 0) hud.push(`💎x2 ${Math.ceil(doublePtsFrames/60)}s`);
+            if (ghostFrames > 0) hud.push(`👻 ${Math.ceil(ghostFrames/60)}s`);
+            if (hud.length > 0) {
+                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(4, 4, cvs.width - 8, 18);
+                ctx.fillStyle = "#fff"; ctx.font = "11px monospace"; ctx.textAlign = "left";
+                ctx.fillText(hud.join("  "), 8, 17);
+            }
+        }, 1000/60);
     }
-    
+
+    // =========================================================================
+    // 2. 🦅 FLAPPY MICHI — Espacio + Flecha Arriba + 3 Poderes
+    // =========================================================================
     else if (tipo === 'flappy') {
-        let estado = 0; let bY=150, vY=0, g=2, jump=-12, pipes=[], frame=0;
-        window.accionArcadeActual = (e) => {
-            if(e && e.type === "keydown" && e.keyCode !== 32) return; 
-            if(e) e.preventDefault(); obtenerAudioCtx(); 
+        let estado = 0; let bY = 150, vY = 0, g = 2, jump = -12, pipes = [], frame = 0;
+        let shieldFrames = 0, slowFrames = 0;
+        let powerups = []; // {x, y, tipo: 'shield'|'coin'|'slow'}
+
+        const ejecutarSaltoFlappy = () => {
+            obtenerAudioCtx();
             if (estado === 0) {
-                bY=150; vY=jump; pipes=[]; score=0; frame=0; estado = 1; document.getElementById("arcadeScore").innerText = score;
-                nuevoRecordAlcanzado=false; document.getElementById("arcadeBest").style.color="var(--success)"; document.getElementById("arcadeBest").style.textShadow="none";
+                bY = 150; vY = jump; pipes = []; powerups = []; score = 0; frame = 0;
+                shieldFrames = 0; slowFrames = 0; estado = 1;
+                document.getElementById("arcadeScore").innerText = score;
+                nuevoRecordAlcanzado = false;
+                document.getElementById("arcadeBest").style.color = "var(--success)";
+                document.getElementById("arcadeBest").style.textShadow = "none";
                 playSonido(400, 'square', 0.1, 0.1);
-            } else if (estado === 1) { vY = jump; playSonido(400, 'square', 0.1, 0.1); } else if (estado === 2) { estado = 0; }
+            } else if (estado === 1) {
+                vY = jump; playSonido(400, 'square', 0.1, 0.1);
+            } else if (estado === 2) {
+                estado = 0;
+            }
         };
-        document.addEventListener("keydown", window.accionArcadeActual); cvs.addEventListener("touchstart", window.accionArcadeActual, {passive: false}); cvs.addEventListener("mousedown", window.accionArcadeActual);
-        
+
+        window.accionArcadeActual = (e) => {
+            if (!e) return;
+            if (e.type === "keydown") {
+                if (e.keyCode !== 32 && e.keyCode !== 38) return; // Espacio o Flecha Arriba
+                if (e.repeat) return;
+                e.preventDefault();
+                ejecutarSaltoFlappy();
+            } else if (e.type === "touchstart" || e.type === "mousedown") {
+                if (e.type === "touchstart" && e.cancelable) e.preventDefault();
+                ejecutarSaltoFlappy();
+            }
+        };
+        document.addEventListener("keydown", window.accionArcadeActual);
+        cvs.addEventListener("touchstart", window.accionArcadeActual, {passive: false});
+        cvs.addEventListener("mousedown", window.accionArcadeActual);
+
         window.loopArcade = setInterval(() => {
-            ctx.fillStyle="#38bdf8"; ctx.fillRect(0,0,cvs.width,cvs.height); ctx.textAlign = "center";
-            if (estado === 0) { ctx.font = "24px Arial"; ctx.fillText("😸", cvs.width/2, 150); ctx.fillStyle="white"; ctx.font="18px monospace"; ctx.fillText("TOCA PARA EMPEZAR", cvs.width/2, 200); return; }
-            if (estado === 1) { vY += g; bY += vY; frame++; if(frame % 50 === 0) { let pipeY = Math.random() * (cvs.height - 180) + 60; pipes.push({x: cvs.width, y: pipeY, w: 45, gap: 110, passed:false}); } }
-            for(let i=0; i<pipes.length; i++) {
-                let p = pipes[i]; if (estado === 1) p.x -= 5; 
-                ctx.fillStyle="#22c55e"; ctx.fillRect(p.x, 0, p.w, p.y - p.gap/2); ctx.fillRect(p.x, p.y + p.gap/2, p.w, cvs.height);
-                if(estado === 1 && (50+20 > p.x && 50 < p.x+p.w && (bY-15 < p.y-p.gap/2 || bY+15 > p.y+p.gap/2))) { estado=2; playSonido(150, 'sawtooth', 0.5, 0.2); }
-                if(estado === 1 && bY > cvs.height) { estado=2; playSonido(100, 'sawtooth', 0.5, 0.2); }
-                if(estado === 1 && p.x < 50 && !p.passed) { 
-                    p.passed=true; score++; document.getElementById("arcadeScore").innerText=score; verificarRecord(score);
-                    if (score % 10 === 0 && score > 0) window.playSonidoLogro(); else playSonido(800, 'square', 0.1, 0.1); 
+            ctx.fillStyle = slowFrames > 0 ? "#0284c7" : "#38bdf8";
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
+            ctx.textAlign = "center";
+
+            if (estado === 0) {
+                ctx.font = "28px Arial"; ctx.fillText("😸", cvs.width/2, 145);
+                ctx.fillStyle = "white"; ctx.font = "15px monospace";
+                ctx.fillText("ESPACIO, ⬆️ O TOCA", cvs.width/2, 195);
+                ctx.fillText("PARA EMPEZAR", cvs.width/2, 215);
+                return;
+            }
+
+            if (estado === 1) {
+                vY += g; bY += vY; frame++;
+                if (shieldFrames > 0) shieldFrames--;
+                if (slowFrames > 0) slowFrames--;
+                if (bY < 0) { bY = 0; vY = 0; }
+
+                let pipeSpeed = (4.5 + Math.min(3.5, Math.floor(score / 12) * 0.5)) * (slowFrames > 0 ? 0.6 : 1);
+                let pipeGap = Math.max(88, 120 - Math.floor(score / 2));
+
+                if (frame % Math.max(32, 48 - Math.floor(score / 4)) === 0) {
+                    let pipeY = Math.random() * (cvs.height - 170) + 85;
+                    pipes.push({x: cvs.width, y: pipeY, w: 45, gap: pipeGap, passed: false});
+                    // 28% de probabilidad de aparecer un poder
+                    if (Math.random() < 0.28) {
+                        let r = Math.random();
+                        let pTipo = r < 0.45 ? 'coin' : (r < 0.75 ? 'shield' : 'slow');
+                        powerups.push({x: cvs.width + 22, y: pipeY + (Math.random() - 0.5) * 30, tipo: pTipo});
+                    }
+                }
+
+                for (let i = pipes.length - 1; i >= 0; i--) {
+                    let p = pipes[i]; p.x -= pipeSpeed;
+                    if (p.x + p.w < -10) { pipes.splice(i, 1); continue; }
+                    ctx.fillStyle = "#22c55e";
+                    ctx.fillRect(p.x, 0, p.w, p.y - p.gap/2);
+                    ctx.fillRect(p.x, p.y + p.gap/2, p.w, cvs.height);
+
+                    if (50 + 16 > p.x && 50 - 10 < p.x + p.w && (bY - 12 < p.y - p.gap/2 || bY + 12 > p.y + p.gap/2)) {
+                        if (shieldFrames > 0) {
+                            pipes.splice(i, 1); playSonido(260, 'sawtooth', 0.1, 0.12);
+                            continue;
+                        } else {
+                            estado = 2; playSonido(150, 'sawtooth', 0.5, 0.2); break;
+                        }
+                    }
+                    if (p.x < 50 && !p.passed) {
+                        p.passed = true; score++;
+                        document.getElementById("arcadeScore").innerText = score; verificarRecord(score);
+                        if (score % 10 === 0 && score > 0) { window.playSonidoLogro(); window.mostrarAlertaNivel("¡VELOCIDAD++!", "#fff"); }
+                        else playSonido(800, 'square', 0.1, 0.1);
+                    }
+                }
+
+                for (let i = powerups.length - 1; i >= 0; i--) {
+                    let pu = powerups[i]; pu.x -= pipeSpeed;
+                    if (pu.x < -20) { powerups.splice(i, 1); continue; }
+                    ctx.font = "20px Arial";
+                    ctx.fillText(pu.tipo === 'shield' ? '🛡️' : pu.tipo === 'coin' ? '🪙' : '⏳', pu.x, pu.y + 6);
+
+                    if (Math.hypot(pu.x - 50, pu.y - bY) < 24) {
+                        powerups.splice(i, 1);
+                        window.playSonidoPowerup();
+                        if (pu.tipo === 'shield') { shieldFrames = 175; window.mostrarAlertaNivel("🛡️ ¡INVENCIBLE!", "#38bdf8"); }
+                        else if (pu.tipo === 'coin') {
+                            score += 5; document.getElementById("arcadeScore").innerText = score; verificarRecord(score);
+                            window.mostrarAlertaNivel("🪙 +5 PUNTOS!", "#facc15");
+                        } else if (pu.tipo === 'slow') {
+                            slowFrames = 175; window.mostrarAlertaNivel("⏳ CÁMARA LENTA", "#4ade80");
+                        }
+                    }
+                }
+
+                if (bY > cvs.height) { estado = 2; playSonido(100, 'sawtooth', 0.5, 0.2); }
+            }
+
+            if (shieldFrames > 0) {
+                ctx.strokeStyle = "#e0f2fe"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(50, bY, 20, 0, Math.PI*2); ctx.stroke();
+            }
+            ctx.font = "30px Arial"; ctx.fillText(estado === 2 ? "🙀" : "😸", 50, bY + 10);
+
+            // HUD de poderes
+            let hud = [];
+            if (shieldFrames > 0) hud.push(`🛡️${Math.ceil(shieldFrames/35)}s`);
+            if (slowFrames > 0) hud.push(`⏳${Math.ceil(slowFrames/35)}s`);
+            if (hud.length > 0 && estado === 1) {
+                ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(4, 4, cvs.width - 8, 18);
+                ctx.fillStyle = "#fff"; ctx.font = "11px monospace"; ctx.textAlign = "left";
+                ctx.fillText(hud.join("  "), 8, 17);
+            }
+
+            if (estado === 2) {
+                ctx.fillStyle = "rgba(0,0,0,0.55)"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+                ctx.textAlign = "center";
+                if (nuevoRecordAlcanzado) { ctx.fillStyle = "#00e5ff"; ctx.font = "20px monospace"; ctx.fillText("🏆 ¡NUEVO RÉCORD! 🏆", cvs.width/2, 110); }
+                ctx.fillStyle = "white"; ctx.font = "22px monospace"; ctx.fillText("¡GAME OVER!", cvs.width/2, 140);
+                ctx.font = "14px monospace"; ctx.fillText("ESPACIO / TOCA PARA SEGUIR", cvs.width/2, 180);
+            }
+        }, 1000/35);
+    }
+
+    // =========================================================================
+    // 3. 🦖 TÉCNICO EN APUROS (DINO) — Espacio + Flecha Arriba + 4 Poderes
+    // =========================================================================
+    else if (tipo === 'dino') {
+        let estado = 0; let dY = 250, vY = 0, g = 2.5, jump = -21, ground = 250, cactus = [], frame = 0, nextCactusFrame = 0;
+        let lastScoreMostrado = -1;
+        let shieldHits = 0, turboFrames = 0, doubleJumpFrames = 0, saltosRestantes = 1;
+        let powerups = []; // {x, y, tipo: 'casco'|'turbo'|'star'|'jump'}
+
+        const ejecutarSaltoDino = () => {
+            obtenerAudioCtx();
+            if (estado === 0) {
+                dY = ground; vY = 0; cactus = []; powerups = []; score = 0; frame = 0; nextCactusFrame = 30;
+                shieldHits = 0; turboFrames = 0; doubleJumpFrames = 0; saltosRestantes = 1;
+                estado = 1; lastScoreMostrado = -1;
+                document.getElementById("arcadeScore").innerText = "0";
+                nuevoRecordAlcanzado = false;
+                document.getElementById("arcadeBest").style.color = "var(--success)";
+                document.getElementById("arcadeBest").style.textShadow = "none";
+            } else if (estado === 1) {
+                if (dY >= ground) {
+                    vY = jump;
+                    saltosRestantes = doubleJumpFrames > 0 ? 1 : 0;
+                    playSonido(300, 'square', 0.1, 0.1);
+                } else if (doubleJumpFrames > 0 && saltosRestantes > 0) {
+                    vY = jump * 0.9;
+                    saltosRestantes--;
+                    playSonido(480, 'square', 0.1, 0.12);
+                }
+            } else if (estado === 2) {
+                estado = 0;
+            }
+        };
+
+        window.accionArcadeActual = (e) => {
+            if (!e) return;
+            if (e.type === "keydown") {
+                if (e.keyCode !== 32 && e.keyCode !== 38) return; // Espacio o Flecha Arriba
+                if (e.repeat) return;
+                e.preventDefault();
+                ejecutarSaltoDino();
+            } else if (e.type === "touchstart" || e.type === "mousedown") {
+                if (e.type === "touchstart" && e.cancelable) e.preventDefault();
+                ejecutarSaltoDino();
+            }
+        };
+        document.addEventListener("keydown", window.accionArcadeActual);
+        cvs.addEventListener("touchstart", window.accionArcadeActual, {passive: false});
+        cvs.addEventListener("mousedown", window.accionArcadeActual);
+
+        window.loopArcade = setInterval(() => {
+            ctx.fillStyle = turboFrames > 0 ? "#fef9c3" : "#f8fafc";
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
+            ctx.fillStyle = "#94a3b8"; ctx.fillRect(0, ground + 20, cvs.width, 50);
+            ctx.textAlign = "center";
+
+            if (estado === 0) {
+                ctx.font = "40px Arial"; ctx.fillText("👷", cvs.width/2, ground + 10);
+                ctx.fillStyle = "#0f172a"; ctx.font = "15px monospace";
+                ctx.fillText("ESPACIO, ⬆️ O TOCA", cvs.width/2, 95);
+                ctx.fillText("PARA EMPEZAR", cvs.width/2, 118);
+                return;
+            }
+
+            if (estado === 1) {
+                vY += g; dY += vY;
+                if (dY > ground) { dY = ground; vY = 0; saltosRestantes = doubleJumpFrames > 0 ? 2 : 1; }
+                frame++;
+                if (turboFrames > 0) turboFrames--;
+                if (doubleJumpFrames > 0) doubleJumpFrames--;
+
+                let speedMulti = (1 + (score / 2200)) * (turboFrames > 0 ? 1.5 : 1);
+
+                if (frame >= nextCactusFrame) {
+                    cactus.push({x: cvs.width, w: 18 + Math.random()*14, h: 22 + Math.random()*14});
+                    nextCactusFrame = frame + Math.max(22, Math.floor(Math.random() * (38 / Math.min(2, speedMulti))) + 22);
+                    // 22% chance de poder aéreo
+                    if (Math.random() < 0.22) {
+                        let tipos = ['casco', 'turbo', 'star', 'jump'];
+                        let pTipo = tipos[Math.floor(Math.random() * tipos.length)];
+                        powerups.push({x: cvs.width + 45, y: ground - 45 - Math.random()*30, tipo: pTipo});
+                    }
+                }
+
+                score += (turboFrames > 0 ? 2 : 1);
+                let scoreMostrado = Math.floor(score / 10);
+                if (scoreMostrado !== lastScoreMostrado) {
+                    lastScoreMostrado = scoreMostrado;
+                    document.getElementById("arcadeScore").innerText = scoreMostrado;
+                    verificarRecord(scoreMostrado);
+                }
+                if (score % 1000 === 0 && score > 0) {
+                    window.playSonidoLogro(); window.mostrarAlertaNivel(`NIVEL ${Math.floor(score/1000)+1}`, "#0284c7");
+                } else if (score % 100 === 0 && score > 0) {
+                    playSonido(600, 'square', 0.08, 0.08);
+                }
+
+                for (let i = cactus.length - 1; i >= 0; i--) {
+                    let c = cactus[i]; c.x -= (7 * speedMulti);
+                    if (c.x + c.w < -20) { cactus.splice(i, 1); continue; }
+                    ctx.fillStyle = "#475569"; ctx.fillRect(c.x, ground + 20 - c.h, c.w, c.h);
+
+                    if (40 + 14 > c.x && 40 - 14 < c.x + c.w && dY + 18 > ground + 20 - c.h) {
+                        if (turboFrames > 0) {
+                            cactus.splice(i, 1); playSonido(250, 'sawtooth', 0.08, 0.1);
+                        } else if (shieldHits > 0) {
+                            shieldHits--; cactus.splice(i, 1);
+                            playSonido(220, 'sawtooth', 0.15, 0.15);
+                            window.mostrarAlertaNivel("🪖 ¡CASCO SALVÓ!", "#f59e0b");
+                        } else {
+                            estado = 2; playSonido(150, 'sawtooth', 0.6, 0.2);
+                        }
+                    }
+                }
+
+                for (let i = powerups.length - 1; i >= 0; i--) {
+                    let pu = powerups[i]; pu.x -= (7 * speedMulti);
+                    if (pu.x < -30) { powerups.splice(i, 1); continue; }
+                    let em = pu.tipo === 'casco' ? '🪖' : pu.tipo === 'turbo' ? '⚡' : pu.tipo === 'star' ? '⭐' : '🦘';
+                    ctx.font = "22px Arial"; ctx.fillText(em, pu.x, pu.y);
+
+                    if (Math.hypot(pu.x - 40, pu.y - (dY + 5)) < 28) {
+                        powerups.splice(i, 1); window.playSonidoPowerup();
+                        if (pu.tipo === 'casco') { shieldHits = 1; window.mostrarAlertaNivel("🪖 +1 VIDA EXTRA!", "#f59e0b"); }
+                        else if (pu.tipo === 'turbo') { turboFrames = 160; window.mostrarAlertaNivel("⚡ ¡TURBO INVENCIBLE!", "#eab308"); }
+                        else if (pu.tipo === 'star') {
+                            score += 250;
+                            let sM = Math.floor(score / 10); lastScoreMostrado = sM;
+                            document.getElementById("arcadeScore").innerText = sM; verificarRecord(sM);
+                            window.mostrarAlertaNivel("⭐ +25 PUNTOS!", "#f59e0b");
+                        } else if (pu.tipo === 'jump') {
+                            doubleJumpFrames = 320; window.mostrarAlertaNivel("🦘 ¡DOBLE SALTO!", "#10b981");
+                        }
+                    }
                 }
             }
-            ctx.font = "30px Arial"; ctx.fillText(estado===2 ? "🙀" : "😸", 50, bY+10);
-            if (estado === 2) { 
-                ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillRect(0,0,cvs.width,cvs.height);
-                if(nuevoRecordAlcanzado) { ctx.fillStyle="#00e5ff"; ctx.font="20px monospace"; ctx.fillText("🏆 ¡NUEVO RÉCORD! 🏆", cvs.width/2, 110); }
-                ctx.fillStyle="white"; ctx.font="22px monospace"; ctx.fillText("¡GAME OVER!", cvs.width/2, 140); ctx.font="14px monospace"; ctx.fillText("TOCA PARA CONTINUAR", cvs.width/2, 180); 
+
+            if (turboFrames > 0) {
+                ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(40, dY + 8, 22, 0, Math.PI*2); ctx.stroke();
             }
-        }, 1000/35); 
+            if (shieldHits > 0) { ctx.font = "18px Arial"; ctx.fillText("🪖", 40, dY - 14); }
+            ctx.font = "38px Arial"; ctx.fillText(estado === 2 ? "💥" : "👷", 40, dY + 20);
+
+            // HUD poderes
+            let hud = [];
+            if (shieldHits > 0) hud.push("🪖x1");
+            if (turboFrames > 0) hud.push(`⚡${Math.ceil(turboFrames/40)}s`);
+            if (doubleJumpFrames > 0) hud.push(`🦘${Math.ceil(doubleJumpFrames/40)}s`);
+            if (hud.length > 0 && estado === 1) {
+                ctx.fillStyle = "rgba(15,23,42,0.75)"; ctx.fillRect(4, 4, cvs.width - 8, 18);
+                ctx.fillStyle = "#fff"; ctx.font = "11px monospace"; ctx.textAlign = "left";
+                ctx.fillText(hud.join("  "), 8, 17);
+            }
+
+            if (estado === 2) {
+                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+                ctx.textAlign = "center";
+                if (nuevoRecordAlcanzado) { ctx.fillStyle = "#00e5ff"; ctx.font = "20px monospace"; ctx.fillText("🏆 ¡NUEVO RÉCORD! 🏆", cvs.width/2, 90); }
+                ctx.fillStyle = "#ef4444"; ctx.font = "24px monospace"; ctx.fillText("¡TROPEZÓ!", cvs.width/2, 130);
+                ctx.fillStyle = "white"; ctx.font = "14px monospace"; ctx.fillText("ESPACIO / TOCA PARA REINICIAR", cvs.width/2, 170);
+            }
+        }, 1000/40);
     }
-    
-    else if (tipo === 'dino') {
-        let estado = 0; let dY=250, vY=0, g=2.5, jump=-21, ground=250, cactus=[], frame=0, nextCactusFrame=0;
-        window.accionArcadeActual = (e) => {
-            if(e && e.type === "keydown" && e.keyCode !== 32 && e.keyCode !== 38) return; 
-            if(e) e.preventDefault(); obtenerAudioCtx();
-            if (estado === 0) {
-                dY=ground; vY=0; cactus=[]; score=0; frame=0; nextCactusFrame=30; estado = 1; document.getElementById("arcadeScore").innerText = score;
-                nuevoRecordAlcanzado=false; document.getElementById("arcadeBest").style.color="var(--success)"; document.getElementById("arcadeBest").style.textShadow="none";
-            } else if (estado === 1) { if(dY >= ground) { vY = jump; playSonido(300, 'square', 0.1, 0.1); } } else if (estado === 2) { estado = 0; }
+
+    // =========================================================================
+    // 4. 🧱 BREAKOUT INFINITO — Multibola, Fuego, XL + Trampas (XS, Turbo, Bomba)
+    // =========================================================================
+    else if (tipo === 'breakout') {
+        let estado = 0; let nivel = 1;
+        let paddleW = 64, paddleH = 8, paddleY = cvs.height - 20, paddleX = (cvs.width - paddleW) / 2;
+        let balls = []; let ballR = 4.5;
+        let bricks = [], rows = 4, cols = 8, brickW = 34, brickH = 12, brickGap = 2, brickOffX = 5, brickOffY = 46;
+        let teclas = {}, touchX = null, drops = [];
+        let fireballFrames = 0, fastFrames = 0;
+
+        const resetBricks = () => {
+            bricks = []; drops = [];
+            let colors = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#38bdf8', '#a855f7'];
+            for (let r = 0; r < Math.min(6, rows + (nivel - 1)); r++) {
+                for (let c = 0; c < cols; c++) {
+                    bricks.push({x: brickOffX + c*(brickW+brickGap), y: brickOffY + r*(brickH+brickGap), w: brickW, h: brickH, alive: true, color: colors[r % colors.length]});
+                }
+            }
         };
-        document.addEventListener("keydown", window.accionArcadeActual); cvs.addEventListener("touchstart", window.accionArcadeActual, {passive: false}); cvs.addEventListener("mousedown", window.accionArcadeActual);
-        
+        const resetBall = () => {
+    paddleX = Math.max(0, Math.min(cvs.width - paddleW, paddleX)); // preserva ancho, recentra X si se sale
+    fireballFrames = 0; fastFrames = 0;
+    let baseSpd = 3 + Math.min(2, (nivel - 1) * 0.3);
+    balls = [{
+        x: paddleX + paddleW / 2,
+        y: paddleY - ballR - 1,
+        dx: baseSpd * (Math.random() > 0.5 ? 1 : -1),
+        dy: -baseSpd
+    }];
+    estado = 0;
+};
+        resetBricks(); resetBall();
+
+        const reiniciarBreakout = () => {
+            score = 0; nivel = 1; document.getElementById("arcadeScore").innerText = "0";
+            paddleW = 64;
+            paddleX = (cvs.width - paddleW) / 2;
+            resetBricks(); resetBall();
+            nuevoRecordAlcanzado = false;
+            document.getElementById("arcadeBest").style.color = "var(--success)";
+            document.getElementById("arcadeBest").style.textShadow = "none";
+        };
+
+        window.accionArcadeActual = (e) => {
+            if (e.type === "keydown") {
+                if ([37, 39, 32, 38].includes(e.keyCode)) { e.preventDefault(); touchX = null; }
+                teclas[e.keyCode] = true;
+                if (e.keyCode === 32 || e.keyCode === 38) {
+                    if (estado === 0) { estado = 1; obtenerAudioCtx(); }
+                    else if (estado === 2) reiniciarBreakout();
+                }
+            } else if (e.type === "keyup") {
+                teclas[e.keyCode] = false;
+            } else if (e.type === "touchstart" || e.type === "mousedown" || e.type === "touchmove" || e.type === "mousemove") {
+                if (e.cancelable && e.type.includes("touch")) e.preventDefault();
+                let rect = cvs.getBoundingClientRect();
+                let cx = e.type.includes("mouse") ? e.clientX : e.touches[0].clientX;
+                touchX = (cx - rect.left) * (cvs.width / rect.width);
+                if (e.type === "touchstart" || e.type === "mousedown") {
+                    if (estado === 0) { estado = 1; obtenerAudioCtx(); }
+                    else if (estado === 2) reiniciarBreakout();
+                }
+            }
+        };
+        document.addEventListener("keydown", window.accionArcadeActual);
+        document.addEventListener("keyup", window.accionArcadeActual);
+        cvs.addEventListener("touchstart", window.accionArcadeActual, {passive: false});
+        cvs.addEventListener("touchmove", window.accionArcadeActual, {passive: false});
+        cvs.addEventListener("mousedown", window.accionArcadeActual);
+        cvs.addEventListener("mousemove", window.accionArcadeActual);
+
         window.loopArcade = setInterval(() => {
-            ctx.fillStyle="#f8fafc"; ctx.fillRect(0,0,cvs.width,cvs.height); ctx.fillStyle="#94a3b8"; ctx.fillRect(0, ground+20, cvs.width, 50); ctx.textAlign = "center";
-            if (estado === 0) { ctx.font = "40px Arial"; ctx.fillText("👷", cvs.width/2, ground+10); ctx.fillStyle="#0f172a"; ctx.font="18px monospace"; ctx.fillText("TOCA PARA EMPEZAR", cvs.width/2, 100); return; }
+            if (touchX !== null) paddleX = Math.max(0, Math.min(cvs.width - paddleW, touchX - paddleW / 2));
+            if (teclas[37]) paddleX = Math.max(0, paddleX - 6);
+            if (teclas[39]) paddleX = Math.min(cvs.width - paddleW, paddleX + 6);
+
+            ctx.fillStyle = "#0f172a"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+            ctx.textAlign = "center";
+
+            if (estado === 0 && balls[0]) {
+                balls[0].x = paddleX + paddleW / 2;
+                balls[0].y = paddleY - ballR - 1;
+            }
+
             if (estado === 1) {
-                vY += g; dY += vY; if(dY > ground){ dY = ground; vY=0; } frame++;
-                if(frame >= nextCactusFrame) { cactus.push({x: cvs.width, w: 20, h: 22}); nextCactusFrame = frame + Math.floor(Math.random() * 30) + 30; }
-                score++; let scoreMostrado = Math.floor(score/10); document.getElementById("arcadeScore").innerText = scoreMostrado;
-                verificarRecord(scoreMostrado);
-                if (score % 1000 === 0 && score > 0) window.playSonidoLogro(); else if (score % 100 === 0 && score > 0) playSonido(600, 'square', 0.1, 0.1); 
+                if (fireballFrames > 0) fireballFrames--;
+                if (fastFrames > 0) fastFrames--;
+                let spdMult = fastFrames > 0 ? 1.45 : 1;
+
+                // Actualizar todas las bolitas (Multibola)
+                for (let bi = balls.length - 1; bi >= 0; bi--) {
+                    let bl = balls[bi];
+                    bl.x += bl.dx * spdMult;
+                    bl.y += bl.dy * spdMult;
+
+                    if (bl.x - ballR < 0) { bl.x = ballR; bl.dx = Math.abs(bl.dx); playSonido(400, 'square', 0.04, 0.05); }
+                    if (bl.x + ballR > cvs.width) { bl.x = cvs.width - ballR; bl.dx = -Math.abs(bl.dx); playSonido(400, 'square', 0.04, 0.05); }
+                    if (bl.y - ballR < 0) { bl.y = ballR; bl.dy = Math.abs(bl.dy); playSonido(400, 'square', 0.04, 0.05); }
+
+                    if (bl.y + ballR >= paddleY && bl.y - ballR <= paddleY + paddleH && bl.x >= paddleX - 2 && bl.x <= paddleX + paddleW + 2 && bl.dy > 0) {
+                        bl.dy = -Math.abs(bl.dy);
+                        let hit = (bl.x - (paddleX + paddleW / 2)) / (paddleW / 2);
+                        bl.dx = hit * (3.4 + Math.min(1.5, nivel * 0.2));
+                        playSonido(500, 'square', 0.05, 0.1);
+                    }
+
+                    if (bl.y - ballR > cvs.height) {
+                        balls.splice(bi, 1);
+                        continue;
+                    }
+
+                    for (let b of bricks) {
+                        if (!b.alive) continue;
+                        if (bl.x + ballR > b.x && bl.x - ballR < b.x + b.w && bl.y + ballR > b.y && bl.y - ballR < b.y + b.h) {
+                            b.alive = false;
+                            if (fireballFrames <= 0) {
+                                let overlapX = Math.min(bl.x + ballR - b.x, b.x + b.w - (bl.x - ballR));
+                                let overlapY = Math.min(bl.y + ballR - b.y, b.y + b.h - (bl.y - ballR));
+                                if (overlapX < overlapY) bl.dx = -bl.dx; else bl.dy = -bl.dy;
+                            }
+                            score += 10; document.getElementById("arcadeScore").innerText = score; verificarRecord(score);
+                            playSonido(800, 'square', 0.05, 0.1);
+
+                            // 28% chance de soltar ayudita o trampa
+                            if (Math.random() < 0.28) {
+                                let esTrampa = Math.random() < 0.38;
+                                let tipoDrop = esTrampa
+                                    ? ['XS', 'FAST', 'BOMB'][Math.floor(Math.random() * 3)]
+                                    : ['XL', '2B', 'FIRE'][Math.floor(Math.random() * 3)];
+                                drops.push({x: b.x + b.w / 2, y: b.y + b.h / 2, tipo: tipoDrop, esTrampa});
+                            }
+                            if (fireballFrames <= 0) break;
+                        }
+                    }
+                }
+
+                if (balls.length === 0) {
+                    estado = 2; playSonido(150, 'sawtooth', 0.5, 0.2);
+                } else if (bricks.every(b => !b.alive)) {
+                    nivel++; score += 50; document.getElementById("arcadeScore").innerText = score; verificarRecord(score);
+                    window.playSonidoLogro(); window.mostrarAlertaNivel(`NIVEL ${nivel}`, "#4ade80");
+                    resetBricks(); resetBall();
+                }
+
+                // Cápsulas (Poderes y Trampas)
+                for (let i = drops.length - 1; i >= 0; i--) {
+                    let d = drops[i]; d.y += 2.6;
+                    if (d.y > cvs.height + 10) { drops.splice(i, 1); continue; }
+
+                    let bg = d.esTrampa ? "#ef4444" : (d.tipo === 'XL' ? "#22c55e" : d.tipo === '2B' ? "#0ea5e9" : "#f97316");
+                    let txt = d.tipo === 'FIRE' ? '🔥' : d.tipo === 'FAST' ? '⚡' : d.tipo === 'BOMB' ? '💣' : d.tipo;
+                    ctx.fillStyle = bg;
+                    ctx.fillRect(d.x - 12, d.y - 7, 24, 14);
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.strokeRect(d.x - 12, d.y - 7, 24, 14);
+                    ctx.fillStyle = "#fff"; ctx.font = "bold 9px monospace";
+                    ctx.fillText(txt, d.x, d.y + 3);
+
+                    if (d.y + 7 >= paddleY && d.y - 7 <= paddleY + paddleH && d.x + 12 >= paddleX && d.x - 12 <= paddleX + paddleW) {
+                        drops.splice(i, 1);
+                        if (d.tipo === 'XL') {
+                            paddleW = Math.min(125, paddleW + 22);
+                            window.playSonidoPowerup(); window.mostrarAlertaNivel("🟢 ¡PALETA XL!", "#4ade80");
+                        } else if (d.tipo === '2B') {
+                            if (balls.length < 4 && balls.length > 0) {
+                                let ref = balls[0];
+                                balls.push({x: ref.x, y: ref.y, dx: -ref.dx || 2.5, dy: -Math.abs(ref.dy)});
+                            }
+                            window.playSonidoPowerup(); window.mostrarAlertaNivel("🔵 ¡MULTIBOLA!", "#38bdf8");
+                        } else if (d.tipo === 'FIRE') {
+                            fireballFrames = 360;
+                            window.playSonidoPowerup(); window.mostrarAlertaNivel("🔥 ¡BOLA DE FUEGO!", "#fb923c");
+                        } else if (d.tipo === 'XS') {
+                            paddleW = Math.max(30, paddleW - 18);
+                            window.playSonidoTrampa(); window.mostrarAlertaNivel("🔴 ¡PALETA CHICA!", "#ef4444");
+                        } else if (d.tipo === 'FAST') {
+                            fastFrames = 300;
+                            window.playSonidoTrampa(); window.mostrarAlertaNivel("⚡ ¡BOLA TURBO!", "#ef4444");
+                        } else if (d.tipo === 'BOMB') {
+                            score = Math.max(0, score - 30); paddleW = Math.min(paddleW, 56);
+                            document.getElementById("arcadeScore").innerText = score;
+                            window.playSonidoTrampa(); window.mostrarAlertaNivel("💣 ¡BOMBA -30 PTS!", "#ef4444");
+                        }
+                    }
+                }
             }
-            for(let i=0; i<cactus.length; i++) {
-                let c = cactus[i]; if (estado === 1) c.x -= (7 + Math.floor(score/400)); 
-                ctx.fillStyle="#64748b"; ctx.fillRect(c.x, ground+20-c.h, c.w, c.h);
-                if (estado === 1 && (40+15 > c.x && 40-15 < c.x+c.w && dY+20 > ground+20-c.h)) { estado=2; playSonido(150, 'sawtooth', 0.6, 0.2); }
+
+            // Dibujar Ladrillos, Paleta y Bolas
+            for (let b of bricks) { if (!b.alive) continue; ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.w, b.h); }
+            ctx.fillStyle = paddleW < 50 ? "#f87171" : (paddleW > 80 ? "#4ade80" : "#00e5ff");
+            ctx.fillRect(paddleX, paddleY, paddleW, paddleH);
+
+            if (estado !== 2) {
+                for (let bl of balls) {
+                    ctx.fillStyle = fireballFrames > 0 ? "#fb923c" : (fastFrames > 0 ? "#facc15" : "#fff");
+                    ctx.beginPath(); ctx.arc(bl.x, bl.y, ballR, 0, Math.PI * 2); ctx.fill();
+                }
             }
-            ctx.font = "40px Arial"; ctx.fillText(estado===2 ? "💥" : "👷", 40, dY+20);
-            if (estado === 2) { 
-                ctx.fillStyle="rgba(0,0,0,0.6)"; ctx.fillRect(0,0,cvs.width,cvs.height);
-                if(nuevoRecordAlcanzado) { ctx.fillStyle="#00e5ff"; ctx.font="20px monospace"; ctx.fillText("🏆 ¡NUEVO RÉCORD! 🏆", cvs.width/2, 90); }
-                ctx.fillStyle="red"; ctx.font="24px monospace"; ctx.fillText("¡TROPEZÓ!", cvs.width/2, 130); ctx.fillStyle="white"; ctx.font="14px monospace"; ctx.fillText("TOCA PARA REINICIAR", cvs.width/2, 170); 
+
+            // HUD
+            let hud = [`NV.${nivel}`];
+            if (fireballFrames > 0) hud.push(`🔥${Math.ceil(fireballFrames/60)}s`);
+            if (fastFrames > 0) hud.push(`⚡${Math.ceil(fastFrames/60)}s`);
+            if (balls.length > 1) hud.push(`⚪x${balls.length}`);
+            ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(4, 4, cvs.width - 8, 18);
+            ctx.fillStyle = "#e2e8f0"; ctx.font = "11px monospace"; ctx.textAlign = "left";
+            ctx.fillText(hud.join("  "), 8, 17);
+
+            ctx.textAlign = "center";
+            if (estado === 0) {
+                ctx.fillStyle = "white"; ctx.font = "14px monospace";
+                ctx.fillText("MUEVE LA PALETA Y PULSA", cvs.width/2, cvs.height/2 + 20);
+                ctx.fillText("ESPACIO O TOCA", cvs.width/2, cvs.height/2 + 40);
             }
-        }, 1000/40); 
+            if (estado === 2) {
+                ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+                if (nuevoRecordAlcanzado) { ctx.fillStyle = "#00e5ff"; ctx.font = "20px monospace"; ctx.fillText("🏆 ¡NUEVO RÉCORD! 🏆", cvs.width/2, 90); }
+                ctx.fillStyle = "white"; ctx.font = "22px monospace"; ctx.fillText("¡GAME OVER!", cvs.width/2, 140);
+                ctx.font = "14px monospace"; ctx.fillText("TOCA PARA CONTINUAR", cvs.width/2, 180);
+            }
+        }, 1000/60);
+    }
+
+    // =========================================================================
+    // 5. 👾 SPACE INVADERS — 5 Poderes (2X, 3X, Metralleta, Hielo, Bomba EMP)
+    // =========================================================================
+    else if (tipo === 'invaders') {
+        let estado = 0; let nivel = 1;
+        let shipX = (cvs.width - 24) / 2, shipY = cvs.height - 20, shipW = 24, shipH = 16;
+        let bullets = [], enemies = [], drops = [];
+        let enemyDir = 1, enemyDropDown = false;
+        let teclas = {}, touchX = null;
+        let shootCooldown = 0;
+        let doubleShot = 0, tripleShot = 0, rapidFire = 0, freezeFrames = 0;
+        let ufo = {x: -100, y: 24, act: false};
+
+        const initEnemies = () => {
+            enemies = [];
+            for (let r = 0; r < Math.min(5, 3 + Math.floor(nivel / 2)); r++) {
+                for (let c = 0; c < 7; c++) enemies.push({x: 30 + c*32, y: 38 + r*26, w: 20, h: 15, alive: true, row: r});
+            }
+        };
+        initEnemies();
+
+        const disparar = () => {
+            if (estado !== 1 || shootCooldown > 0) return;
+            let cx = shipX + shipW / 2;
+            if (tripleShot > 0) {
+                bullets.push({x: cx, y: shipY - 5, vx: 0});
+                bullets.push({x: cx - 5, y: shipY - 3, vx: -1.6});
+                bullets.push({x: cx + 5, y: shipY - 3, vx: 1.6});
+            } else if (doubleShot > 0) {
+                bullets.push({x: cx - 6, y: shipY - 5, vx: 0});
+                bullets.push({x: cx + 6, y: shipY - 5, vx: 0});
+            } else {
+                bullets.push({x: cx, y: shipY - 5, vx: 0});
+            }
+            shootCooldown = rapidFire > 0 ? 5 : 15;
+            playSonido(rapidFire > 0 ? 950 : 700, 'square', 0.05, 0.1);
+        };
+
+        const activarPoderInvaders = (pTipo) => {
+            window.playSonidoPowerup();
+            if (pTipo === '2X') { doubleShot = 420; window.mostrarAlertaNivel("🟣 ¡DOBLE DISPARO!", "#c084fc"); }
+            else if (pTipo === '3X') { tripleShot = 360; window.mostrarAlertaNivel("🟡 ¡TRIPLE ABANICO!", "#facc15"); }
+            else if (pTipo === 'RAPID') { rapidFire = 360; window.mostrarAlertaNivel("⚡ ¡METRALLETA!", "#38bdf8"); }
+            else if (pTipo === 'FREEZE') { freezeFrames = 270; window.mostrarAlertaNivel("❄️ ¡CONGELADOS!", "#67e8f9"); }
+            else if (pTipo === 'EMP') {
+                // Destruye toda la fila viva más baja
+                let vivos = enemies.filter(e => e.alive);
+                if (vivos.length > 0) {
+                    let maxY = Math.max(...vivos.map(e => e.y));
+                    let borrados = 0;
+                    for (let e of vivos) {
+                        if (Math.abs(e.y - maxY) < 12) { e.alive = false; borrados++; }
+                    }
+                    score += borrados * 10;
+                    document.getElementById("arcadeScore").innerText = score; verificarRecord(score);
+                }
+                playSonido(180, 'sawtooth', 0.35, 0.2);
+                window.mostrarAlertaNivel("💣 ¡BOMBA EMP!", "#f97316");
+            }
+        };
+
+        const resetInvaders = () => {
+            score = 0; nivel = 1; document.getElementById("arcadeScore").innerText = "0";
+            shipX = (cvs.width - shipW) / 2; bullets = []; drops = []; initEnemies();
+            enemyDir = 1; enemyDropDown = false;
+            doubleShot = 0; tripleShot = 0; rapidFire = 0; freezeFrames = 0; ufo.act = false;
+            nuevoRecordAlcanzado = false;
+            document.getElementById("arcadeBest").style.color = "var(--success)";
+            document.getElementById("arcadeBest").style.textShadow = "none";
+            estado = 0;
+        };
+
+        window.accionArcadeActual = (e) => {
+            if (e.type === "keydown") {
+                if ([37, 39, 32, 38].includes(e.keyCode)) { e.preventDefault(); touchX = null; }
+                teclas[e.keyCode] = true;
+                if (e.keyCode === 32 || e.keyCode === 38) {
+                    if (estado === 0) { estado = 1; obtenerAudioCtx(); }
+                    else if (estado === 1) disparar();
+                    else if (estado === 2) resetInvaders();
+                }
+            } else if (e.type === "keyup") {
+                teclas[e.keyCode] = false;
+            } else if (e.type === "touchstart" || e.type === "mousedown" || e.type === "touchmove" || e.type === "mousemove") {
+                if (e.cancelable && e.type.includes("touch")) e.preventDefault();
+                let rect = cvs.getBoundingClientRect();
+                let cx = e.type.includes("mouse") ? e.clientX : e.touches[0].clientX;
+                if (e.type === "touchstart" || e.type === "mousedown") {
+                    if (estado === 0) { estado = 1; obtenerAudioCtx(); touchX = (cx - rect.left) * (cvs.width / rect.width); }
+                    else if (estado === 1) { disparar(); touchX = (cx - rect.left) * (cvs.width / rect.width); }
+                    else if (estado === 2) resetInvaders();
+                } else {
+                    touchX = (cx - rect.left) * (cvs.width / rect.width);
+                }
+            }
+        };
+        document.addEventListener("keydown", window.accionArcadeActual);
+        document.addEventListener("keyup", window.accionArcadeActual);
+        cvs.addEventListener("touchstart", window.accionArcadeActual, {passive: false});
+        cvs.addEventListener("touchmove", window.accionArcadeActual, {passive: false});
+        cvs.addEventListener("mousedown", window.accionArcadeActual);
+        cvs.addEventListener("mousemove", window.accionArcadeActual);
+
+        window.loopArcade = setInterval(() => {
+            if (shootCooldown > 0) shootCooldown--;
+            if (doubleShot > 0) doubleShot--;
+            if (tripleShot > 0) tripleShot--;
+            if (rapidFire > 0) rapidFire--;
+            if (freezeFrames > 0) freezeFrames--;
+
+            if (touchX !== null) shipX = Math.max(0, Math.min(cvs.width - shipW, touchX - shipW / 2));
+            if (teclas[37]) shipX = Math.max(0, shipX - 4.5);
+            if (teclas[39]) shipX = Math.min(cvs.width - shipW, shipX + 4.5);
+            if (estado === 1 && (teclas[32] || teclas[38]) && rapidFire > 0) disparar(); // Auto-fuego con metralleta
+
+            ctx.fillStyle = freezeFrames > 0 ? "#0c1e35" : "#0f172a";
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
+            ctx.textAlign = "center";
+
+            if (estado === 1) {
+                let vivos = enemies.filter(e => e.alive);
+                if (vivos.length > 0) {
+                    if (freezeFrames <= 0) {
+                        let leftmost = Math.min(...vivos.map(e => e.x));
+                        let rightmost = Math.max(...vivos.map(e => e.x + e.w));
+                        if (enemyDir > 0 && rightmost >= cvs.width - 10) { enemyDir = -1; enemyDropDown = true; }
+                        else if (enemyDir < 0 && leftmost <= 10) { enemyDir = 1; enemyDropDown = true; }
+
+                        let baseSpeed = Math.min(3.5, (0.35 + (1 - vivos.length / enemies.length) * 1.4) + (nivel * 0.2));
+                        for (let e of enemies) {
+                            if (!e.alive) continue;
+                            e.x += enemyDir * baseSpeed;
+                            if (enemyDropDown) e.y += 11;
+                        }
+                        if (enemyDropDown) enemyDropDown = false;
+                        for (let e of vivos) { if (e.y + e.h >= shipY) { estado = 2; playSonido(150, 'sawtooth', 0.6, 0.2); break; } }
+                    }
+                } else {
+                    nivel++; score += 50; document.getElementById("arcadeScore").innerText = score; verificarRecord(score);
+                    window.playSonidoLogro(); window.mostrarAlertaNivel(`OLEADA ${nivel}`, "#ef4444");
+                    initEnemies(); bullets = []; drops = [];
+                }
+
+                // OVNI Morado
+                if (!ufo.act && Math.random() < 0.0025) ufo = {x: -30, y: 24, act: true};
+                if (ufo.act) {
+                    ufo.x += 2;
+                    ctx.fillStyle = "#a855f7"; ctx.fillRect(ufo.x, ufo.y, 26, 10);
+                    ctx.fillStyle = "#f0abfc"; ctx.fillRect(ufo.x + 6, ufo.y - 3, 14, 4);
+                    if (ufo.x > cvs.width + 10) ufo.act = false;
+                }
+
+                // Balas
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    bullets[i].y -= 6.5; bullets[i].x += (bullets[i].vx || 0);
+                    if (bullets[i].y < -5 || bullets[i].x < 0 || bullets[i].x > cvs.width) { bullets.splice(i, 1); continue; }
+
+                    if (ufo.act && bullets[i].x > ufo.x && bullets[i].x < ufo.x + 26 && bullets[i].y < ufo.y + 10 && bullets[i].y > ufo.y - 4) {
+                        ufo.act = false; bullets.splice(i, 1);
+                        score += 30; document.getElementById("arcadeScore").innerText = score; verificarRecord(score);
+                        let poderes = ['2X', '3X', 'RAPID', 'FREEZE', 'EMP'];
+                        activarPoderInvaders(poderes[Math.floor(Math.random() * poderes.length)]);
+                        continue;
+                    }
+
+                    for (let e of enemies) {
+                        if (!e.alive) continue;
+                        if (bullets[i].x > e.x && bullets[i].x < e.x + e.w && bullets[i].y < e.y + e.h && bullets[i].y > e.y) {
+                            e.alive = false; bullets.splice(i, 1);
+                            score += 10; document.getElementById("arcadeScore").innerText = score; verificarRecord(score);
+                            playSonido(900, 'square', 0.07, 0.09);
+                            // 14% chance de soltar ayudita
+                            if (Math.random() < 0.14) {
+                                let poderes = ['2X', '3X', 'RAPID', 'FREEZE', 'EMP'];
+                                drops.push({x: e.x + e.w / 2, y: e.y + e.h / 2, tipo: poderes[Math.floor(Math.random() * poderes.length)]});
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                // Cápsulas de poderes cayendo
+                for (let i = drops.length - 1; i >= 0; i--) {
+                    let d = drops[i]; d.y += 2.4;
+                    if (d.y > cvs.height + 10) { drops.splice(i, 1); continue; }
+                    let bg = d.tipo === '2X' ? '#a855f7' : d.tipo === '3X' ? '#eab308' : d.tipo === 'RAPID' ? '#0ea5e9' : d.tipo === 'FREEZE' ? '#06b6d4' : '#f97316';
+                    let lbl = d.tipo === 'RAPID' ? '⚡' : d.tipo === 'FREEZE' ? '❄️' : d.tipo === 'EMP' ? '💣' : d.tipo;
+                    ctx.fillStyle = bg; ctx.fillRect(d.x - 11, d.y - 7, 22, 14);
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1; ctx.strokeRect(d.x - 11, d.y - 7, 22, 14);
+                    ctx.fillStyle = "#fff"; ctx.font = "bold 9px monospace"; ctx.fillText(lbl, d.x, d.y + 3);
+
+                    if (d.y + 7 >= shipY && d.y - 7 <= shipY + shipH && d.x + 11 >= shipX && d.x - 11 <= shipX + shipW) {
+                        drops.splice(i, 1);
+                        activarPoderInvaders(d.tipo);
+                    }
+                }
+            }
+
+            // Dibujar Invasores
+            for (let e of enemies) {
+                if (!e.alive) continue;
+                ctx.fillStyle = freezeFrames > 0 ? '#67e8f9' : (e.row === 0 ? '#ef4444' : (e.row === 1 ? '#f59e0b' : (e.row === 2 ? '#eab308' : '#22c55e')));
+                ctx.fillRect(e.x, e.y, e.w, e.h);
+                ctx.fillStyle = '#000'; ctx.fillRect(e.x + 4, e.y + 4, 3, 3); ctx.fillRect(e.x + e.w - 7, e.y + 4, 3, 3);
+            }
+
+            ctx.fillStyle = tripleShot > 0 ? '#facc15' : (doubleShot > 0 ? '#c084fc' : '#00e5ff');
+            for (let b of bullets) ctx.fillRect(b.x - 1, b.y, 2, 8);
+
+            ctx.fillStyle = rapidFire > 0 ? "#38bdf8" : "#00e5ff";
+            ctx.beginPath(); ctx.moveTo(shipX + shipW / 2, shipY); ctx.lineTo(shipX, shipY + shipH); ctx.lineTo(shipX + shipW, shipY + shipH); ctx.closePath(); ctx.fill();
+
+            // HUD
+            let hud = [`OL.${nivel}`];
+            if (tripleShot > 0) hud.push(`3X:${Math.ceil(tripleShot/60)}s`);
+            else if (doubleShot > 0) hud.push(`2X:${Math.ceil(doubleShot/60)}s`);
+            if (rapidFire > 0) hud.push(`⚡${Math.ceil(rapidFire/60)}s`);
+            if (freezeFrames > 0) hud.push(`❄️${Math.ceil(freezeFrames/60)}s`);
+            ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(4, 4, cvs.width - 8, 16);
+            ctx.fillStyle = "#e2e8f0"; ctx.font = "10px monospace"; ctx.textAlign = "left";
+            ctx.fillText(hud.join(" "), 8, 15);
+
+            ctx.textAlign = "center";
+            if (estado === 0) {
+                ctx.fillStyle = "white"; ctx.font = "14px monospace";
+                ctx.fillText("ARRASTRA O FLECHAS", cvs.width/2, 130);
+                ctx.fillText("TOCA O ESPACIO = DISPARAR", cvs.width/2, 152);
+                ctx.fillText("PULSA PARA EMPEZAR", cvs.width/2, 190);
+            }
+            if (estado === 2) {
+                ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+                if (nuevoRecordAlcanzado) { ctx.fillStyle = "#00e5ff"; ctx.font = "20px monospace"; ctx.fillText("🏆 ¡NUEVO RÉCORD! 🏆", cvs.width/2, 90); }
+                ctx.fillStyle = "white"; ctx.font = "22px monospace"; ctx.fillText("¡GAME OVER!", cvs.width/2, 140);
+                ctx.font = "14px monospace"; ctx.fillText("TOCA PARA CONTINUAR", cvs.width/2, 180);
+            }
+        }, 1000/60);
     }
 };
 
+// 🎮 Easter egg: escribir "juego" abre el Arcade
 let bufferTeclasJuego = ""; document.addEventListener("keydown", (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     bufferTeclasJuego += e.key.toLowerCase(); if (bufferTeclasJuego.length > 5) bufferTeclasJuego = bufferTeclasJuego.substring(bufferTeclasJuego.length - 5);
     if (bufferTeclasJuego === "juego") { bufferTeclasJuego = ""; window.abrirMenuArcade(); }
 });
-setTimeout(() => {
-    let clicsLogo = 0; let timerLogo;
-    document.querySelectorAll('.sidebar-logo, .mobile-logo-header img').forEach(logo => {
-        logo.addEventListener('click', () => {
-            clicsLogo++; clearTimeout(timerLogo); timerLogo = setTimeout(() => clicsLogo = 0, 1000); 
-            if (clicsLogo === 5) { clicsLogo = 0; window.abrirMenuArcade(); }
-        });
+
+// 🎮 Easter egg: 5 clics en el logo abre el Arcade
+(function engancharEasterEggLogo() {
+    let clicsLogo = 0; let timerLogo = null;
+    document.addEventListener('click', (e) => {
+        const logo = e.target.closest('.sidebar-logo, .mobile-logo-header img');
+        if (!logo) return;
+        clicsLogo++; clearTimeout(timerLogo); timerLogo = setTimeout(() => clicsLogo = 0, 1000);
+        if (clicsLogo === 5) { clicsLogo = 0; window.abrirMenuArcade(); }
     });
-}, 1500);
+})();
